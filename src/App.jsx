@@ -11,6 +11,24 @@ const C = {
 const NAV_ORDER = ["today", "track", "money", "goals", "stats", "profile"];
 const TRACK_ORDER = ["sleep", "sport", "nutrition", "body", "work", "todo", "mind"];
 
+const PRIORITIES = [
+  { id: "sport", label: "Sport & Récup", icon: "💪", color: C.red },
+  { id: "finance", label: "Finance & Patrimoine", icon: "💰", color: C.green },
+  { id: "mental", label: "Mental & Lecture", icon: "🧠", color: C.purple },
+  { id: "nutrition", label: "Nutrition", icon: "🥗", color: C.orange },
+  { id: "business", label: "Business & Travail", icon: "🎯", color: C.blue },
+  { id: "running", label: "Running", icon: "🏃", color: "#0891b2" },
+];
+
+const ONBOARDING_GOALS = {
+  sport: { label: "Séances sport régulières", sourceId: "sport_duree", target: 45, reverse: false, category: "Sport" },
+  finance: { label: "Objectif patrimoine", sourceId: "patrimoine", target: 50000, reverse: false, category: "Finance" },
+  mental: { label: "Lecture quotidienne", sourceId: "lecture", target: 20, reverse: false, category: "Mental" },
+  nutrition: { label: "Protéines quotidiennes", sourceId: "proteines", target: 150, reverse: false, category: "Nutrition" },
+  business: { label: "Focus quotidien", sourceId: "focus", target: 4, reverse: false, category: "Travail" },
+  running: { label: "Distance running", sourceId: "running_dist", target: 5, reverse: false, category: "Running" },
+};
+
 const DATA_SOURCES = [
   { id: "manual", label: "Manuel", unit: "", path: null },
   { id: "patrimoine", label: "Patrimoine total", unit: "€", path: "patrimoine_total" },
@@ -38,26 +56,17 @@ const calcGoalProgress = (goal, history, patrimoineTotal) => {
   const target = Number(goal.target) || 1;
   const start = goal.startDate ? new Date(goal.startDate) : new Date();
   const end = goal.endDate ? new Date(goal.endDate) : new Date();
-  if (src.id === "patrimoine") {
-    const val = patrimoineTotal;
-    return Math.min(100, Math.max(0, Math.round((val / target) * 100)));
-  }
+  if (src.id === "patrimoine") return Math.min(100, Math.max(0, Math.round((patrimoineTotal / target) * 100)));
   const relevantDays = history.filter(d => { const dd = new Date(d.date); return dd >= start && dd <= end; });
   if (src.isDaily) {
     if (!relevantDays.length) return 0;
     let ok = 0;
-    relevantDays.forEach(d => {
-      const val = getNestedVal(d, src.path);
-      if (goal.reverse) { if (val > 0 && val <= target) ok++; } else { if (val >= target) ok++; }
-    });
+    relevantDays.forEach(d => { const val = getNestedVal(d, src.path); if (goal.reverse) { if (val > 0 && val <= target) ok++; } else { if (val >= target) ok++; } });
     return Math.min(100, Math.round((ok / relevantDays.length) * 100));
   } else {
     const lastEntry = [...history].reverse().find(d => getNestedVal(d, src.path) > 0);
     const val = lastEntry ? getNestedVal(lastEntry, src.path) : 0;
-    if (goal.reverse) {
-      const sv = goal.startValue || val;
-      return Math.min(100, Math.max(0, Math.round(((sv - val) / (sv - target)) * 100)));
-    }
+    if (goal.reverse) { const sv = goal.startValue || val; return Math.min(100, Math.max(0, Math.round(((sv - val) / (sv - target)) * 100))); }
     return Math.min(100, Math.max(0, Math.round((val / target) * 100)));
   }
 };
@@ -99,8 +108,15 @@ function calcScore(day) {
   return Math.max(0, Math.min(100, s));
 }
 
-function getIntelligence(history) {
-  const last7 = history.slice(-7); const last3 = history.slice(-3);
+// ── INTELLIGENCE ENGINE ────────────────────────────────────────────────────
+function getIntelligence(history, totalPatrimoine, goals) {
+  const last7 = history.slice(-7); const last14 = history.slice(-14); const last3 = history.slice(-3);
+  const prev7 = history.slice(-14, -7);
+
+  const avgScore7 = last7.filter(d => d.score > 0).reduce((a, b, _, arr) => a + b.score / arr.length, 0);
+  const avgScorePrev = prev7.filter(d => d.score > 0).reduce((a, b, _, arr) => a + b.score / arr.length, 0);
+  const scoreDelta = avgScorePrev > 0 ? Math.round(avgScore7 - avgScorePrev) : null;
+
   const avgRecovery = last3.length ? last3.reduce((a, b) => a + (b.sport?.recovery || 3), 0) / last3.length : 3;
   const avgSleep = last7.filter(d => d.sleep?.duration > 0).reduce((a, b, _, arr) => a + b.sleep.duration / arr.length, 0);
   const avgScreen = last7.filter(d => d.work?.screenTime > 0).reduce((a, b, _, arr) => a + b.work.screenTime / arr.length, 0);
@@ -109,22 +125,56 @@ function getIntelligence(history) {
   const lastSportType = last7.filter(d => d.sport?.type).slice(-1)[0]?.sport?.type || "";
   const bedtimes = last7.filter(d => d.sleep?.bedtime).map(d => { const [h, m] = d.sleep.bedtime.split(":").map(Number); return h * 60 + m; });
   const bedVariance = bedtimes.length > 2 ? Math.max(...bedtimes) - Math.min(...bedtimes) : 0;
+
   const alerts = []; const advice = []; let todayRec = "";
-  if (consecutiveSport >= 3) { alerts.push({ type: "warning", msg: `💤 ${consecutiveSport} jours consécutifs — repos actif recommandé.` }); todayRec = "rest"; }
+
+  if (consecutiveSport >= 3) { alerts.push({ type: "warning", msg: `💤 ${consecutiveSport} jours de sport consécutifs — repos actif recommandé.` }); todayRec = "rest"; }
   else if (avgRecovery < 2.5) alerts.push({ type: "warning", msg: "⚠️ Récupération faible ces derniers jours." });
   if (avgSleep < 6.5) alerts.push({ type: "danger", msg: "🚨 Moins de 6h30 en moyenne. Performances -20%." });
   else if (avgSleep < 7) alerts.push({ type: "warning", msg: "🌙 Sommeil insuffisant. Couche-toi 30min plus tôt." });
   if (bedVariance > 90) alerts.push({ type: "warning", msg: `⏰ Heure de coucher irrégulière (±${Math.round(bedVariance / 60)}h). Régulation circadienne perturbée.` });
   if (avgScreen > 5) alerts.push({ type: "warning", msg: `📱 ${Math.round(avgScreen)}h d'écran/jour — sommeil dégradé.` });
+
   if (!todayRec && lastSportType) {
     const ppl = ["Push", "Pull", "Legs"]; const lastIdx = ppl.findIndex(x => lastSportType.includes(x));
     if (lastIdx >= 0) { todayRec = `PPL ${ppl[(lastIdx + 1) % 3]}`; advice.push(`💪 Recommandation : ${todayRec}`); }
   }
+
+  // Pattern analysis
+  const patterns = [];
+  const sportDays = last14.filter(d => d.sport?.duration >= 30);
+  const sportSleepAvg = sportDays.length > 2 ? sportDays.reduce((a, b, _, arr) => a + b.sleep.duration / arr.length, 0) : 0;
+  const noSportDays = last14.filter(d => !d.sport?.duration || d.sport.duration < 30);
+  const noSportSleepAvg = noSportDays.length > 2 ? noSportDays.reduce((a, b, _, arr) => a + b.sleep.duration / arr.length, 0) : 0;
+  if (sportSleepAvg > 0 && noSportSleepAvg > 0 && sportSleepAvg - noSportSleepAvg > 0.4) patterns.push(`🔍 Tu dors ${(sportSleepAvg - noSportSleepAvg).toFixed(1)}h de plus les jours où tu fais du sport.`);
+
+  const highScreenDays = last14.filter(d => d.work?.screenTime > 4);
+  const lowScreenDays = last14.filter(d => d.work?.screenTime > 0 && d.work.screenTime <= 3);
+  const highScreenFocus = highScreenDays.length > 1 ? highScreenDays.reduce((a, b, _, arr) => a + b.work.focus / arr.length, 0) : 0;
+  const lowScreenFocus = lowScreenDays.length > 1 ? lowScreenDays.reduce((a, b, _, arr) => a + b.work.focus / arr.length, 0) : 0;
+  if (highScreenFocus > 0 && lowScreenFocus > 0 && lowScreenFocus - highScreenFocus > 0.5) patterns.push(`🔍 Ton focus est ${(lowScreenFocus - highScreenFocus).toFixed(1)}/5 meilleur quand tu limites l'écran à 3h.`);
+
   const avgWater = last3.filter(d => d.nutrition?.water > 0).reduce((a, b, _, arr) => a + b.nutrition.water / arr.length, 0);
   if (avgWater < 2 && avgWater > 0) advice.push("💧 Hydratation insuffisante ces 3 derniers jours.");
   if (avgMood < 3 && avgMood > 0) advice.push("😔 Moral en baisse. 5min cohérence cardiaque.");
-  const scoreAvg = Math.round(last7.filter(d => d.score > 0).reduce((a, b, _, arr) => a + b.score / arr.length, 0));
-  return { alerts, advice, todayRec, consecutiveSport, avgSleep, avgScreen, scoreAvg };
+
+  // Patrimoine prediction
+  let patrimoinePrediction = null;
+  const patrimoineGoal = goals?.find(g => g.sourceId === "patrimoine");
+  if (patrimoineGoal && totalPatrimoine > 0) {
+    const patrimoineH = history.filter(d => d.money?.income > 0);
+    const avgMonthlyInvest = patrimoineH.length > 0 ? patrimoineH.reduce((a, b, _, arr) => a + b.money.invested / arr.length, 0) * 30 : 0;
+    if (avgMonthlyInvest > 0) {
+      const target = Number(patrimoineGoal.target) || 100000;
+      const remaining = target - totalPatrimoine;
+      const monthsNeeded = Math.ceil(remaining / (avgMonthlyInvest * 1.08 / 12));
+      const yearsNeeded = (monthsNeeded / 12).toFixed(1);
+      patrimoinePrediction = `📈 À ce rythme (+${Math.round(avgMonthlyInvest)}€/mois), objectif ${target.toLocaleString("fr-FR")}€ atteint dans ~${yearsNeeded} ans.`;
+    }
+  }
+
+  const scoreAvg = Math.round(avgScore7);
+  return { alerts, advice, todayRec, consecutiveSport, avgSleep, avgScreen, scoreAvg, scoreDelta, patterns, patrimoinePrediction };
 }
 
 const defaultDay = () => ({
@@ -147,12 +197,6 @@ const defaultPatrimoine = () => ([
   { id: 5, name: "Corum", amount: 0, color: "#0891b2" },
 ]);
 
-const defaultGoals = () => ([
-  { id: 1, label: "100k€ patrimoine net", category: "Argent", color: "#CC2936", sourceId: "patrimoine", target: 100000, startDate: "2025-01-01", endDate: "2034-01-01", reverse: false, manualProgress: 0 },
-  { id: 2, label: "BPJEPS validé", category: "Formation", color: "#16a34a", sourceId: "manual", target: 100, startDate: "2025-01-01", endDate: "2026-12-31", reverse: false, manualProgress: 80 },
-  { id: 3, label: "Launch Angers Sept. 2026", category: "Business", color: "#2563eb", sourceId: "manual", target: 100, startDate: "2025-01-01", endDate: "2026-09-01", reverse: false, manualProgress: 40 },
-]);
-
 // ── SVG ICONS ──────────────────────────────────────────────────────────────
 const Ico = {
   home: (col, sz=22) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
@@ -162,16 +206,17 @@ const Ico = {
   stats: (col, sz=22) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
   profile: (col, sz=22) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
   sleep: (col, sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>,
-  sport: (col, sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>,
+  sport: (col, sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5l11 11M6.5 17.5l11-11M4 12a8 8 0 1016 0A8 8 0 004 12z"/></svg>,
   nutrition: (col, sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>,
   body: (col, sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>,
-  work: (col, sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>,
+  work: (col, sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>,
   todo: (col, sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>,
   mind: (col, sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/><circle cx="12" cy="12" r="10"/></svg>,
   water: (col, sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg>,
-  scale: (col, sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="20" x2="12" y2="4"/><path d="M6 12l6-8 6 8"/><path d="M2 20h20"/></svg>,
+  scale: (col, sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>,
   focus: (col, sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>,
   mood: (col, sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>,
+  brain: (col, sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 01-4.96-.46 2.5 2.5 0 01-1.07-4.58A3 3 0 015.5 9a3 3 0 012-2.84A2.5 2.5 0 019.5 2zM14.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 004.96-.46 2.5 2.5 0 001.07-4.58A3 3 0 0018.5 9a3 3 0 00-2-2.84A2.5 2.5 0 0014.5 2z"/></svg>,
 };
 
 const NAV = [
@@ -267,6 +312,10 @@ const AdviceBox = ({ msg }) => (
   <div style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)", borderRadius: 12, padding: "10px 14px", marginBottom: 10, fontSize: 12, color: C.green, lineHeight: 1.5 }}>{msg}</div>
 );
 
+const InsightBox = ({ msg }) => (
+  <div style={{ background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: 12, padding: "10px 14px", marginBottom: 10, fontSize: 12, color: C.purple, lineHeight: 1.5 }}>{msg}</div>
+);
+
 // ── DOTS MENU ──────────────────────────────────────────────────────────────
 const DotsMenu = ({ onRename, onColor, onDelete, color }) => {
   const [open, setOpen] = useState(false);
@@ -309,34 +358,35 @@ const DotsMenu = ({ onRename, onColor, onDelete, color }) => {
 const DraggableList = ({ items, onReorder, renderItem }) => {
   const [dragging, setDragging] = useState(null);
   const [dragOver, setDragOver] = useState(null);
+  const dragHandleActive = useRef(false);
+
   return (
     <div>
       {items.map((item, idx) => (
         <div key={item.id}
-          draggable
-          onDragStart={e => { e.stopPropagation(); setDragging(idx); e.dataTransfer.effectAllowed = "move"; }}
+          draggable={dragHandleActive.current}
+          onDragStart={e => { if (!dragHandleActive.current) { e.preventDefault(); return; } setDragging(idx); e.dataTransfer.effectAllowed = "move"; }}
           onDragOver={e => { e.preventDefault(); setDragOver(idx); }}
-          onDrop={e => { e.preventDefault(); if (dragging === null || dragging === idx) { setDragging(null); setDragOver(null); return; } const n = [...items]; const [r] = n.splice(dragging, 1); n.splice(idx, 0, r); onReorder(n); setDragging(null); setDragOver(null); }}
-          onDragEnd={() => { setDragging(null); setDragOver(null); }}
+          onDrop={e => { e.preventDefault(); if (dragging === null || dragging === idx) { setDragging(null); setDragOver(null); return; } const n = [...items]; const [r] = n.splice(dragging, 1); n.splice(idx, 0, r); onReorder(n); setDragging(null); setDragOver(null); dragHandleActive.current = false; }}
+          onDragEnd={() => { setDragging(null); setDragOver(null); dragHandleActive.current = false; }}
           style={{ opacity: dragging === idx ? 0.4 : 1, borderTop: dragOver === idx && dragging !== idx ? `2px solid ${C.red}` : "2px solid transparent", transition: "border 0.1s, opacity 0.15s" }}>
-          {renderItem(item, idx)}
+          {renderItem(item, idx, dragHandleActive)}
         </div>
       ))}
     </div>
   );
 };
 
-// ── SWIPEABLE PAGES ────────────────────────────────────────────────────────
-const useSwipe = (onSwipeLeft, onSwipeRight) => {
-  const startX = useRef(null);
-  const startY = useRef(null);
+// ── SWIPE ──────────────────────────────────────────────────────────────────
+const useSwipe = (onLeft, onRight) => {
+  const startX = useRef(null); const startY = useRef(null);
   return {
     onTouchStart: e => { startX.current = e.touches[0].clientX; startY.current = e.touches[0].clientY; },
     onTouchEnd: e => {
       if (startX.current === null) return;
       const dx = e.changedTouches[0].clientX - startX.current;
       const dy = Math.abs(e.changedTouches[0].clientY - startY.current);
-      if (Math.abs(dx) > 60 && dy < 80) { if (dx < 0) onSwipeLeft(); else onSwipeRight(); }
+      if (Math.abs(dx) > 60 && dy < 80) { if (dx < 0) onLeft(); else onRight(); }
       startX.current = null;
     },
   };
@@ -355,7 +405,7 @@ const PageTransition = ({ children, pageKey }) => {
 
 // ── BG DECORATION ─────────────────────────────────────────────────────────
 const BgDecor = () => (
-  <svg style={{ position: "fixed", top: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, height: "100%", pointerEvents: "none", zIndex: 0, opacity: 0.35 }} viewBox="0 0 480 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg style={{ position: "fixed", top: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, height: "100%", pointerEvents: "none", zIndex: 0, opacity: 0.3 }} viewBox="0 0 480 900" fill="none">
     <line x1="0" y1="120" x2="480" y2="80" stroke="#CC2936" strokeWidth="1"/>
     <line x1="0" y1="280" x2="480" y2="320" stroke="#ffffff" strokeWidth="0.8"/>
     <line x1="0" y1="480" x2="480" y2="440" stroke="#CC2936" strokeWidth="0.6"/>
@@ -369,8 +419,150 @@ const BgDecor = () => (
   </svg>
 );
 
+// ── ONBOARDING ─────────────────────────────────────────────────────────────
+const Onboarding = ({ onComplete }) => {
+  const [step, setStep] = useState(0);
+  const [name, setName] = useState("");
+  const [dob, setDob] = useState("");
+  const [photo, setPhoto] = useState("");
+  const [priorities, setPriorities] = useState([]);
+  const [goalTarget, setGoalTarget] = useState("");
+  const [goalEnd, setGoalEnd] = useState("");
+  const photoRef = useRef();
+
+  const handlePhoto = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const r = new FileReader(); r.onload = ev => setPhoto(ev.target.result); r.readAsDataURL(file);
+  };
+
+  const togglePriority = id => {
+    setPriorities(prev => prev.includes(id) ? prev.filter(p => p !== id) : prev.length < 3 ? [...prev, id] : prev);
+  };
+
+  const handleComplete = () => {
+    const today = new Date().toISOString().split("T")[0];
+    const createdGoals = priorities.map((pid, i) => {
+      const template = ONBOARDING_GOALS[pid];
+      return {
+        ...template,
+        id: Date.now() + i,
+        color: PRIORITIES.find(p => p.id === pid)?.color || C.red,
+        startDate: today,
+        endDate: goalEnd || new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0],
+        target: i === 0 && goalTarget ? goalTarget : template.target,
+        manualProgress: 0,
+      };
+    });
+    onComplete({ name, dob, photo }, createdGoals);
+  };
+
+  const steps = [
+    // Step 0 — Welcome
+    <div key="0" style={{ textAlign: "center" }}>
+      <div style={{ fontSize: 64, marginBottom: 20 }}>🎯</div>
+      <h1 style={{ fontSize: 28, fontWeight: 900, color: C.black, margin: "0 0 12px" }}>Bienvenue sur<br /><span style={{ color: C.red }}>Kojihsports</span></h1>
+      <p style={{ fontSize: 15, color: C.muted, lineHeight: 1.6, margin: "0 0 40px" }}>Ton tracker de vie intelligent. En 2 minutes, l'app est configurée et personnalisée pour toi.</p>
+      <button onClick={() => setStep(1)} style={{ width: "100%", padding: "16px", background: C.red, color: "#fff", border: "none", borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer" }}>C'est parti →</button>
+    </div>,
+
+    // Step 1 — Identité
+    <div key="1">
+      <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 6px" }}>Qui es-tu ?</h2>
+      <p style={{ fontSize: 13, color: C.muted, margin: "0 0 24px" }}>Ces informations personnalisent ton expérience.</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <input type="file" accept="image/*" ref={photoRef} style={{ display: "none" }} onChange={handlePhoto} />
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+          <div onClick={() => photoRef.current.click()} style={{ cursor: "pointer", position: "relative" }}>
+            {photo ? <img src={photo} alt="profil" style={{ width: 90, height: 90, borderRadius: "50%", objectFit: "cover", border: `3px solid ${C.red}` }} />
+              : <div style={{ width: 90, height: 90, borderRadius: "50%", background: C.surfaceAlt, border: `2px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>📷</div>}
+            <div style={{ position: "absolute", bottom: 2, right: 2, background: C.red, borderRadius: "50%", width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11 }}>+</div>
+          </div>
+        </div>
+        <Field label="Ton prénom">
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Hadrien" style={inp} />
+        </Field>
+        <Field label="Date de naissance">
+          <input type="date" value={dob} onChange={e => setDob(e.target.value)} style={inp} />
+        </Field>
+      </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+        <button onClick={() => setStep(0)} style={{ flex: 1, padding: "14px", background: C.surfaceAlt, border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", color: C.muted }}>← Retour</button>
+        <button onClick={() => name.trim() ? setStep(2) : null} style={{ flex: 2, padding: "14px", background: name.trim() ? C.red : C.subtle, color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: name.trim() ? "pointer" : "default" }}>Continuer →</button>
+      </div>
+    </div>,
+
+    // Step 2 — Priorités
+    <div key="2">
+      <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 6px" }}>Tes priorités</h2>
+      <p style={{ fontSize: 13, color: C.muted, margin: "0 0 20px" }}>Choisis jusqu'à 3 domaines sur lesquels te concentrer.</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {PRIORITIES.map(p => {
+          const selected = priorities.includes(p.id);
+          return (
+            <div key={p.id} onClick={() => togglePriority(p.id)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14, border: `2px solid ${selected ? p.color : C.border}`, background: selected ? `${p.color}10` : C.surface, cursor: "pointer", transition: "all 0.18s" }}>
+              <span style={{ fontSize: 24 }}>{p.icon}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: selected ? p.color : C.text }}>{p.label}</span>
+              {selected && <div style={{ marginLeft: "auto", width: 22, height: 22, borderRadius: "50%", background: p.color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12 }}>✓</div>}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+        <button onClick={() => setStep(1)} style={{ flex: 1, padding: "14px", background: C.surfaceAlt, border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", color: C.muted }}>← Retour</button>
+        <button onClick={() => priorities.length > 0 ? setStep(3) : null} style={{ flex: 2, padding: "14px", background: priorities.length > 0 ? C.red : C.subtle, color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: priorities.length > 0 ? "pointer" : "default" }}>Continuer →</button>
+      </div>
+    </div>,
+
+    // Step 3 — Premier objectif
+    <div key="3">
+      <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 6px" }}>Ton premier objectif</h2>
+      <p style={{ fontSize: 13, color: C.muted, margin: "0 0 20px" }}>Basé sur ta priorité principale : <strong style={{ color: C.red }}>{PRIORITIES.find(p => p.id === priorities[0])?.label || ""}</strong></p>
+      {priorities[0] && (
+        <Card style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <span style={{ fontSize: 28 }}>{PRIORITIES.find(p => p.id === priorities[0])?.icon}</span>
+            <div>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: 15 }}>{ONBOARDING_GOALS[priorities[0]]?.label}</p>
+              <p style={{ margin: 0, fontSize: 11, color: C.muted }}>Connecté automatiquement à tes données</p>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Field label={`Valeur cible (${DATA_SOURCES.find(s => s.id === ONBOARDING_GOALS[priorities[0]]?.sourceId)?.unit || ""})`}>
+              <input type="number" value={goalTarget || ONBOARDING_GOALS[priorities[0]]?.target} onChange={e => setGoalTarget(e.target.value)} style={inp} />
+            </Field>
+            <Field label="Date limite">
+              <input type="date" value={goalEnd} onChange={e => setGoalEnd(e.target.value)} style={inp} />
+            </Field>
+          </div>
+        </Card>
+      )}
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={() => setStep(2)} style={{ flex: 1, padding: "14px", background: C.surfaceAlt, border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", color: C.muted }}>← Retour</button>
+        <button onClick={handleComplete} style={{ flex: 2, padding: "14px", background: C.red, color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer" }}>🚀 Lancer l'app !</button>
+      </div>
+    </div>,
+  ];
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <BgDecor />
+      <div style={{ width: "100%", maxWidth: 420, background: C.surface, borderRadius: 24, padding: 28, position: "relative", zIndex: 1, boxShadow: "0 20px 60px rgba(0,0,0,0.1)" }}>
+        {step > 0 && (
+          <div style={{ display: "flex", gap: 6, marginBottom: 24 }}>
+            {[1,2,3].map(s => (
+              <div key={s} style={{ flex: 1, height: 4, borderRadius: 2, background: s <= step ? C.red : C.surfaceAlt, transition: "background 0.3s" }} />
+            ))}
+          </div>
+        )}
+        {steps[step]}
+      </div>
+    </div>
+  );
+};
+
 // ── APP ────────────────────────────────────────────────────────────────────
 export default function App() {
+  const [onboarded, setOnboarded] = useState(null);
   const [nav, setNav] = useState("today");
   const [trackTab, setTrackTab] = useState("sleep");
   const [history, setHistory] = useState([]);
@@ -378,11 +570,11 @@ export default function App() {
   const [saved, setSaved] = useState(false);
   const [todos, setTodos] = useState([]);
   const [newTodo, setNewTodo] = useState("");
-  const [goals, setGoals] = useState(defaultGoals());
+  const [goals, setGoals] = useState([]);
   const [patrimoine, setPatrimoine] = useState(defaultPatrimoine());
   const [newPoche, setNewPoche] = useState({ name: "", amount: 0, color: C.blue });
   const [statRange, setStatRange] = useState("30");
-  const [profile, setProfile] = useState({ name: "Hadrien", dob: "2004-01-01", photo: "" });
+  const [profile, setProfile] = useState({ name: "", dob: "", photo: "" });
   const [sim, setSim] = useState({ amount: 10000, monthly: 200, rate: 10, years: 10 });
   const [newGoal, setNewGoal] = useState({ label: "", category: "", color: C.red, sourceId: "manual", target: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reverse: false, manualProgress: 0 });
   const [renamingGoal, setRenamingGoal] = useState(null);
@@ -391,21 +583,31 @@ export default function App() {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("kojihlife_v6");
+      const raw = localStorage.getItem("kojihlife_v7");
       if (raw) {
         const data = JSON.parse(raw);
+        setOnboarded(true);
         setHistory(data.history || []); setTodos(data.todos || []);
-        setGoals(data.goals || defaultGoals()); setPatrimoine(data.patrimoine || defaultPatrimoine());
+        setGoals(data.goals || []); setPatrimoine(data.patrimoine || defaultPatrimoine());
         if (data.profile) setProfile(data.profile);
         const entry = (data.history || []).find(d => d.date === new Date().toISOString().split("T")[0]);
         if (entry) setToday(entry);
+      } else {
+        setOnboarded(false);
       }
-    } catch (e) {}
+    } catch (e) { setOnboarded(false); }
   }, []);
 
   const saveAll = useCallback((h, t, g, p, pr) => {
-    localStorage.setItem("kojihlife_v6", JSON.stringify({ history: h, todos: t, goals: g, patrimoine: p, profile: pr }));
+    localStorage.setItem("kojihlife_v7", JSON.stringify({ history: h, todos: t, goals: g, patrimoine: p, profile: pr }));
   }, []);
+
+  const handleOnboardingComplete = (profileData, createdGoals) => {
+    setProfile(profileData);
+    setGoals(createdGoals);
+    setOnboarded(true);
+    saveAll([], [], createdGoals, defaultPatrimoine(), profileData);
+  };
 
   const update = (section, field, val) => {
     setToday(prev => {
@@ -464,7 +666,7 @@ export default function App() {
   const handleProfilePhoto = e => { const file = e.target.files[0]; if (!file) return; const r = new FileReader(); r.onload = ev => updateProfile("photo", ev.target.result); r.readAsDataURL(file); };
   const handleSportPhoto = e => { const file = e.target.files[0]; if (!file) return; const r = new FileReader(); r.onload = ev => update("sport", "photoUrl", ev.target.result); r.readAsDataURL(file); };
 
-  const intel = getIntelligence(history);
+  const intel = getIntelligence(history, totalPatrimoine, goals);
   const age = calcAge(profile.dob);
   const rangeH = history.slice(-parseInt(statRange));
   const scoreColor = today.score >= 80 ? C.green : today.score >= 60 ? C.orange : C.red;
@@ -493,12 +695,11 @@ export default function App() {
     { s: "Corps", v: today.body?.weight > 0 ? 80 : 20 },
   ];
 
-  // Swipe navigation
   const navIdx = NAV_ORDER.indexOf(nav);
   const trackIdx = TRACK_ORDER.indexOf(trackTab);
   const swipeNav = useSwipe(
-    () => { if (nav === "track") { const ni = Math.min(trackIdx + 1, TRACK_ORDER.length - 1); setTrackTab(TRACK_ORDER[ni]); } else { const ni = Math.min(navIdx + 1, NAV_ORDER.length - 1); setNav(NAV_ORDER[ni]); } },
-    () => { if (nav === "track") { const ni = Math.max(trackIdx - 1, 0); setTrackTab(TRACK_ORDER[ni]); } else { const ni = Math.max(navIdx - 1, 0); setNav(NAV_ORDER[ni]); } }
+    () => { if (nav === "track") setTrackTab(TRACK_ORDER[Math.min(trackIdx + 1, TRACK_ORDER.length - 1)]); else setNav(NAV_ORDER[Math.min(navIdx + 1, NAV_ORDER.length - 1)]); },
+    () => { if (nav === "track") setTrackTab(TRACK_ORDER[Math.max(trackIdx - 1, 0)]); else setNav(NAV_ORDER[Math.max(navIdx - 1, 0)]); }
   );
 
   const STAT_CARDS = [
@@ -510,10 +711,12 @@ export default function App() {
     { label: "Humeur", value: today.mind.mood ? `${today.mind.mood}/5` : "—", icon: "mood", color: C.green },
   ];
 
+  if (onboarded === null) return <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ width: 40, height: 40, border: `3px solid ${C.red}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} /><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
+  if (!onboarded) return <Onboarding onComplete={handleOnboardingComplete} />;
+
   return (
     <div style={{ minHeight: "100vh", background: C.bg, color: C.text, maxWidth: 480, margin: "0 auto", paddingBottom: 80, position: "relative", overflow: "hidden" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');*{font-family:Inter,sans-serif!important;box-sizing:border-box}input,select{font-family:Inter,sans-serif!important}::-webkit-scrollbar{display:none}`}</style>
-
       <BgDecor />
 
       {/* HEADER */}
@@ -531,7 +734,11 @@ export default function App() {
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 38, fontWeight: 900, color: scoreColor, lineHeight: 1 }}>{today.score}</div>
-            <div style={{ fontSize: 8, color: C.muted, textTransform: "uppercase" }}>score {streak > 0 ? `· 🔥${streak}j` : ""}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
+              <div style={{ fontSize: 8, color: C.muted, textTransform: "uppercase" }}>score</div>
+              {intel.scoreDelta !== null && <div style={{ fontSize: 9, color: intel.scoreDelta >= 0 ? C.green : C.red, fontWeight: 700 }}>{intel.scoreDelta >= 0 ? `+${intel.scoreDelta}` : intel.scoreDelta} vs S-1</div>}
+              {streak > 0 && <div style={{ fontSize: 9, color: C.orange }}>🔥{streak}j</div>}
+            </div>
           </div>
         </div>
         {intel.alerts.length > 0 && <div style={{ marginTop: 10 }}><AlertBox type={intel.alerts[0].type} msg={intel.alerts[0].msg} /></div>}
@@ -541,15 +748,13 @@ export default function App() {
       <div style={{ padding: 16, position: "relative", zIndex: 1 }} {...swipeNav}>
         <PageTransition pageKey={nav + trackTab}>
 
-          {/* ── TODAY ── */}
           {nav === "today" && (
             <div>
               <Card>
                 <ST>Équilibre du jour</ST>
                 <ResponsiveContainer width="100%" height={200}>
                   <RadarChart data={radar}>
-                    <PolarGrid stroke={C.border}/>
-                    <PolarAngleAxis dataKey="s" tick={{ fill: C.muted, fontSize: 11 }}/>
+                    <PolarGrid stroke={C.border}/><PolarAngleAxis dataKey="s" tick={{ fill: C.muted, fontSize: 11 }}/>
                     <Radar dataKey="v" stroke={C.red} fill={C.red} fillOpacity={0.1} strokeWidth={2.5}/>
                   </RadarChart>
                 </ResponsiveContainer>
@@ -563,10 +768,30 @@ export default function App() {
                   </Card>
                 ))}
               </div>
-              {intel.alerts.length > 1 && (
-                <Card><ST>Alertes</ST>{intel.alerts.map((a, i) => <AlertBox key={i} type={a.type} msg={a.msg} />)}{intel.advice.map((a, i) => <AdviceBox key={i} msg={a} />)}</Card>
+
+              {/* Intelligence Panel */}
+              {(intel.alerts.length > 0 || intel.patterns.length > 0 || intel.patrimoinePrediction) && (
+                <Card>
+                  <ST>Intelligence</ST>
+                  {intel.alerts.slice(1).map((a, i) => <AlertBox key={i} type={a.type} msg={a.msg} />)}
+                  {intel.advice.map((a, i) => <AdviceBox key={i} msg={a} />)}
+                  {intel.patterns.map((p, i) => <InsightBox key={i} msg={p} />)}
+                  {intel.patrimoinePrediction && <InsightBox msg={intel.patrimoinePrediction} />}
+                </Card>
               )}
+
               <EvoChart data={history.slice(-30)} dataKey="score" color={C.red} label="Score global (30j)" unit="" />
+              {intel.scoreDelta !== null && (
+                <Card style={{ borderLeft: `4px solid ${intel.scoreDelta >= 0 ? C.green : C.red}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 12, color: C.muted }}>Score semaine vs semaine précédente</p>
+                      <p style={{ margin: "4px 0 0", fontSize: 22, fontWeight: 900, color: intel.scoreDelta >= 0 ? C.green : C.red }}>{intel.scoreDelta >= 0 ? `+${intel.scoreDelta}` : intel.scoreDelta} pts</p>
+                    </div>
+                    <div style={{ fontSize: 36 }}>{intel.scoreDelta >= 0 ? "📈" : "📉"}</div>
+                  </div>
+                </Card>
+              )}
               <Card>
                 <ST>Objectifs en cours</ST>
                 {computedGoals.slice(0, 3).map(g => (
@@ -594,7 +819,6 @@ export default function App() {
             </div>
           )}
 
-          {/* ── TRACKER ── */}
           {nav === "track" && (
             <div>
               <div style={{ display: "flex", overflowX: "auto", gap: 6, marginBottom: 16, scrollbarWidth: "none" }}>
@@ -602,8 +826,7 @@ export default function App() {
                   const active = trackTab === t.id;
                   return (
                     <button key={t.id} onClick={() => setTrackTab(t.id)} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 20, border: active ? "2px solid rgba(255,255,255,0.8)" : `1px solid ${C.border}`, cursor: "pointer", fontSize: 12, fontWeight: 600, background: active ? C.red : C.surface, color: active ? "#fff" : C.muted, display: "flex", alignItems: "center", gap: 6, transition: "all 0.18s" }}>
-                      {Ico[t.icon](active ? "#fff" : C.muted, 15)}
-                      {t.label}
+                      {Ico[t.icon](active ? "#fff" : C.muted, 15)}{t.label}
                     </button>
                   );
                 })}
@@ -646,7 +869,7 @@ export default function App() {
                         <Field label="Type">
                           <select value={today.sport.type} onChange={e => update("sport", "type", e.target.value)} style={{ ...inp, color: C.text }}>
                             <option value="">Choisir...</option>
-                            {["PPL Push","PPL Pull","PPL Legs","Running","Football","Cardio","Full Body","Autre"].map(o => <option key={o} style={{ color: C.text }}>{o}</option>)}
+                            {["PPL Push","PPL Pull","PPL Legs","Running","Football","Cardio","Full Body","Autre"].map(o => <option key={o}>{o}</option>)}
                           </select>
                         </Field>
                         <div style={{ height: 12 }} />
@@ -828,7 +1051,6 @@ export default function App() {
             </div>
           )}
 
-          {/* ── ARGENT ── */}
           {nav === "money" && (
             <div>
               <Card style={{ background: C.red, border: "none" }}>
@@ -841,7 +1063,7 @@ export default function App() {
                   <ST>Répartition</ST>
                   <ResponsiveContainer width="100%" height={180}>
                     <PieChart>
-                      <Pie data={patrimoine.filter(p => p.amount > 0)} dataKey="amount" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={9}>
+                      <Pie data={patrimoine.filter(p => p.amount > 0)} dataKey="amount" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name} ${(percent*100).toFixed(0)}%`} fontSize={9}>
                         {patrimoine.filter(p => p.amount > 0).map((p, i) => <Cell key={i} fill={p.color} />)}
                       </Pie>
                       <Tooltip formatter={v => [`${v.toLocaleString("fr-FR")}€`, ""]} />
@@ -851,9 +1073,13 @@ export default function App() {
               )}
               <Card>
                 <ST>Mes poches</ST>
-                <DraggableList items={patrimoine} onReorder={p => { setPatrimoine(p); saveAll(history, todos, goals, p, profile); }} renderItem={p => (
+                <DraggableList items={patrimoine} onReorder={p => { setPatrimoine(p); saveAll(history, todos, goals, p, profile); }} renderItem={(p, _, dragRef) => (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, padding: "10px 12px", background: C.surfaceAlt, borderRadius: 12, borderLeft: `4px solid ${p.color}` }}>
-                    <span style={{ fontSize: 16, color: C.subtle, cursor: "grab", flexShrink: 0 }}>⠿</span>
+                    <span
+                      onMouseDown={() => { dragRef.current = true; }}
+                      onMouseUp={() => { setTimeout(() => { dragRef.current = false; }, 100); }}
+                      onTouchStart={() => { dragRef.current = true; }}
+                      style={{ fontSize: 16, color: C.subtle, cursor: "grab", flexShrink: 0, padding: "4px", userSelect: "none" }}>⠿</span>
                     <div style={{ flex: 1 }}>
                       {renamingPoche === p.id ? (
                         <input autoFocus value={p.name} onChange={e => updatePoche(p.id, "name", e.target.value)} onBlur={() => setRenamingPoche(null)} onKeyDown={e => e.key === "Enter" && setRenamingPoche(null)} style={{ ...inp, padding: "4px 8px", fontSize: 13, fontWeight: 600 }} />
@@ -886,6 +1112,7 @@ export default function App() {
                 <Field label="Investi (€)"><input type="number" value={today.money.invested} min={0} onChange={e => update("money", "invested", +e.target.value)} style={{ ...inp, marginBottom: 10 }} /></Field>
                 <Field label="Note"><input type="text" placeholder="Ex: DCA ETF World..." value={today.money.note} onChange={e => update("money", "note", e.target.value)} style={inp} /></Field>
               </Card>
+              {intel.patrimoinePrediction && <InsightBox msg={intel.patrimoinePrediction} />}
               <Card>
                 <ST>Simulateur 📈</ST>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
@@ -896,7 +1123,7 @@ export default function App() {
                 </div>
                 <div style={{ textAlign: "center", padding: 14, background: C.surfaceAlt, borderRadius: 12, marginBottom: 14 }}>
                   <p style={{ fontSize: 10, color: C.muted, margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 1 }}>Dans {sim.years} ans</p>
-                  <p style={{ fontSize: 32, fontWeight: 900, color: C.green, margin: 0 }}>{simResult[simResult.length - 1]?.value.toLocaleString("fr-FR")} €</p>
+                  <p style={{ fontSize: 32, fontWeight: 900, color: C.green, margin: 0 }}>{simResult[simResult.length-1]?.value.toLocaleString("fr-FR")} €</p>
                 </div>
                 <ResponsiveContainer width="100%" height={140}>
                   <AreaChart data={simResult}>
@@ -912,7 +1139,6 @@ export default function App() {
             </div>
           )}
 
-          {/* ── OBJECTIFS ── */}
           {nav === "goals" && (
             <div>
               <Card>
@@ -940,21 +1166,23 @@ export default function App() {
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <label style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: 1.5, flexShrink: 0 }}>Couleur</label>
                     <input type="color" value={newGoal.color} onChange={e => setNewGoal(p => ({ ...p, color: e.target.value }))} style={{ width: 40, height: 40, borderRadius: 10, border: `2px solid ${C.border}`, cursor: "pointer", padding: 2 }} />
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: newGoal.color, border: `2px solid ${C.border}` }} />
-                    <span style={{ fontSize: 12, color: C.muted }}>← Aperçu</span>
                   </div>
                   <button onClick={addGoal} style={{ background: newGoal.color, color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Ajouter l'objectif</button>
                 </div>
               </Card>
 
-              <DraggableList items={computedGoals} onReorder={g => { setGoals(g); saveAll(history, todos, g, patrimoine, profile); }} renderItem={g => {
+              <DraggableList items={computedGoals} onReorder={g => { setGoals(g); saveAll(history, todos, g, patrimoine, profile); }} renderItem={(g, _, dragRef) => {
                 const src = DATA_SOURCES.find(s => s.id === g.sourceId);
                 const daysLeft = g.endDate ? Math.max(0, Math.round((new Date(g.endDate) - new Date()) / 86400000)) : null;
                 return (
                   <Card key={g.id}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-                        <span style={{ fontSize: 16, color: C.subtle, cursor: "grab", flexShrink: 0 }}>⠿</span>
+                        <span
+                          onMouseDown={() => { dragRef.current = true; }}
+                          onMouseUp={() => { setTimeout(() => { dragRef.current = false; }, 100); }}
+                          onTouchStart={() => { dragRef.current = true; }}
+                          style={{ fontSize: 16, color: C.subtle, cursor: "grab", flexShrink: 0, padding: "4px", userSelect: "none" }}>⠿</span>
                         <div style={{ flex: 1 }}>
                           {renamingGoal === g.id ? (
                             <input autoFocus value={g.label} onChange={e => updateGoalField(g.id, "label", e.target.value)} onBlur={() => setRenamingGoal(null)} onKeyDown={e => e.key === "Enter" && setRenamingGoal(null)} style={{ ...inp, padding: "4px 8px", fontSize: 14, fontWeight: 700 }} />
@@ -975,7 +1203,11 @@ export default function App() {
                       <div style={{ height: "100%", borderRadius: 5, background: g.computedProgress >= 100 ? C.green : g.color, width: `${Math.min(100, g.computedProgress)}%`, transition: "width 0.6s ease" }} />
                     </div>
                     {g.sourceId === "manual" && (
-                      <div onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} style={{ marginTop: 10 }}>
+                      <div
+                        onClick={e => e.stopPropagation()}
+                        onMouseDown={e => e.stopPropagation()}
+                        onTouchStart={e => { e.stopPropagation(); if (dragRef) dragRef.current = false; }}
+                        style={{ marginTop: 10 }}>
                         <input type="range" min={0} max={100} value={g.computedProgress}
                           onChange={e => updateGoalField(g.id, "manualProgress", +e.target.value)}
                           onMouseDown={e => e.stopPropagation()}
@@ -984,7 +1216,7 @@ export default function App() {
                       </div>
                     )}
                     {g.sourceId !== "manual" && g.target && (
-                      <p style={{ fontSize: 10, color: C.muted, margin: "4px 0 0" }}>Cible : {Number(g.target).toLocaleString("fr-FR")}{src?.unit} {g.endDate ? `· Échéance : ${new Date(g.endDate).toLocaleDateString("fr-FR")}` : ""}</p>
+                      <p style={{ fontSize: 10, color: C.muted, margin: "4px 0 0" }}>Cible : {Number(g.target).toLocaleString("fr-FR")}{src?.unit}{g.endDate ? ` · Échéance : ${new Date(g.endDate).toLocaleDateString("fr-FR")}` : ""}</p>
                     )}
                   </Card>
                 );
@@ -992,7 +1224,6 @@ export default function App() {
             </div>
           )}
 
-          {/* ── STATS ── */}
           {nav === "stats" && (
             <div>
               <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
@@ -1015,6 +1246,12 @@ export default function App() {
                   </Card>
                 ))}
               </div>
+              {intel.patterns.length > 0 && (
+                <Card>
+                  <ST>Insights patterns</ST>
+                  {intel.patterns.map((p, i) => <InsightBox key={i} msg={p} />)}
+                </Card>
+              )}
               <EvoChart data={rangeH} dataKey="score" color={C.red} label="Score global" unit="" height={170} />
               <EvoChart data={sleepH.slice(-parseInt(statRange))} dataKey="sleep.duration" color={C.purple} label="Sommeil" unit="h" />
               <EvoChart data={sportH.slice(-parseInt(statRange))} dataKey="sport.duration" color={C.red} label="Sport" unit="min" />
@@ -1037,7 +1274,6 @@ export default function App() {
             </div>
           )}
 
-          {/* ── PROFIL ── */}
           {nav === "profile" && (
             <div>
               <Card style={{ textAlign: "center" }}>
@@ -1047,7 +1283,8 @@ export default function App() {
                     : <div style={{ width: 100, height: 100, borderRadius: "50%", background: C.red, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 36, fontWeight: 900, margin: "0 auto" }}>{profile.name?.[0] || "H"}</div>}
                   <div style={{ position: "absolute", bottom: 4, right: 4, background: C.red, borderRadius: "50%", width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12 }}>📷</div>
                 </div>
-                <p style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>Appuie sur la photo pour changer</p>
+                <p style={{ fontSize: 20, fontWeight: 800, margin: "12px 0 2px" }}>{profile.name}</p>
+                {age !== null && <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>{age} ans · Kojihsports</p>}
               </Card>
               <Card>
                 <ST>Informations</ST>
@@ -1070,7 +1307,7 @@ export default function App() {
                     { label: "Streak", value: `${streak}j 🔥` },
                     { label: "Score moyen", value: intel.scoreAvg },
                     { label: "Objectifs", value: goals.length },
-                    { label: "Patrimoine", value: `${(totalPatrimoine / 1000).toFixed(1)}k€` },
+                    { label: "Patrimoine", value: `${(totalPatrimoine/1000).toFixed(1)}k€` },
                     { label: "Tâches faites", value: todos.filter(t => t.done).length },
                   ].map(item => (
                     <div key={item.label} style={{ background: C.surfaceAlt, borderRadius: 12, padding: 12, textAlign: "center" }}>
@@ -1084,6 +1321,9 @@ export default function App() {
                 <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, textTransform: "uppercase", letterSpacing: 2, margin: "0 0 6px" }}>Vision</p>
                 <p style={{ color: "#fff", fontSize: 16, fontWeight: 800, margin: 0 }}>100k€ net/an · {age ? `avant ${30 - age} ans` : "30 ans"} · Kojihsports Angers</p>
               </Card>
+              <button onClick={() => { localStorage.removeItem("kojihlife_v7"); setOnboarded(false); }} style={{ width: "100%", padding: "12px", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer", fontSize: 13, color: C.muted, marginTop: 4 }}>
+                Refaire l'onboarding
+              </button>
             </div>
           )}
 
@@ -1095,7 +1335,7 @@ export default function App() {
         {NAV.map(n => {
           const active = nav === n.id;
           return (
-            <button key={n.id} onClick={() => setNav(n.id)} style={{ flex: 1, padding: "10px 4px 8px", border: "none", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, transition: "all 0.2s" }}>
+            <button key={n.id} onClick={() => setNav(n.id)} style={{ flex: 1, padding: "10px 4px 8px", border: "none", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
               <div style={{ width: 36, height: 36, borderRadius: 10, background: active ? C.black : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.2s" }}>
                 {Ico[n.icon](active ? C.red : C.black, 20)}
               </div>
