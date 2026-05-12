@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar } from "recharts";
+import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar, CartesianGrid } from "recharts";
 
 const TABS = [
   { id: "today", label: "Today", icon: "⚡" },
@@ -79,6 +79,22 @@ const Gold = "#D4AF37";
 const Bg = "#0a0a0a";
 const inp = { background: "rgba(255,255,255,0.04)", border: "1px solid #1e1e1e", borderRadius: 10, padding: "11px 14px", color: "#fff", fontSize: 14, outline: "none", width: "100%", boxSizing: "border-box" };
 
+const MiniChart = ({ data, dataKey, color = Gold, label, formatter }) => (
+  data.length > 1 ? (
+    <div style={{ marginTop: 16 }}>
+      <p style={{ fontSize: 10, color: "#555", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8 }}>{label}</p>
+      <ResponsiveContainer width="100%" height={100}>
+        <LineChart data={data}>
+          <XAxis dataKey="date" tick={{ fill: "#333", fontSize: 8 }} tickFormatter={d => d.slice(5)} />
+          <YAxis tick={{ fill: "#333", fontSize: 8 }} width={28} domain={["auto", "auto"]} />
+          <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={formatter || (v => [v, ""])} />
+          <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2} dot={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  ) : null
+);
+
 const Rating = ({ value, max = 5, onChange }) => (
   <div style={{ display: "flex", gap: 4 }}>
     {Array.from({ length: max }).map((_, i) => (
@@ -120,6 +136,7 @@ export default function App() {
   const [newTodo, setNewTodo] = useState("");
   const [goals, setGoals] = useState(defaultGoals());
   const [newGoal, setNewGoal] = useState({ label: "", category: "", target: 100 });
+  const [statRange, setStatRange] = useState("30");
 
   useEffect(() => {
     try {
@@ -165,38 +182,29 @@ export default function App() {
     setTodos(t); save(history, t, goals); setNewTodo("");
   };
 
-  const toggleTodo = (id) => {
-    const t = todos.map(t => t.id === id ? { ...t, done: !t.done } : t);
-    setTodos(t); save(history, t, goals);
-  };
-
-  const deleteTodo = (id) => {
-    const t = todos.filter(t => t.id !== id);
-    setTodos(t); save(history, t, goals);
-  };
-
-  const updateGoal = (id, field, val) => {
-    const g = goals.map(g => g.id === id ? { ...g, [field]: val } : g);
-    setGoals(g); save(history, todos, g);
-  };
-
+  const toggleTodo = (id) => { const t = todos.map(t => t.id === id ? { ...t, done: !t.done } : t); setTodos(t); save(history, t, goals); };
+  const deleteTodo = (id) => { const t = todos.filter(t => t.id !== id); setTodos(t); save(history, t, goals); };
+  const updateGoal = (id, field, val) => { const g = goals.map(g => g.id === id ? { ...g, [field]: val } : g); setGoals(g); save(history, todos, g); };
   const addGoal = () => {
     if (!newGoal.label.trim()) return;
     const g = [...goals, { ...newGoal, id: Date.now(), progress: 0 }];
     setGoals(g); save(history, todos, g);
     setNewGoal({ label: "", category: "", target: 100 });
   };
-
-  const deleteGoal = (id) => {
-    const g = goals.filter(g => g.id !== id);
-    setGoals(g); save(history, todos, g);
-  };
+  const deleteGoal = (id) => { const g = goals.filter(g => g.id !== id); setGoals(g); save(history, todos, g); };
 
   const last7 = history.slice(-7);
   const avg7 = last7.length ? Math.round(last7.reduce((a, b) => a + b.score, 0) / last7.length) : 0;
   const scoreColor = today.score >= 80 ? "#4ade80" : today.score >= 60 ? Gold : today.score >= 40 ? "#fb923c" : "#f87171";
   const tip = getTip(today);
   const lastBody = history.filter(d => d.body?.weight > 0).slice(-1)[0]?.body;
+
+  const rangeHistory = history.slice(-parseInt(statRange));
+  const sleepHistory = history.filter(d => d.sleep?.duration > 0);
+  const sportHistory = history.filter(d => d.sport?.duration > 0);
+  const weightHistory = history.filter(d => d.body?.weight > 0);
+  const patrimoineHistory = history.filter(d => d.money?.patrimoine > 0);
+  const moodHistory = history.filter(d => d.mind?.mood > 0);
 
   const radar = [
     { s: "Sommeil", v: Math.min(100, today.sleep.duration * 12) },
@@ -207,11 +215,8 @@ export default function App() {
     { s: "Corps", v: today.body?.weight > 0 ? 80 : 30 },
   ];
 
-  const patrimoineHistory = history.filter(d => d.money?.patrimoine > 0).slice(-12);
-
   return (
     <div style={{ minHeight: "100vh", background: Bg, color: "#fff", fontFamily: "'DM Sans', sans-serif", maxWidth: 480, margin: "0 auto", paddingBottom: 90 }}>
-      {/* Header */}
       <div style={{ padding: "24px 20px 14px", borderBottom: "1px solid #141414", position: "sticky", top: 0, zIndex: 10, background: Bg }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
@@ -227,7 +232,6 @@ export default function App() {
         <div style={{ marginTop: 12, background: "rgba(212,175,55,0.07)", border: "1px solid rgba(212,175,55,0.15)", borderRadius: 10, padding: "9px 13px", fontSize: 12, color: Gold, lineHeight: 1.5 }}>{tip}</div>
       </div>
 
-      {/* Tabs */}
       <div style={{ display: "flex", overflowX: "auto", gap: 6, padding: "10px 16px", borderBottom: "1px solid #111", scrollbarWidth: "none" }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ flexShrink: 0, padding: "6px 13px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, transition: "all 0.2s", background: tab === t.id ? Gold : "rgba(255,255,255,0.05)", color: tab === t.id ? "#000" : "#777" }}>{t.icon} {t.label}</button>
@@ -236,7 +240,6 @@ export default function App() {
 
       <div style={{ padding: 16 }}>
 
-        {/* TODAY */}
         {tab === "today" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Card>
@@ -265,16 +268,15 @@ export default function App() {
                 </Card>
               ))}
             </div>
-            {/* Todo rapide */}
             <Card>
-              <ST>To-Do du jour ({todos.filter(t => !t.done && t.date === today.date).length} en cours)</ST>
+              <ST>To-Do du jour</ST>
               {todos.filter(t => t.date === today.date).slice(0, 3).map(t => (
                 <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                   <span onClick={() => toggleTodo(t.id)} style={{ fontSize: 16, cursor: "pointer" }}>{t.done ? "✅" : "⬜"}</span>
-                  <span style={{ fontSize: 13, color: t.done ? "#444" : "#ccc", textDecoration: t.done ? "line-through" : "none", flex: 1 }}>{t.text}</span>
+                  <span style={{ fontSize: 13, color: t.done ? "#444" : "#ccc", textDecoration: t.done ? "line-through" : "none" }}>{t.text}</span>
                 </div>
               ))}
-              {todos.filter(t => t.date === today.date).length === 0 && <p style={{ fontSize: 12, color: "#444" }}>Aucune tâche aujourd'hui → onglet To-Do</p>}
+              {todos.filter(t => t.date === today.date).length === 0 && <p style={{ fontSize: 12, color: "#444" }}>Aucune tâche → onglet To-Do</p>}
             </Card>
             {last7.length > 1 && (
               <Card>
@@ -292,7 +294,6 @@ export default function App() {
           </div>
         )}
 
-        {/* SLEEP */}
         {tab === "sleep" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Card>
@@ -309,6 +310,8 @@ export default function App() {
               )}
               <ST>Qualité</ST>
               <Rating value={today.sleep.quality} onChange={v => update("sleep", "quality", v)} />
+              <MiniChart data={sleepHistory.slice(-30)} dataKey="sleep.duration" label="Durée sommeil (30j)" formatter={v => [`${v}h`, "Sommeil"]} />
+              <MiniChart data={sleepHistory.slice(-30)} dataKey="sleep.quality" color="#818cf8" label="Qualité sommeil (30j)" formatter={v => [`${v}/5`, "Qualité"]} />
             </Card>
             <Card gold>
               <ST>Objectifs</ST>
@@ -319,7 +322,6 @@ export default function App() {
           </div>
         )}
 
-        {/* SPORT */}
         {tab === "sport" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Card>
@@ -338,23 +340,12 @@ export default function App() {
                 </div>
                 <Field label="Notes / PR"><input type="text" placeholder="Ex: Bench 90kg ×5 🔥" value={today.sport.notes} onChange={e => update("sport", "notes", e.target.value)} style={inp} /></Field>
               </div>
+              <MiniChart data={sportHistory.slice(-30)} dataKey="sport.duration" label="Durée séances (30j)" formatter={v => [`${v}min`, "Sport"]} />
+              <MiniChart data={sportHistory.slice(-30)} dataKey="sport.intensity" color="#f97316" label="Intensité (30j)" formatter={v => [`${v}/5`, "Intensité"]} />
             </Card>
-            {last7.some(d => d.sport?.duration > 0) && (
-              <Card>
-                <ST>Volume sport 7j</ST>
-                <ResponsiveContainer width="100%" height={110}>
-                  <BarChart data={last7}>
-                    <XAxis dataKey="date" tick={{ fill: "#444", fontSize: 9 }} tickFormatter={d => d.slice(5)} />
-                    <Bar dataKey="sport.duration" fill={Gold} radius={[4, 4, 0, 0]} />
-                    <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={v => [`${v}min`, ""]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Card>
-            )}
           </div>
         )}
 
-        {/* NUTRITION */}
         {tab === "nutrition" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Card>
@@ -370,6 +361,8 @@ export default function App() {
                 <Field label="Eau (L)"><input type="number" value={today.nutrition.water} min={0} max={5} step={0.25} onChange={e => update("nutrition", "water", +e.target.value)} style={inp} /></Field>
                 <Field label="Protéines (g)"><input type="number" value={today.nutrition.protein} min={0} max={300} onChange={e => update("nutrition", "protein", +e.target.value)} style={inp} /></Field>
               </div>
+              <MiniChart data={history.filter(d => d.nutrition?.water > 0).slice(-30)} dataKey="nutrition.water" color="#38bdf8" label="Hydratation (30j)" formatter={v => [`${v}L`, "Eau"]} />
+              <MiniChart data={history.filter(d => d.nutrition?.protein > 0).slice(-30)} dataKey="nutrition.protein" color="#a78bfa" label="Protéines (30j)" formatter={v => [`${v}g`, "Protéines"]} />
             </Card>
             <Card gold>
               <ST>Cibles</ST>
@@ -380,7 +373,6 @@ export default function App() {
           </div>
         )}
 
-        {/* BODY */}
         {tab === "body" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Card>
@@ -393,23 +385,12 @@ export default function App() {
                 <Field label="Bras (cm)"><input type="number" value={today.body?.arms || ""} min={0} onChange={e => update("body", "arms", +e.target.value)} style={inp} /></Field>
                 <Field label="Cuisses (cm)"><input type="number" value={today.body?.thighs || ""} min={0} onChange={e => update("body", "thighs", +e.target.value)} style={inp} /></Field>
               </div>
+              <MiniChart data={weightHistory.slice(-60)} dataKey="body.weight" color="#fb923c" label="Évolution poids (60j)" formatter={v => [`${v}kg`, "Poids"]} />
+              <MiniChart data={weightHistory.slice(-60)} dataKey="body.arms" color="#4ade80" label="Évolution bras (60j)" formatter={v => [`${v}cm`, "Bras"]} />
             </Card>
-            {history.filter(d => d.body?.weight > 0).length > 1 && (
-              <Card>
-                <ST>Évolution poids</ST>
-                <ResponsiveContainer width="100%" height={130}>
-                  <LineChart data={history.filter(d => d.body?.weight > 0).slice(-20)}>
-                    <XAxis dataKey="date" tick={{ fill: "#444", fontSize: 9 }} tickFormatter={d => d.slice(5)} />
-                    <YAxis tick={{ fill: "#444", fontSize: 9 }} width={30} domain={["auto", "auto"]} />
-                    <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={v => [`${v}kg`, "Poids"]} />
-                    <Line type="monotone" dataKey="body.weight" stroke={Gold} strokeWidth={2} dot={{ fill: Gold, r: 3 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Card>
-            )}
             {lastBody && (
               <Card gold>
-                <ST>Dernières mensurations enregistrées</ST>
+                <ST>Dernières mensurations</ST>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
                   {[["Poids", lastBody.weight, "kg"], ["Poitrine", lastBody.chest, "cm"], ["Taille", lastBody.waist, "cm"], ["Hanches", lastBody.hips, "cm"], ["Bras", lastBody.arms, "cm"], ["Cuisses", lastBody.thighs, "cm"]].map(([l, v, u]) => v > 0 && (
                     <div key={l} style={{ textAlign: "center", background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: 10 }}>
@@ -423,7 +404,6 @@ export default function App() {
           </div>
         )}
 
-        {/* WORK */}
         {tab === "work" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Card>
@@ -447,6 +427,7 @@ export default function App() {
                 </div>
               )}
               <Field label="Highlight du jour"><input type="text" placeholder="Ma meilleure action aujourd'hui..." value={today.work.highlight} onChange={e => update("work", "highlight", e.target.value)} style={inp} /></Field>
+              <MiniChart data={history.filter(d => d.work?.focus > 0).slice(-30)} dataKey="work.focus" color="#f59e0b" label="Focus (30j)" formatter={v => [`${v}/5`, "Focus"]} />
             </Card>
             <Card gold>
               <ST>Méthodes élite</ST>
@@ -457,7 +438,6 @@ export default function App() {
           </div>
         )}
 
-        {/* TODO */}
         {tab === "todo" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Card>
@@ -488,7 +468,6 @@ export default function App() {
           </div>
         )}
 
-        {/* MONEY */}
         {tab === "money" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Card>
@@ -499,36 +478,12 @@ export default function App() {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
                 <Field label="Investi (€)"><input type="number" value={today.money.invested} min={0} onChange={e => update("money", "invested", +e.target.value)} style={inp} /></Field>
-                <Field label="Patrimoine total (€)"><input type="number" value={today.money.patrimoine} min={0} onChange={e => update("money", "patrimoine", +e.target.value)} style={inp} /></Field>
+                <Field label="Patrimoine (€)"><input type="number" value={today.money.patrimoine} min={0} onChange={e => update("money", "patrimoine", +e.target.value)} style={inp} /></Field>
               </div>
               <Field label="Note / Action"><input type="text" placeholder="Ex: DCA ETF World, vente Verbio..." value={today.money.note} onChange={e => update("money", "note", e.target.value)} style={inp} /></Field>
+              <MiniChart data={patrimoineHistory} dataKey="money.patrimoine" color="#4ade80" label="Évolution patrimoine" formatter={v => [`${v.toLocaleString()}€`, "Patrimoine"]} />
+              <MiniChart data={history.filter(d => d.money?.income > 0).slice(-30)} dataKey="money.income" color={Gold} label="Revenus (30j)" formatter={v => [`${v}€`, "Revenus"]} />
             </Card>
-            {patrimoineHistory.length > 1 && (
-              <Card>
-                <ST>Évolution patrimoine</ST>
-                <ResponsiveContainer width="100%" height={130}>
-                  <LineChart data={patrimoineHistory}>
-                    <XAxis dataKey="date" tick={{ fill: "#444", fontSize: 9 }} tickFormatter={d => d.slice(5)} />
-                    <YAxis tick={{ fill: "#444", fontSize: 9 }} width={40} tickFormatter={v => `${Math.round(v/1000)}k`} />
-                    <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={v => [`${v.toLocaleString()}€`, "Patrimoine"]} />
-                    <Line type="monotone" dataKey="money.patrimoine" stroke="#4ade80" strokeWidth={2} dot={{ fill: "#4ade80", r: 3 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Card>
-            )}
-            {last7.some(d => d.money?.income > 0 || d.money?.expense > 0) && (
-              <Card>
-                <ST>Revenus vs Dépenses 7j</ST>
-                <ResponsiveContainer width="100%" height={110}>
-                  <BarChart data={last7}>
-                    <XAxis dataKey="date" tick={{ fill: "#444", fontSize: 9 }} tickFormatter={d => d.slice(5)} />
-                    <Bar dataKey="money.income" fill="#4ade80" radius={[3, 3, 0, 0]} name="Revenus" />
-                    <Bar dataKey="money.expense" fill="#f87171" radius={[3, 3, 0, 0]} name="Dépenses" />
-                    <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Card>
-            )}
             <Card gold>
               <ST>Rappels financiers</ST>
               {["Objectif : 100k€ net/an à 30 ans", "PEA Fortuneo · AV Linxea · Trade Republic", "Investir dès le 1er du mois", "Reviews Google Kojihsports → accumule"].map(t => (
@@ -538,7 +493,6 @@ export default function App() {
           </div>
         )}
 
-        {/* GOALS */}
         {tab === "goals" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Card>
@@ -549,7 +503,7 @@ export default function App() {
                   <input value={newGoal.category} onChange={e => setNewGoal(p => ({ ...p, category: e.target.value }))} placeholder="Catégorie" style={inp} />
                   <input type="number" value={newGoal.target} onChange={e => setNewGoal(p => ({ ...p, target: +e.target.value }))} placeholder="Cible" style={inp} />
                 </div>
-                <button onClick={addGoal} style={{ background: Gold, color: "#000", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Ajouter l'objectif</button>
+                <button onClick={addGoal} style={{ background: Gold, color: "#000", border: "none", borderRadius: 10, padding: "12px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Ajouter</button>
               </div>
             </Card>
             {goals.map(g => (
@@ -560,21 +514,19 @@ export default function App() {
                     <p style={{ margin: "2px 0 0", fontSize: 10, color: Gold }}>{g.category}</p>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: Gold }}>{g.progress}%</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: g.progress >= 100 ? "#4ade80" : Gold }}>{g.progress}%</span>
                     <span onClick={() => deleteGoal(g.id)} style={{ fontSize: 12, color: "#333", cursor: "pointer" }}>✕</span>
                   </div>
                 </div>
                 <div style={{ height: 8, background: "#1a1a1a", borderRadius: 4, marginBottom: 10 }}>
                   <div style={{ height: "100%", borderRadius: 4, background: g.progress >= 100 ? "#4ade80" : Gold, width: `${Math.min(100, g.progress)}%`, transition: "width 0.4s" }} />
                 </div>
-                <input type="range" min={0} max={100} value={g.progress} onChange={e => updateGoal(g.id, "progress", +e.target.value)}
-                  style={{ width: "100%", accentColor: Gold }} />
+                <input type="range" min={0} max={100} value={g.progress} onChange={e => updateGoal(g.id, "progress", +e.target.value)} style={{ width: "100%", accentColor: Gold }} />
               </Card>
             ))}
           </div>
         )}
 
-        {/* MIND */}
         {tab === "mind" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Card>
@@ -590,6 +542,8 @@ export default function App() {
                 <Field label="Compétence travaillée"><input type="text" placeholder="Ex: copywriting, Excel..." value={today.mind.learning} onChange={e => update("mind", "learning", e.target.value)} style={inp} /></Field>
                 <Field label="Gratitude du jour"><input type="text" placeholder="Une chose positive aujourd'hui..." value={today.mind.gratitude} onChange={e => update("mind", "gratitude", e.target.value)} style={inp} /></Field>
               </div>
+              <MiniChart data={moodHistory.slice(-30)} dataKey="mind.mood" color="#c084fc" label="Humeur (30j)" formatter={v => [`${v}/5`, "Humeur"]} />
+              <MiniChart data={history.filter(d => d.mind?.reading > 0).slice(-30)} dataKey="mind.reading" color="#34d399" label="Lecture (30j)" formatter={v => [`${v} pages`, "Lecture"]} />
             </Card>
             <Card gold>
               <ST>Rituel mental élite</ST>
@@ -600,15 +554,19 @@ export default function App() {
           </div>
         )}
 
-        {/* STATS */}
         {tab === "stats" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", gap: 6, marginBottom: 4 }}>
+              {[["7", "7j"], ["30", "30j"], ["90", "3 mois"], ["365", "1 an"]].map(([v, l]) => (
+                <button key={v} onClick={() => setStatRange(v)} style={{ flex: 1, padding: "8px 4px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 600, background: statRange === v ? Gold : "rgba(255,255,255,0.05)", color: statRange === v ? "#000" : "#666" }}>{l}</button>
+              ))}
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {[
                 { label: "Jours trackés", value: history.length, icon: "📅" },
                 { label: "Score moyen", value: avg7, icon: "⭐" },
-                { label: "Nuits > 7h", value: last7.filter(d => d.sleep?.duration >= 7).length, icon: "🌙" },
-                { label: "Séances sport", value: last7.filter(d => d.sport?.duration >= 30).length, icon: "💪" },
+                { label: "Nuits > 7h", value: rangeHistory.filter(d => d.sleep?.duration >= 7).length, icon: "🌙" },
+                { label: "Séances sport", value: rangeHistory.filter(d => d.sport?.duration >= 30).length, icon: "💪" },
                 { label: "Tâches faites", value: todos.filter(t => t.done).length, icon: "✅" },
                 { label: "Objectifs actifs", value: goals.length, icon: "🏆" },
               ].map(item => (
@@ -619,15 +577,67 @@ export default function App() {
                 </Card>
               ))}
             </div>
-            {history.length > 1 && (
+            {rangeHistory.length > 1 && (
               <Card>
-                <ST>Score global (14 derniers jours)</ST>
-                <ResponsiveContainer width="100%" height={140}>
-                  <LineChart data={history.slice(-14)}>
-                    <XAxis dataKey="date" tick={{ fill: "#444", fontSize: 9 }} tickFormatter={d => d.slice(5)} />
+                <ST>Score global · {statRange === "365" ? "1 an" : statRange + " derniers jours"}</ST>
+                <ResponsiveContainer width="100%" height={150}>
+                  <LineChart data={rangeHistory}>
+                    <CartesianGrid stroke="#111" />
+                    <XAxis dataKey="date" tick={{ fill: "#444", fontSize: 8 }} tickFormatter={d => d.slice(5)} interval={Math.floor(rangeHistory.length / 6)} />
                     <YAxis domain={[0, 100]} tick={{ fill: "#444", fontSize: 9 }} width={24} />
                     <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} />
                     <Line type="monotone" dataKey="score" stroke={Gold} strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Card>
+            )}
+            {sleepHistory.length > 1 && (
+              <Card>
+                <ST>Sommeil · {statRange}j</ST>
+                <ResponsiveContainer width="100%" height={100}>
+                  <LineChart data={sleepHistory.slice(-parseInt(statRange))}>
+                    <XAxis dataKey="date" tick={{ fill: "#333", fontSize: 8 }} tickFormatter={d => d.slice(5)} interval={Math.floor(sleepHistory.length / 5)} />
+                    <YAxis tick={{ fill: "#333", fontSize: 8 }} width={24} domain={[4, 10]} />
+                    <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={v => [`${v}h`, "Sommeil"]} />
+                    <Line type="monotone" dataKey="sleep.duration" stroke="#818cf8" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Card>
+            )}
+            {sportHistory.length > 1 && (
+              <Card>
+                <ST>Sport · {statRange}j</ST>
+                <ResponsiveContainer width="100%" height={100}>
+                  <BarChart data={sportHistory.slice(-parseInt(statRange))}>
+                    <XAxis dataKey="date" tick={{ fill: "#333", fontSize: 8 }} tickFormatter={d => d.slice(5)} />
+                    <Bar dataKey="sport.duration" fill={Gold} radius={[3, 3, 0, 0]} />
+                    <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={v => [`${v}min`, ""]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+            )}
+            {patrimoineHistory.length > 1 && (
+              <Card>
+                <ST>Patrimoine · évolution</ST>
+                <ResponsiveContainer width="100%" height={110}>
+                  <LineChart data={patrimoineHistory}>
+                    <XAxis dataKey="date" tick={{ fill: "#333", fontSize: 8 }} tickFormatter={d => d.slice(5)} />
+                    <YAxis tick={{ fill: "#333", fontSize: 8 }} width={40} tickFormatter={v => `${Math.round(v / 1000)}k`} />
+                    <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={v => [`${v.toLocaleString()}€`, "Patrimoine"]} />
+                    <Line type="monotone" dataKey="money.patrimoine" stroke="#4ade80" strokeWidth={2} dot={{ fill: "#4ade80", r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Card>
+            )}
+            {moodHistory.length > 1 && (
+              <Card>
+                <ST>Humeur · {statRange}j</ST>
+                <ResponsiveContainer width="100%" height={100}>
+                  <LineChart data={moodHistory.slice(-parseInt(statRange))}>
+                    <XAxis dataKey="date" tick={{ fill: "#333", fontSize: 8 }} tickFormatter={d => d.slice(5)} />
+                    <YAxis domain={[1, 5]} tick={{ fill: "#333", fontSize: 8 }} width={20} />
+                    <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={v => [`${v}/5`, "Humeur"]} />
+                    <Line type="monotone" dataKey="mind.mood" stroke="#c084fc" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </Card>
@@ -650,7 +660,6 @@ export default function App() {
         )}
       </div>
 
-      {/* Save */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, padding: "10px 16px", background: Bg, borderTop: "1px solid #141414" }}>
         <button onClick={saveDay} style={{ width: "100%", padding: "14px", borderRadius: 14, border: "none", cursor: "pointer", background: saved ? "#4ade80" : Gold, color: "#000", fontSize: 15, fontWeight: 800, transition: "all 0.3s" }}>
           {saved ? "✓ Sauvegardé !" : "💾 Sauvegarder la journée"}
