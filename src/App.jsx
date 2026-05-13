@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 
-// ── THEME ──────────────────────────────────────────────────────────────────
 const C = {
   bg: "#f2f2f2", surface: "#ffffff", surfaceAlt: "#ebebeb", border: "#e0e0e0",
   red: "#CC2936", redLight: "rgba(204,41,54,0.08)", redBorder: "rgba(204,41,54,0.2)",
@@ -12,36 +11,144 @@ const C = {
 const NAV_ORDER = ["today", "track", "money", "goals", "stats", "profile"];
 const TRACK_ORDER = ["sleep", "sport", "nutrition", "body", "work", "todo", "mind"];
 
-const PRIORITIES = [
-  { id: "sport", label: "Sport & Récup", icon: "💪", color: C.red, trackTab: "sport" },
-  { id: "finance", label: "Finance & Patrimoine", icon: "💰", color: C.green, nav: "money" },
-  { id: "mental", label: "Mental & Lecture", icon: "🧠", color: C.purple, trackTab: "mind" },
-  { id: "nutrition", label: "Nutrition", icon: "🥗", color: C.orange, trackTab: "nutrition" },
-  { id: "business", label: "Business & Travail", icon: "🎯", color: C.blue, trackTab: "work" },
-  { id: "running", label: "Running", icon: "🏃", color: "#0891b2", trackTab: "sport" },
-  { id: "body", label: "Composition corporelle", icon: "⚖️", color: C.orange, trackTab: "body" },
-  { id: "sleep", label: "Sommeil", icon: "🌙", color: C.purple, trackTab: "sleep" },
+// ── FOOD DATABASE ──────────────────────────────────────────────────────────
+const FOODS = [
+  { name: "Blanc de poulet", per100g: { protein: 31, calories: 165 }, unit: "g" },
+  { name: "Riz cru", per100g: { protein: 7, calories: 350 }, cooked: 3.0, unit: "g" },
+  { name: "Œufs entiers", perUnit: { protein: 6, calories: 70 }, unit: "pièce" },
+  { name: "Fromage blanc 0%", per100g: { protein: 8, calories: 45 }, unit: "g" },
+  { name: "Thon en boîte", per100g: { protein: 25, calories: 120 }, unit: "g" },
+  { name: "Flocons d'avoine", per100g: { protein: 13, calories: 370 }, unit: "g" },
+  { name: "Whey protéine", per100g: { protein: 80, calories: 400 }, unit: "g" },
+  { name: "Steak haché 5%", per100g: { protein: 20, calories: 155 }, unit: "g" },
+  { name: "Saumon", per100g: { protein: 20, calories: 200 }, unit: "g" },
+  { name: "Lentilles cuites", per100g: { protein: 9, calories: 116 }, unit: "g" },
+  { name: "Skyr", per100g: { protein: 11, calories: 65 }, unit: "g" },
+  { name: "Amandes", per100g: { protein: 21, calories: 580 }, unit: "g" },
 ];
 
-const DATA_SOURCES = [
-  { id: "manual", label: "Manuel", unit: "", path: null },
-  { id: "patrimoine", label: "Patrimoine total", unit: "€", path: "patrimoine_total" },
-  { id: "poids", label: "Poids", unit: "kg", path: "body.weight" },
-  { id: "proteines", label: "Protéines/jour", unit: "g", path: "nutrition.protein", isDaily: true },
-  { id: "eau", label: "Eau/jour", unit: "L", path: "nutrition.water", isDaily: true },
-  { id: "sport_duree", label: "Durée sport/séance", unit: "min", path: "sport.duration", isDaily: true },
-  { id: "running_dist", label: "Distance running", unit: "km", path: "sport.running.distance", isDaily: true },
-  { id: "masse_musculaire", label: "Masse musculaire", unit: "kg", path: "sport.muscleMass" },
-  { id: "masse_graisseuse", label: "Masse graisseuse", unit: "%", path: "sport.bodyFat" },
-  { id: "score", label: "Score global/jour", unit: "", path: "score", isDaily: true },
-  { id: "humeur", label: "Humeur/jour", unit: "/5", path: "mind.mood", isDaily: true },
-  { id: "lecture", label: "Lecture/jour", unit: "p", path: "mind.reading", isDaily: true },
-  { id: "screen", label: "Temps d'écran/jour", unit: "h", path: "work.screenTime", isDaily: true, reverse: true },
-  { id: "revenus", label: "Revenus/jour", unit: "€", path: "money.income", isDaily: true },
-  { id: "focus", label: "Focus/jour", unit: "/5", path: "work.focus", isDaily: true },
-];
+const getMealSuggestions = (proteinNeeded, hour) => {
+  if (proteinNeeded <= 0) return [];
+  const suggestions = [];
+  if (proteinNeeded >= 30 && hour < 21) {
+    const chickenAmount = Math.round(proteinNeeded * 0.6 / 0.31);
+    const riceAmount = 80;
+    suggestions.push({
+      name: "Repas complet",
+      items: [`${chickenAmount}g poulet (${Math.round(chickenAmount * 0.31)}g prot)`, `${riceAmount}g riz cru = ${Math.round(riceAmount * 3)}g cuit (${Math.round(riceAmount * 0.07)}g prot)`],
+      totalProtein: Math.round(chickenAmount * 0.31 + riceAmount * 0.07),
+      timing: "Idéal si dîner pas encore pris",
+    });
+  }
+  if (proteinNeeded >= 15 && proteinNeeded < 40) {
+    suggestions.push({
+      name: "Collation protéinée",
+      items: ["200g fromage blanc 0% (16g prot)", "2 œufs entiers (12g prot)"],
+      totalProtein: 28,
+      timing: hour >= 21 ? "⚠️ Léger — dernier repas avant 23h" : "Parfait pour combler",
+    });
+  }
+  if (proteinNeeded >= 20) {
+    const wheyAmount = 30;
+    suggestions.push({
+      name: "Shake whey",
+      items: [`${wheyAmount}g whey (${Math.round(wheyAmount * 0.8)}g prot)`, "200ml lait ou eau"],
+      totalProtein: Math.round(wheyAmount * 0.8),
+      timing: hour >= 22 ? "🚫 Trop tard pour bien dormir" : "Rapide et efficace",
+    });
+  }
+  return suggestions.slice(0, 2);
+};
 
-const getNestedVal = (obj, path) => path?.split(".").reduce((o, k) => o?.[k] ?? 0, obj) ?? 0;
+// ── INTELLIGENCE TEMPORELLE ────────────────────────────────────────────────
+function getTemporalIntelligence(today, history, goals) {
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const timeDecimal = hour + minute / 60;
+  const insights = [];
+
+  // Protéines
+  const protGoal = goals.find(g => g.sourceId === "proteines");
+  const protTarget = protGoal ? Number(protGoal.target) : 150;
+  const protCurrent = today.nutrition.protein || 0;
+  const protRemaining = protTarget - protCurrent;
+
+  if (protCurrent > 0 || protTarget > 0) {
+    const pct = Math.round((protCurrent / protTarget) * 100);
+    if (pct >= 100) {
+      insights.push({ type: "success", msg: `🏆 Objectif protéines atteint ! ${protCurrent}g — excellent travail !`, priority: 1 });
+    } else if (pct >= 75) {
+      insights.push({ type: "success", msg: `💪 ${pct}% de tes protéines ! Plus que ${protRemaining}g pour finir fort.`, priority: 2 });
+    } else if (pct >= 50) {
+      insights.push({ type: "advice", msg: `✅ À mi-chemin sur les protéines (${protCurrent}/${protTarget}g). Bon rythme !`, priority: 3 });
+    } else if (protCurrent > 0) {
+      if (timeDecimal >= 22) {
+        insights.push({ type: "warning", msg: `⏰ 22h — il te reste ${protRemaining}g de protéines. Trop tard pour un gros repas (digestion + sommeil). Max une collation légère de 20-30g avant 23h.`, priority: 1, suggestions: getMealSuggestions(Math.min(protRemaining, 25), hour) });
+      } else if (timeDecimal >= 20) {
+        insights.push({ type: "advice", msg: `🍽️ ${protCurrent}g sur ${protTarget}g — il te reste ${protRemaining}g. Dernier repas maintenant pour finir avant 22h (3h avant le coucher).`, priority: 2, suggestions: getMealSuggestions(protRemaining, hour) });
+      } else {
+        insights.push({ type: "advice", msg: `🥗 ${protCurrent}g sur ${protTarget}g — ${protRemaining}g restants. Tu as le temps !`, priority: 4, suggestions: protRemaining > 40 ? getMealSuggestions(protRemaining, hour) : [] });
+      }
+    }
+  }
+
+  // Hydratation temporelle
+  const waterTarget = 2.5;
+  const waterCurrent = today.nutrition.water || 0;
+  const waterRemaining = waterTarget - waterCurrent;
+  if (waterCurrent > 0 && waterRemaining > 0) {
+    if (timeDecimal >= 21) {
+      insights.push({ type: "warning", msg: `💧 Il reste ${waterRemaining.toFixed(2)}L à boire. Après 21h, boire trop peut perturber ton sommeil (levers nocturnes). Hydrate-toi maintenant ou attends demain matin.`, priority: 2 });
+    } else {
+      const hoursLeft = 21 - timeDecimal;
+      const rateNeeded = waterRemaining / hoursLeft;
+      if (rateNeeded > 0.5) insights.push({ type: "advice", msg: `💧 Bois ~${(rateNeeded * 0.5).toFixed(2)}L toutes les 30min pour atteindre ${waterTarget}L avant 21h.`, priority: 5 });
+    }
+  }
+
+  // Sommeil prédictif
+  if (timeDecimal >= 21) {
+    const targetSleep = 7.5;
+    const hoursUntilIdealWakeup = 7; // 7h du matin
+    const idealBedtime = 23;
+    if (timeDecimal < idealBedtime) {
+      const sleepIfNow = hoursUntilIdealWakeup + (idealBedtime - timeDecimal);
+      insights.push({ type: "info", msg: `🌙 Si tu dors à ${idealBedtime}h → réveil 7h = ${targetSleep}h de sommeil. Idéal ! Commence ta routine soir maintenant.`, priority: 3 });
+    }
+  }
+
+  // Fenêtre anabolique post-sport
+  if (today.sport.duration >= 30 && !today.sport.isRest) {
+    const sportTime = timeDecimal - (today.sport.duration / 60);
+    const hoursSinceSport = timeDecimal - sportTime;
+    if (hoursSinceSport < 2 && protCurrent < protTarget * 0.5) {
+      insights.push({ type: "warning", msg: `⚡ Fenêtre anabolique ouverte ! Séance détectée. Prends tes protéines dans les 2h post-effort pour maximiser la synthèse musculaire.`, priority: 1, suggestions: getMealSuggestions(40, hour) });
+    }
+  }
+
+  // Score prédictif fin de journée
+  const currentScore = today.score;
+  const potentialExtra = [];
+  if (!today.nutrition.breakfast) potentialExtra.push(4);
+  if (!today.nutrition.lunch) potentialExtra.push(4);
+  if (!today.nutrition.dinner) potentialExtra.push(4);
+  if (today.nutrition.water < 2.5 && timeDecimal < 21) potentialExtra.push(5);
+  if (!today.mind.meditation && timeDecimal < 23) potentialExtra.push(5);
+  if (!today.mind.reading && timeDecimal < 23) potentialExtra.push(5);
+  const maxPossible = currentScore + potentialExtra.reduce((a, b) => a + b, 0);
+  if (timeDecimal >= 18 && maxPossible > currentScore) {
+    insights.push({ type: "info", msg: `🎯 Score actuel : ${currentScore}/100. En complétant tes habitudes restantes ce soir, tu peux atteindre ${Math.min(100, maxPossible)}/100 !`, priority: 4 });
+  }
+
+  // Prise de masse contextuelle
+  const weightGoal = goals.find(g => g.sourceId === "poids" && !g.reverse);
+  if (weightGoal && protRemaining > 0 && timeDecimal >= 19 && timeDecimal < 22) {
+    insights.push({ type: "advice", msg: `💪 Objectif prise de masse actif. Assure-toi de faire ton dernier repas riche en glucides + protéines avant 22h pour optimiser la récupération nocturne.`, priority: 3, suggestions: getMealSuggestions(protRemaining, hour) });
+  }
+
+  return insights.sort((a, b) => a.priority - b.priority).slice(0, 3);
+}
 
 const calcGoalProgress = (goal, history, patrimoineTotal) => {
   if (!goal.sourceId || goal.sourceId === "manual") return goal.manualProgress || 0;
@@ -64,6 +171,36 @@ const calcGoalProgress = (goal, history, patrimoineTotal) => {
     return Math.min(100, Math.max(0, Math.round((val / target) * 100)));
   }
 };
+
+const getEncouragingMessage = (current, target, sourceId, hour) => {
+  const pct = target > 0 ? Math.round((current / target) * 100) : 0;
+  if (pct >= 100) return { type: "success", msg: `🏆 Objectif atteint ! ${current}/${target} — incroyable !` };
+  if (pct >= 75) return { type: "success", msg: `🔥 ${pct}% — tu y es presque ! Plus que ${Math.round(target - current)} restants.` };
+  if (pct >= 50) return { type: "advice", msg: `💪 Mi-chemin atteint ! ${current}/${target} — continue comme ça !` };
+  if (pct >= 25) return { type: "warning", msg: `📈 ${pct}% du chemin — chaque effort compte. Lance-toi !` };
+  if (current > 0) return { type: "warning", msg: `⚡ Démarrage en cours (${pct}%) — tu peux faire encore mieux !` };
+  return { type: "info", msg: `🎯 Objectif aujourd'hui : ${target}. C'est l'heure de commencer !` };
+};
+
+const DATA_SOURCES = [
+  { id: "manual", label: "Manuel", unit: "", path: null },
+  { id: "patrimoine", label: "Patrimoine total", unit: "€", path: "patrimoine_total" },
+  { id: "poids", label: "Poids", unit: "kg", path: "body.weight" },
+  { id: "proteines", label: "Protéines/jour", unit: "g", path: "nutrition.protein", isDaily: true },
+  { id: "eau", label: "Eau/jour", unit: "L", path: "nutrition.water", isDaily: true },
+  { id: "sport_duree", label: "Durée sport/séance", unit: "min", path: "sport.duration", isDaily: true },
+  { id: "running_dist", label: "Distance running", unit: "km", path: "sport.running.distance", isDaily: true },
+  { id: "masse_musculaire", label: "Masse musculaire", unit: "kg", path: "sport.muscleMass" },
+  { id: "masse_graisseuse", label: "Masse graisseuse", unit: "%", path: "sport.bodyFat" },
+  { id: "score", label: "Score global/jour", unit: "", path: "score", isDaily: true },
+  { id: "humeur", label: "Humeur/jour", unit: "/5", path: "mind.mood", isDaily: true },
+  { id: "lecture", label: "Lecture/jour", unit: "p", path: "mind.reading", isDaily: true },
+  { id: "screen", label: "Temps d'écran/jour", unit: "h", path: "work.screenTime", isDaily: true, reverse: true },
+  { id: "revenus", label: "Revenus/jour", unit: "€", path: "money.income", isDaily: true },
+  { id: "focus", label: "Focus/jour", unit: "/5", path: "work.focus", isDaily: true },
+];
+
+const getNestedVal = (obj, path) => path?.split(".").reduce((o, k) => o?.[k] ?? 0, obj) ?? 0;
 
 const calcAge = (dob) => {
   if (!dob) return null;
@@ -117,7 +254,7 @@ function getIntelligence(history, totalPatrimoine, goals) {
   const bedtimes = last7.filter(d => d.sleep?.bedtime).map(d => { const [h, m] = d.sleep.bedtime.split(":").map(Number); return h * 60 + m; });
   const bedVariance = bedtimes.length > 2 ? Math.max(...bedtimes) - Math.min(...bedtimes) : 0;
   const alerts = []; const advice = []; let todayRec = "";
-  if (consecutiveSport >= 3) { alerts.push({ type: "warning", msg: `💤 ${consecutiveSport} jours de sport consécutifs — repos actif recommandé.` }); todayRec = "rest"; }
+  if (consecutiveSport >= 3) { alerts.push({ type: "warning", msg: `💤 ${consecutiveSport} jours consécutifs — repos actif recommandé.` }); todayRec = "rest"; }
   else if (avgRecovery < 2.5) alerts.push({ type: "warning", msg: "⚠️ Récupération faible ces derniers jours." });
   if (avgSleep < 6.5) alerts.push({ type: "danger", msg: "🚨 Moins de 6h30 en moyenne. Performances -20%." });
   else if (avgSleep < 7) alerts.push({ type: "warning", msg: "🌙 Sommeil insuffisant. Couche-toi 30min plus tôt." });
@@ -138,26 +275,29 @@ function getIntelligence(history, totalPatrimoine, goals) {
   const highScreenFocus = highScreenDays.length > 1 ? highScreenDays.reduce((a, b, _, arr) => a + b.work.focus / arr.length, 0) : 0;
   const lowScreenFocus = lowScreenDays.length > 1 ? lowScreenDays.reduce((a, b, _, arr) => a + b.work.focus / arr.length, 0) : 0;
   if (highScreenFocus > 0 && lowScreenFocus > 0 && lowScreenFocus - highScreenFocus > 0.5) patterns.push(`🔍 Focus +${(lowScreenFocus - highScreenFocus).toFixed(1)}/5 quand écran < 3h/j.`);
+  const sleepMoodDays = last14.filter(d => d.sleep?.duration > 0 && d.mind?.mood > 0);
+  const goodSleepMood = sleepMoodDays.filter(d => d.sleep.duration >= 7.5).reduce((a, b, _, arr) => a + b.mind.mood / arr.length, 0);
+  const badSleepMood = sleepMoodDays.filter(d => d.sleep.duration < 7).reduce((a, b, _, arr) => a + b.mind.mood / arr.length, 0);
+  if (goodSleepMood > 0 && badSleepMood > 0 && goodSleepMood - badSleepMood > 0.8) patterns.push(`🔍 Ton humeur est ${(goodSleepMood - badSleepMood).toFixed(1)}/5 meilleure après 7h30+ de sommeil.`);
   const avgWater = last3.filter(d => d.nutrition?.water > 0).reduce((a, b, _, arr) => a + b.nutrition.water / arr.length, 0);
   if (avgWater < 2 && avgWater > 0) advice.push("💧 Hydratation insuffisante ces 3 jours.");
   if (avgMood < 3 && avgMood > 0) advice.push("😔 Moral en baisse. 5min cohérence cardiaque.");
   let patrimoinePrediction = null;
   const patrimoineGoal = goals?.find(g => g.sourceId === "patrimoine");
   if (patrimoineGoal && totalPatrimoine > 0) {
-    const patrimoineH = history.filter(d => d.money?.invested > 0);
-    const avgMonthlyInvest = patrimoineH.length > 0 ? patrimoineH.reduce((a, b, _, arr) => a + b.money.invested / arr.length, 0) * 30 : 0;
-    if (avgMonthlyInvest > 0) {
+    const ph = history.filter(d => d.money?.invested > 0);
+    const avgMonthly = ph.length > 0 ? ph.reduce((a, b, _, arr) => a + b.money.invested / arr.length, 0) * 30 : 0;
+    if (avgMonthly > 0) {
       const target = Number(patrimoineGoal.target) || 100000;
       const remaining = target - totalPatrimoine;
-      const monthsNeeded = Math.ceil(remaining / (avgMonthlyInvest * 1.08 / 12));
-      patrimoinePrediction = `📈 À ce rythme, objectif ${target.toLocaleString("fr-FR")}€ atteint dans ~${(monthsNeeded / 12).toFixed(1)} ans.`;
+      const months = Math.ceil(remaining / (avgMonthly * 1.08 / 12));
+      patrimoinePrediction = `📈 À ce rythme (+${Math.round(avgMonthly)}€/mois), objectif ${target.toLocaleString("fr-FR")}€ dans ~${(months / 12).toFixed(1)} ans.`;
     }
   }
-  // Today prediction
   let todayPrediction = null;
   if (last7.length >= 3) {
     const recentAvg = last7.slice(-3).filter(d => d.score > 0).reduce((a, b, _, arr) => a + b.score / arr.length, 0);
-    if (recentAvg > 0) todayPrediction = `🎯 À ce rythme, score fin de semaine estimé : ~${Math.round(recentAvg)}/100`;
+    if (recentAvg > 0) todayPrediction = `🎯 Score fin de semaine estimé : ~${Math.round(recentAvg)}/100`;
   }
   const scoreAvg = Math.round(avgScore7);
   return { alerts, advice, todayRec, consecutiveSport, avgSleep, avgScreen, scoreAvg, scoreDelta, patterns, patrimoinePrediction, todayPrediction };
@@ -183,6 +323,17 @@ const defaultPatrimoine = () => ([
   { id: 5, name: "Corum", amount: 0, color: "#0891b2" },
 ]);
 
+const PRIORITIES = [
+  { id: "sport", label: "Sport & Récup", icon: "💪", color: C.red },
+  { id: "finance", label: "Finance & Patrimoine", icon: "💰", color: C.green },
+  { id: "mental", label: "Mental & Lecture", icon: "🧠", color: C.purple },
+  { id: "nutrition", label: "Nutrition", icon: "🥗", color: C.orange },
+  { id: "business", label: "Business & Travail", icon: "🎯", color: C.blue },
+  { id: "running", label: "Running", icon: "🏃", color: "#0891b2" },
+  { id: "body", label: "Composition corporelle", icon: "⚖️", color: C.orange },
+  { id: "sleep", label: "Sommeil", icon: "🌙", color: C.purple },
+];
+
 // ── ICONS ──────────────────────────────────────────────────────────────────
 const Ico = {
   home: (col,sz=22) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
@@ -202,6 +353,10 @@ const Ico = {
   scale: (col,sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>,
   focus: (col,sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>,
   mood: (col,sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>,
+  up: (col,sz=16) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>,
+  down: (col,sz=16) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
+  edit: (col,sz=16) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+  trash: (col,sz=16) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>,
 };
 
 const NAV = [
@@ -231,10 +386,8 @@ const ScoreRing = ({ score, delta, streak }) => {
   return (
     <div style={{ position: "relative", width: 90, height: 90, flexShrink: 0 }}>
       <svg width="90" height="90" style={{ transform: "rotate(-90deg)" }}>
-        <circle cx="45" cy="45" r={r} fill="none" stroke={C.surfaceAlt} strokeWidth="7" />
-        <circle cx="45" cy="45" r={r} fill="none" stroke={col} strokeWidth="7" strokeLinecap="round"
-          strokeDasharray={`${fill} ${circ - fill}`}
-          style={{ transition: "stroke-dasharray 0.8s ease" }} />
+        <circle cx="45" cy="45" r={r} fill="none" stroke={C.surfaceAlt} strokeWidth="7"/>
+        <circle cx="45" cy="45" r={r} fill="none" stroke={col} strokeWidth="7" strokeLinecap="round" strokeDasharray={`${fill} ${circ - fill}`} style={{ transition: "stroke-dasharray 0.8s ease" }}/>
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <span style={{ fontSize: 22, fontWeight: 900, color: col, lineHeight: 1 }}>{score}</span>
@@ -253,32 +406,24 @@ const CalendarHeatmap = ({ history }) => {
     const d = new Date(today); d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().split("T")[0];
     const entry = history.find(h => h.date === dateStr);
-    days.push({ date: dateStr, score: entry?.score || 0, day: d.getDate(), month: d.getMonth() });
+    days.push({ date: dateStr, score: entry?.score || 0 });
   }
-  const scoreColor = (s) => {
-    if (s === 0) return C.surfaceAlt;
-    if (s >= 80) return C.green;
-    if (s >= 60) return C.orange;
-    if (s >= 40) return "#f59e0b";
-    return C.red;
-  };
+  const sc = (s) => { if (s === 0) return C.surfaceAlt; if (s >= 80) return C.green; if (s >= 60) return C.orange; if (s >= 40) return "#f59e0b"; return C.red; };
   const weeks = [];
   for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
   return (
     <div>
-      <div style={{ display: "flex", gap: 3, overflowX: "auto", paddingBottom: 4 }}>
-        {weeks.map((week, wi) => (
+      <div style={{ display: "flex", gap: 3 }}>
+        {weeks.map((w, wi) => (
           <div key={wi} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {week.map((d, di) => (
-              <div key={di} title={`${d.date}: ${d.score}/100`} style={{ width: 12, height: 12, borderRadius: 3, background: scoreColor(d.score), transition: "background 0.2s", cursor: "default" }} />
-            ))}
+            {w.map((d, di) => <div key={di} title={`${d.date}: ${d.score}/100`} style={{ width: 12, height: 12, borderRadius: 3, background: sc(d.score) }} />)}
           </div>
         ))}
       </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 8, fontSize: 9, color: C.muted, alignItems: "center" }}>
-        <span>Moins</span>
-        {[0, 40, 60, 80].map(s => <div key={s} style={{ width: 10, height: 10, borderRadius: 2, background: scoreColor(s === 0 ? 0 : s + 10) }} />)}
-        <span>Plus</span>
+      <div style={{ display: "flex", gap: 6, marginTop: 8, fontSize: 9, color: C.muted, alignItems: "center" }}>
+        <span>Faible</span>
+        {[0, 40, 60, 80].map(s => <div key={s} style={{ width: 10, height: 10, borderRadius: 2, background: sc(s === 0 ? 0 : s + 10) }} />)}
+        <span>Excellent</span>
       </div>
     </div>
   );
@@ -288,11 +433,7 @@ const CalendarHeatmap = ({ history }) => {
 const inp = { background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 14px", color: C.text, fontSize: 14, outline: "none", width: "100%", boxSizing: "border-box" };
 
 const EvoChart = ({ data, dataKey, color, label, unit, height = 150 }) => {
-  if (data.length < 2) return (
-    <div style={{ background: C.surfaceAlt, borderRadius: 14, padding: 14, textAlign: "center", marginBottom: 14 }}>
-      <p style={{ fontSize: 11, color: C.muted, margin: 0 }}>📈 Graphique disponible après 2+ jours</p>
-    </div>
-  );
+  if (data.length < 2) return <div style={{ background: C.surfaceAlt, borderRadius: 14, padding: 14, textAlign: "center", marginBottom: 14 }}><p style={{ fontSize: 11, color: C.muted, margin: 0 }}>📈 Graphique disponible après 2+ jours</p></div>;
   const getVal = d => dataKey.split(".").reduce((o, k) => o?.[k], d) ?? 0;
   const last = getVal(data[data.length - 1]); const first = getVal(data[0]); const trend = last - first;
   return (
@@ -310,7 +451,7 @@ const EvoChart = ({ data, dataKey, color, label, unit, height = 150 }) => {
           <CartesianGrid stroke={C.border} vertical={false}/>
           <XAxis dataKey="date" tick={{ fill: C.muted, fontSize: 8 }} tickFormatter={d => d.slice(5)} axisLine={false} tickLine={false}/>
           <YAxis tick={{ fill: C.muted, fontSize: 9 }} width={30} domain={["auto","auto"]} axisLine={false} tickLine={false}/>
-          <Tooltip contentStyle={{ background: C.surface, border: `1px solid ${color}`, borderRadius: 10, fontSize: 11, boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }} formatter={v => [`${v}${unit}`, label]}/>
+          <Tooltip contentStyle={{ background: C.surface, border: `1px solid ${color}`, borderRadius: 10, fontSize: 11 }} formatter={v => [`${v}${unit}`, label]}/>
           <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5} fill={`url(#g${label.replace(/\s/g,"")})`} dot={false} activeDot={{ r: 5, fill: color, stroke: "#fff", strokeWidth: 2 }}/>
         </AreaChart>
       </ResponsiveContainer>
@@ -350,111 +491,83 @@ const ST = ({ children, light }) => (
   <p style={{ fontSize: 10, color: light ? "rgba(255,255,255,0.7)" : C.red, textTransform: "uppercase", letterSpacing: 2, marginBottom: 12, marginTop: 0, fontWeight: 700 }}>{children}</p>
 );
 
-const AlertBox = ({ type, msg }) => (
-  <div style={{ background: type === "danger" ? "rgba(204,41,54,0.08)" : "rgba(234,88,12,0.08)", border: `1px solid ${type === "danger" ? C.red : C.orange}`, borderRadius: 12, padding: "10px 14px", marginBottom: 10, fontSize: 12, color: type === "danger" ? C.red : C.orange, lineHeight: 1.5 }}>{msg}</div>
-);
-
-const AdviceBox = ({ msg }) => (
-  <div style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)", borderRadius: 12, padding: "10px 14px", marginBottom: 10, fontSize: 12, color: C.green, lineHeight: 1.5 }}>{msg}</div>
-);
-
-const InsightBox = ({ msg }) => (
-  <div style={{ background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: 12, padding: "10px 14px", marginBottom: 10, fontSize: 12, color: C.purple, lineHeight: 1.5 }}>{msg}</div>
-);
-
-// ── DOTS MENU ──────────────────────────────────────────────────────────────
-const DotsMenu = ({ onRename, onColor, onDelete, color }) => {
-  const [open, setOpen] = useState(false);
-  const [showColors, setShowColors] = useState(false);
-  const ref = useRef();
-  useEffect(() => {
-    const h = e => { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setShowColors(false); } };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
+const MsgBox = ({ type, msg, suggestions }) => {
+  const colors = { danger: C.red, warning: C.orange, advice: C.green, success: C.green, info: C.blue };
+  const bgs = { danger: "rgba(204,41,54,0.06)", warning: "rgba(234,88,12,0.06)", advice: "rgba(22,163,74,0.06)", success: "rgba(22,163,74,0.06)", info: "rgba(37,99,235,0.06)" };
+  const col = colors[type] || C.muted; const bg = bgs[type] || C.surfaceAlt;
   return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <button onClick={e => { e.stopPropagation(); setOpen(o => !o); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: C.muted, padding: "4px 8px", borderRadius: 8 }}>···</button>
-      {open && (
-        <div style={{ position: "absolute", right: 0, top: 32, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.15)", zIndex: 200, minWidth: 170, overflow: "hidden" }}>
-          {showColors ? (
-            <div style={{ padding: 12 }} onClick={e => e.stopPropagation()}>
-              <p style={{ fontSize: 10, color: C.muted, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: 1 }}>Couleur</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-                {["#CC2936","#16a34a","#2563eb","#7c3aed","#ea580c","#0891b2","#be185d","#111111"].map(col => (
-                  <div key={col} onClick={() => { onColor(col); setOpen(false); setShowColors(false); }} style={{ width: 28, height: 28, borderRadius: "50%", background: col, cursor: "pointer", border: color === col ? `3px solid ${C.text}` : "3px solid transparent" }} />
-                ))}
-              </div>
-              <input type="color" value={color} onChange={e => onColor(e.target.value)} style={{ width: "100%", height: 32, border: "none", borderRadius: 8, cursor: "pointer" }} />
+    <div style={{ background: bg, border: `1px solid ${col}33`, borderRadius: 12, padding: "12px 14px", marginBottom: 10 }}>
+      <p style={{ margin: 0, fontSize: 12, color: col, lineHeight: 1.6 }}>{msg}</p>
+      {suggestions?.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <p style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 8px" }}>Suggestions repas :</p>
+          {suggestions.map((s, i) => (
+            <div key={i} style={{ background: C.surface, borderRadius: 10, padding: "10px 12px", marginBottom: 6, border: `1px solid ${C.border}` }}>
+              <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: C.text }}>{s.name} · <span style={{ color: col }}>{s.totalProtein}g prot</span></p>
+              {s.items.map((item, j) => <p key={j} style={{ margin: "0 0 2px", fontSize: 11, color: C.muted }}>• {item}</p>)}
+              <p style={{ margin: "4px 0 0", fontSize: 10, color: col, fontStyle: "italic" }}>{s.timing}</p>
             </div>
-          ) : (
-            <>
-              <button onClick={() => setShowColors(true)} style={{ display: "block", width: "100%", padding: "12px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, textAlign: "left", color: C.text }}>🎨 Changer couleur</button>
-              <button onClick={() => { onRename(); setOpen(false); }} style={{ display: "block", width: "100%", padding: "12px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, textAlign: "left", color: C.text, borderTop: `1px solid ${C.border}` }}>✏️ Renommer</button>
-              <button onClick={() => { onDelete(); setOpen(false); }} style={{ display: "block", width: "100%", padding: "12px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, textAlign: "left", color: C.red, borderTop: `1px solid ${C.border}` }}>🗑️ Supprimer</button>
-            </>
-          )}
+          ))}
         </div>
       )}
     </div>
   );
 };
 
-// ── LONG PRESS DRAG ────────────────────────────────────────────────────────
-const useLongPressDrag = (onDragStart, onDragEnd, delay = 400) => {
-  const timer = useRef(null);
-  const dragging = useRef(false);
-  return {
-    onMouseDown: (e) => {
-      e.stopPropagation();
-      timer.current = setTimeout(() => { dragging.current = true; onDragStart(); }, delay);
-    },
-    onMouseUp: () => { clearTimeout(timer.current); if (!dragging.current) return; dragging.current = false; onDragEnd(); },
-    onMouseLeave: () => { clearTimeout(timer.current); },
-    onTouchStart: (e) => {
-      e.stopPropagation();
-      timer.current = setTimeout(() => { dragging.current = true; onDragStart(); }, delay);
-    },
-    onTouchEnd: () => { clearTimeout(timer.current); if (!dragging.current) return; dragging.current = false; onDragEnd(); },
-  };
-};
-
-// ── DRAGGABLE LIST (long press) ────────────────────────────────────────────
-const DraggableList = ({ items, onReorder, renderItem }) => {
-  const [dragIdx, setDragIdx] = useState(null);
-  const [overIdx, setOverIdx] = useState(null);
-  const [dragEnabled, setDragEnabled] = useState(null); // index of item that can be dragged
-
+// ── EDIT GOAL MODAL ────────────────────────────────────────────────────────
+const EditGoalModal = ({ goal, onSave, onClose }) => {
+  const [edited, setEdited] = useState({ ...goal });
+  const src = DATA_SOURCES.find(s => s.id === edited.sourceId);
   return (
-    <div>
-      {items.map((item, idx) => (
-        <div key={item.id}
-          draggable={dragEnabled === idx}
-          onDragStart={e => { if (dragEnabled !== idx) { e.preventDefault(); return; } setDragIdx(idx); }}
-          onDragOver={e => { e.preventDefault(); setOverIdx(idx); }}
-          onDrop={e => {
-            e.preventDefault();
-            if (dragIdx === null || dragIdx === idx) { setDragIdx(null); setOverIdx(null); setDragEnabled(null); return; }
-            const n = [...items]; const [r] = n.splice(dragIdx, 1); n.splice(idx, 0, r);
-            onReorder(n); setDragIdx(null); setOverIdx(null); setDragEnabled(null);
-          }}
-          onDragEnd={() => { setDragIdx(null); setOverIdx(null); setDragEnabled(null); }}
-          style={{ opacity: dragIdx === idx ? 0.4 : 1, borderTop: overIdx === idx && dragIdx !== idx ? `2px solid ${C.red}` : "2px solid transparent", transition: "border 0.1s, opacity 0.15s" }}>
-          {renderItem(item, idx, {
-            handleProps: {
-              onMouseDown: () => { const t = setTimeout(() => setDragEnabled(idx), 400); return () => clearTimeout(t); },
-              onMouseEnter: (setEnable) => setEnable(idx),
-              // simpler approach:
-              onPointerDown: (e) => {
-                e.stopPropagation();
-                const t = setTimeout(() => { setDragEnabled(idx); }, 350);
-                const cancel = () => { clearTimeout(t); window.removeEventListener("pointerup", cancel); };
-                window.addEventListener("pointerup", cancel, { once: true });
-              },
-            }
-          })}
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={onClose}>
+      <div style={{ width: "100%", maxWidth: 480, background: C.surface, borderRadius: "20px 20px 0 0", padding: 24, maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Modifier l'objectif</h3>
+          <button onClick={onClose} style={{ background: C.surfaceAlt, border: "none", borderRadius: 10, padding: "6px 12px", cursor: "pointer", fontSize: 13, color: C.muted }}>✕ Fermer</button>
         </div>
-      ))}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <Field label="Nom de l'objectif">
+            <input value={edited.label} onChange={e => setEdited(p => ({ ...p, label: e.target.value }))} style={inp} />
+          </Field>
+          <Field label="Catégorie">
+            <input value={edited.category} onChange={e => setEdited(p => ({ ...p, category: e.target.value }))} style={inp} />
+          </Field>
+          <Field label="Source de données">
+            <select value={edited.sourceId} onChange={e => setEdited(p => ({ ...p, sourceId: e.target.value }))} style={{ ...inp, color: C.text }}>
+              {DATA_SOURCES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+          </Field>
+          {edited.sourceId !== "manual" && (
+            <>
+              <Field label={`Valeur cible (${DATA_SOURCES.find(s => s.id === edited.sourceId)?.unit || ""})`}>
+                <input type="number" value={edited.target} onChange={e => setEdited(p => ({ ...p, target: e.target.value }))} style={inp} />
+              </Field>
+              <Toggle value={edited.reverse || false} onChange={v => setEdited(p => ({ ...p, reverse: v }))} label="Objectif : descendre sous la cible" />
+            </>
+          )}
+          {edited.sourceId === "manual" && (
+            <Field label="Progression manuelle (%)">
+              <input type="number" min={0} max={100} value={edited.manualProgress || 0} onChange={e => setEdited(p => ({ ...p, manualProgress: +e.target.value }))} style={inp} />
+            </Field>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <Field label="Date de début"><input type="date" value={edited.startDate || ""} onChange={e => setEdited(p => ({ ...p, startDate: e.target.value }))} style={inp} /></Field>
+            <Field label="Date de fin"><input type="date" value={edited.endDate || ""} onChange={e => setEdited(p => ({ ...p, endDate: e.target.value }))} style={inp} /></Field>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <label style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: 1.5, flexShrink: 0 }}>Couleur</label>
+            <input type="color" value={edited.color} onChange={e => setEdited(p => ({ ...p, color: e.target.value }))} style={{ width: 44, height: 44, borderRadius: 10, border: `2px solid ${C.border}`, cursor: "pointer", padding: 2 }} />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {["#CC2936","#16a34a","#2563eb","#7c3aed","#ea580c","#0891b2","#be185d","#111111"].map(col => (
+                <div key={col} onClick={() => setEdited(p => ({ ...p, color: col }))} style={{ width: 26, height: 26, borderRadius: "50%", background: col, cursor: "pointer", border: edited.color === col ? `3px solid ${C.text}` : "2px solid transparent" }} />
+              ))}
+            </div>
+          </div>
+          <button onClick={() => { onSave(edited); onClose(); }} style={{ width: "100%", padding: "14px", background: `linear-gradient(135deg, ${edited.color}, ${edited.color}bb)`, color: "#fff", border: "none", borderRadius: 12, fontWeight: 800, cursor: "pointer", fontSize: 15, marginTop: 8, boxShadow: `0 6px 20px ${edited.color}44` }}>
+            ✓ Enregistrer les modifications
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -478,11 +591,7 @@ const useSwipe = (onLeft, onRight) => {
 const PageTransition = ({ children, pageKey }) => {
   const [vis, setVis] = useState(false);
   useEffect(() => { setVis(false); const t = setTimeout(() => setVis(true), 50); return () => clearTimeout(t); }, [pageKey]);
-  return (
-    <div style={{ opacity: vis ? 1 : 0, transform: vis ? "translateY(0)" : "translateY(10px)", transition: "opacity 0.2s ease, transform 0.2s ease" }}>
-      {children}
-    </div>
-  );
+  return <div style={{ opacity: vis ? 1 : 0, transform: vis ? "translateY(0)" : "translateY(10px)", transition: "opacity 0.2s ease, transform 0.2s ease" }}>{children}</div>;
 };
 
 // ── BG DECORATION ─────────────────────────────────────────────────────────
@@ -498,12 +607,9 @@ const BgDecor = () => (
       <circle cx="420" cy="80" r="100" stroke="#CC2936" strokeWidth="1" fill="none" opacity="0.15"/>
       <circle cx="420" cy="80" r="60" stroke="#CC2936" strokeWidth="0.5" fill="none" opacity="0.2"/>
       <circle cx="60" cy="820" r="120" stroke="#CC2936" strokeWidth="1" fill="none" opacity="0.12"/>
-      <circle cx="60" cy="820" r="70" stroke="#CC2936" strokeWidth="0.5" fill="none" opacity="0.18"/>
       <line x1="0" y1="200" x2="480" y2="160" stroke="#CC2936" strokeWidth="0.8" opacity="0.2"/>
       <line x1="0" y1="500" x2="480" y2="540" stroke="#CC2936" strokeWidth="0.6" opacity="0.15"/>
-      <line x1="0" y1="750" x2="480" y2="710" stroke="#CC2936" strokeWidth="0.8" opacity="0.2"/>
       <path d="M 380 0 L 480 100 L 480 0 Z" fill="#CC2936" opacity="0.04"/>
-      <path d="M 0 800 L 0 900 L 100 900 Z" fill="#CC2936" opacity="0.04"/>
     </svg>
   </div>
 );
@@ -518,34 +624,32 @@ const Onboarding = ({ onComplete }) => {
   const [goalTarget, setGoalTarget] = useState("");
   const [goalEnd, setGoalEnd] = useState("");
   const photoRef = useRef();
-
   const handlePhoto = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => setPhoto(ev.target.result); r.readAsDataURL(f); };
-
   const togglePriority = id => setPriorities(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
-
   const handleComplete = () => {
     const today = new Date().toISOString().split("T")[0];
-    const goalTemplates = {
-      sport: { label: "Séances sport régulières (45min+)", sourceId: "sport_duree", target: 45, category: "Sport", color: C.red },
+    const templates = {
+      sport: { label: "Séances sport (45min+)", sourceId: "sport_duree", target: 45, category: "Sport", color: C.red },
       finance: { label: "Objectif patrimoine", sourceId: "patrimoine", target: Number(goalTarget) || 50000, category: "Finance", color: C.green },
-      mental: { label: "Lecture quotidienne (20 pages)", sourceId: "lecture", target: 20, category: "Mental", color: C.purple },
+      mental: { label: "Lecture quotidienne (20p)", sourceId: "lecture", target: 20, category: "Mental", color: C.purple },
       nutrition: { label: "Protéines quotidiennes", sourceId: "proteines", target: 150, category: "Nutrition", color: C.orange },
       business: { label: "Focus quotidien (4/5)", sourceId: "focus", target: 4, category: "Travail", color: C.blue },
-      running: { label: "Distance running", sourceId: "running_dist", target: 5, category: "Running", color: "#0891b2" },
+      running: { label: "Distance running (5km)", sourceId: "running_dist", target: 5, category: "Running", color: "#0891b2" },
       body: { label: "Objectif poids", sourceId: "poids", target: Number(goalTarget) || 75, category: "Corps", color: C.orange },
-      sleep: { label: "Sommeil optimal (7h30)", sourceId: "score", target: 70, category: "Sommeil", color: C.purple },
+      sleep: { label: "Sommeil optimal (score 70)", sourceId: "score", target: 70, category: "Sommeil", color: C.purple },
     };
     const createdGoals = priorities.map((pid, i) => ({
-      ...goalTemplates[pid] || { label: pid, sourceId: "manual", target: 100, category: pid, color: C.red },
+      ...(templates[pid] || { label: pid, sourceId: "manual", target: 100, category: pid, color: C.red }),
       id: Date.now() + i,
       startDate: today,
       endDate: goalEnd || new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0],
-      reverse: false,
-      manualProgress: 0,
-      target: i === 0 && goalTarget ? Number(goalTarget) : (goalTemplates[pid]?.target || 100),
+      reverse: false, manualProgress: 0,
+      target: i === 0 && goalTarget ? Number(goalTarget) : (templates[pid]?.target || 100),
     }));
     onComplete({ name, dob, photo }, createdGoals);
   };
+
+  const btnStyle = (active) => ({ width: "100%", padding: "15px", background: active ? `linear-gradient(135deg, ${C.red}, #a01e28)` : C.subtle, color: "#fff", border: "none", borderRadius: 13, fontSize: 15, fontWeight: 800, cursor: active ? "pointer" : "default", boxShadow: active ? "0 8px 24px rgba(204,41,54,0.3)" : "none" });
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, position: "relative" }}>
@@ -555,45 +659,38 @@ const Onboarding = ({ onComplete }) => {
           <div style={{ textAlign: "center" }}>
             <div style={{ width: 80, height: 80, background: `linear-gradient(135deg, ${C.red}, #a01e28)`, borderRadius: 24, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", boxShadow: "0 12px 32px rgba(204,41,54,0.35)", fontSize: 36 }}>🎯</div>
             <h1 style={{ fontSize: 30, fontWeight: 900, color: C.black, margin: "0 0 12px", lineHeight: 1.2 }}>Bienvenue sur<br /><span style={{ color: C.red }}>Kojihsports</span></h1>
-            <p style={{ fontSize: 15, color: C.muted, lineHeight: 1.7, margin: "0 0 40px" }}>Ton tracker de vie intelligent. En 2 minutes, l'app est configurée et personnalisée pour toi.</p>
-            <button onClick={() => setStep(1)} style={{ width: "100%", padding: "16px", background: `linear-gradient(135deg, ${C.red}, #a01e28)`, color: "#fff", border: "none", borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 24px rgba(204,41,54,0.3)" }}>C'est parti →</button>
+            <p style={{ fontSize: 15, color: C.muted, lineHeight: 1.7, margin: "0 0 40px" }}>Ton tracker de vie intelligent. En 2 minutes, configuré pour toi.</p>
+            <button onClick={() => setStep(1)} style={btnStyle(true)}>C'est parti →</button>
           </div>
         )}
-
         {step === 1 && (
           <div style={{ background: C.surface, borderRadius: 24, padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.1)" }}>
-            <div style={{ display: "flex", gap: 4, marginBottom: 24 }}>
-              {[1,2,3].map(s => <div key={s} style={{ flex: 1, height: 4, borderRadius: 2, background: s <= 1 ? C.red : C.surfaceAlt }} />)}
-            </div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 6px" }}>Qui es-tu ?</h2>
-            <p style={{ fontSize: 13, color: C.muted, margin: "0 0 24px" }}>Ces infos personnalisent ton expérience.</p>
+            <div style={{ display: "flex", gap: 4, marginBottom: 24 }}>{[1,2,3].map(s => <div key={s} style={{ flex: 1, height: 4, borderRadius: 2, background: s <= 1 ? C.red : C.surfaceAlt }} />)}</div>
+            <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 20px" }}>Qui es-tu ?</h2>
             <input type="file" accept="image/*" ref={photoRef} style={{ display: "none" }} onChange={handlePhoto} />
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
               <div onClick={() => photoRef.current.click()} style={{ cursor: "pointer", position: "relative" }}>
                 {photo ? <img src={photo} alt="" style={{ width: 90, height: 90, borderRadius: "50%", objectFit: "cover", border: `3px solid ${C.red}` }} />
                   : <div style={{ width: 90, height: 90, borderRadius: "50%", background: C.surfaceAlt, border: `2px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>📷</div>}
-                <div style={{ position: "absolute", bottom: 2, right: 2, background: C.red, borderRadius: "50%", width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, boxShadow: "0 2px 8px rgba(204,41,54,0.4)" }}>+</div>
+                <div style={{ position: "absolute", bottom: 2, right: 2, background: C.red, borderRadius: "50%", width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12 }}>+</div>
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
-              <Field label="Ton prénom"><input value={name} onChange={e => setName(e.target.value)} placeholder="Hadrien" style={inp} /></Field>
+              <Field label="Prénom"><input value={name} onChange={e => setName(e.target.value)} placeholder="Hadrien" style={inp} /></Field>
               <Field label="Date de naissance"><input type="date" value={dob} onChange={e => setDob(e.target.value)} style={inp} /></Field>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setStep(0)} style={{ flex: 1, padding: "14px", background: C.surfaceAlt, border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", color: C.muted }}>← Retour</button>
-              <button onClick={() => name.trim() && setStep(2)} style={{ flex: 2, padding: "14px", background: name.trim() ? `linear-gradient(135deg, ${C.red}, #a01e28)` : C.subtle, color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: name.trim() ? "pointer" : "default" }}>Continuer →</button>
+              <button onClick={() => setStep(0)} style={{ flex: 1, padding: "14px", background: C.surfaceAlt, border: "none", borderRadius: 12, fontWeight: 600, cursor: "pointer", color: C.muted }}>← Retour</button>
+              <button onClick={() => name.trim() && setStep(2)} style={{ ...btnStyle(!!name.trim()), flex: 2 }}>Continuer →</button>
             </div>
           </div>
         )}
-
         {step === 2 && (
           <div style={{ background: C.surface, borderRadius: 24, padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.1)" }}>
-            <div style={{ display: "flex", gap: 4, marginBottom: 24 }}>
-              {[1,2,3].map(s => <div key={s} style={{ flex: 1, height: 4, borderRadius: 2, background: s <= 2 ? C.red : C.surfaceAlt }} />)}
-            </div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 6px" }}>Tes priorités</h2>
-            <p style={{ fontSize: 13, color: C.muted, margin: "0 0 16px" }}>Choisis tout ce que tu veux améliorer.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 400, overflowY: "auto" }}>
+            <div style={{ display: "flex", gap: 4, marginBottom: 24 }}>{[1,2,3].map(s => <div key={s} style={{ flex: 1, height: 4, borderRadius: 2, background: s <= 2 ? C.red : C.surfaceAlt }} />)}</div>
+            <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 8px" }}>Tes priorités</h2>
+            <p style={{ fontSize: 13, color: C.muted, margin: "0 0 16px" }}>Coche tout ce que tu veux améliorer — pas de limite !</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 380, overflowY: "auto" }}>
               {PRIORITIES.map(p => {
                 const selected = priorities.includes(p.id);
                 return (
@@ -606,39 +703,29 @@ const Onboarding = ({ onComplete }) => {
               })}
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-              <button onClick={() => setStep(1)} style={{ flex: 1, padding: "14px", background: C.surfaceAlt, border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", color: C.muted }}>← Retour</button>
-              <button onClick={() => priorities.length > 0 && setStep(3)} style={{ flex: 2, padding: "14px", background: priorities.length > 0 ? `linear-gradient(135deg, ${C.red}, #a01e28)` : C.subtle, color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: priorities.length > 0 ? "pointer" : "default" }}>Continuer →</button>
+              <button onClick={() => setStep(1)} style={{ flex: 1, padding: "14px", background: C.surfaceAlt, border: "none", borderRadius: 12, fontWeight: 600, cursor: "pointer", color: C.muted }}>← Retour</button>
+              <button onClick={() => priorities.length > 0 && setStep(3)} style={{ ...btnStyle(priorities.length > 0), flex: 2 }}>Continuer →</button>
             </div>
           </div>
         )}
-
         {step === 3 && (
           <div style={{ background: C.surface, borderRadius: 24, padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.1)" }}>
-            <div style={{ display: "flex", gap: 4, marginBottom: 24 }}>
-              {[1,2,3].map(s => <div key={s} style={{ flex: 1, height: 4, borderRadius: 2, background: C.red }} />)}
-            </div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 6px" }}>Ton objectif principal</h2>
-            <p style={{ fontSize: 13, color: C.muted, margin: "0 0 16px" }}>
-              {priorities.length} objectif{priorities.length > 1 ? "s" : ""} seront créés automatiquement. Configure le principal.
-            </p>
-            <div style={{ background: C.surfaceAlt, borderRadius: 14, padding: 14, marginBottom: 16 }}>
-              <p style={{ fontSize: 12, color: C.muted, margin: "0 0 8px" }}>Priorité principale :</p>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 24 }}>{PRIORITIES.find(p => p.id === priorities[0])?.icon}</span>
-                <span style={{ fontSize: 15, fontWeight: 700 }}>{PRIORITIES.find(p => p.id === priorities[0])?.label}</span>
-              </div>
+            <div style={{ display: "flex", gap: 4, marginBottom: 24 }}>{[1,2,3].map(s => <div key={s} style={{ flex: 1, height: 4, borderRadius: 2, background: C.red }} />)}</div>
+            <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 8px" }}>Objectif principal</h2>
+            <p style={{ fontSize: 13, color: C.muted, margin: "0 0 16px" }}>{priorities.length} objectif{priorities.length > 1 ? "s" : ""} créés auto. Configure le principal :</p>
+            <div style={{ background: C.surfaceAlt, borderRadius: 14, padding: 14, marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 28 }}>{PRIORITIES.find(p => p.id === priorities[0])?.icon}</span>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>{PRIORITIES.find(p => p.id === priorities[0])?.label}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
-              <Field label="Valeur cible (laisser vide pour valeur par défaut)">
-                <input type="number" value={goalTarget} onChange={e => setGoalTarget(e.target.value)} placeholder="Ex: 100000 pour patrimoine, 80 pour poids..." style={inp} />
+              <Field label="Valeur cible (laisser vide = valeur par défaut)">
+                <input type="number" value={goalTarget} onChange={e => setGoalTarget(e.target.value)} placeholder="Ex: 100000 pour patrimoine..." style={inp} />
               </Field>
-              <Field label="Date limite">
-                <input type="date" value={goalEnd} onChange={e => setGoalEnd(e.target.value)} style={inp} />
-              </Field>
+              <Field label="Date limite"><input type="date" value={goalEnd} onChange={e => setGoalEnd(e.target.value)} style={inp} /></Field>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setStep(2)} style={{ flex: 1, padding: "14px", background: C.surfaceAlt, border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", color: C.muted }}>← Retour</button>
-              <button onClick={handleComplete} style={{ flex: 2, padding: "14px", background: `linear-gradient(135deg, ${C.red}, #a01e28)`, color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 24px rgba(204,41,54,0.3)" }}>🚀 Lancer l'app !</button>
+              <button onClick={() => setStep(2)} style={{ flex: 1, padding: "14px", background: C.surfaceAlt, border: "none", borderRadius: 12, fontWeight: 600, cursor: "pointer", color: C.muted }}>← Retour</button>
+              <button onClick={handleComplete} style={{ ...btnStyle(true), flex: 2 }}>🚀 Lancer l'app !</button>
             </div>
           </div>
         )}
@@ -658,20 +745,19 @@ export default function App() {
   const [todos, setTodos] = useState([]);
   const [newTodo, setNewTodo] = useState("");
   const [goals, setGoals] = useState([]);
+  const [editingGoal, setEditingGoal] = useState(null);
   const [patrimoine, setPatrimoine] = useState(defaultPatrimoine());
   const [newPoche, setNewPoche] = useState({ name: "", amount: 0, color: C.blue });
   const [statRange, setStatRange] = useState("30");
   const [profile, setProfile] = useState({ name: "", dob: "", photo: "" });
   const [sim, setSim] = useState({ amount: 10000, monthly: 200, rate: 10, years: 10 });
   const [newGoal, setNewGoal] = useState({ label: "", category: "", color: C.red, sourceId: "manual", target: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reverse: false, manualProgress: 0 });
-  const [renamingGoal, setRenamingGoal] = useState(null);
   const [renamingPoche, setRenamingPoche] = useState(null);
-  const [dragEnabledIdx, setDragEnabledIdx] = useState(null);
   const photoRef = useRef(); const sportPhotoRef = useRef();
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("kojihlife_v8");
+      const raw = localStorage.getItem("kojihlife_v9");
       if (raw) {
         const data = JSON.parse(raw);
         setOnboarded(true); setHistory(data.history || []); setTodos(data.todos || []);
@@ -684,7 +770,7 @@ export default function App() {
   }, []);
 
   const saveAll = useCallback((h, t, g, p, pr) => {
-    localStorage.setItem("kojihlife_v8", JSON.stringify({ history: h, todos: t, goals: g, patrimoine: p, profile: pr }));
+    localStorage.setItem("kojihlife_v9", JSON.stringify({ history: h, todos: t, goals: g, patrimoine: p, profile: pr }));
   }, []);
 
   const handleOnboardingComplete = (profileData, createdGoals) => {
@@ -718,16 +804,14 @@ export default function App() {
     setSaved(true); setTimeout(() => setSaved(false), 2000);
   };
 
-  const addTodo = () => {
-    if (!newTodo.trim()) return;
-    const t = [...todos, { id: Date.now(), text: newTodo, done: false, date: new Date().toISOString().split("T")[0] }];
-    setTodos(t); saveAll(history, t, goals, patrimoine, profile); setNewTodo("");
-  };
+  const addTodo = () => { if (!newTodo.trim()) return; const t = [...todos, { id: Date.now(), text: newTodo, done: false, date: new Date().toISOString().split("T")[0] }]; setTodos(t); saveAll(history, t, goals, patrimoine, profile); setNewTodo(""); };
   const toggleTodo = id => { const t = todos.map(t => t.id === id ? { ...t, done: !t.done } : t); setTodos(t); saveAll(history, t, goals, patrimoine, profile); };
   const deleteTodo = id => { const t = todos.filter(t => t.id !== id); setTodos(t); saveAll(history, t, goals, patrimoine, profile); };
 
   const totalPatrimoine = patrimoine.reduce((a, b) => a + (Number(b.amount) || 0), 0);
+
   const updateGoalField = (id, f, v) => { const g = goals.map(g => g.id === id ? { ...g, [f]: v } : g); setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
+  const saveEditedGoal = (edited) => { const g = goals.map(g => g.id === edited.id ? edited : g); setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
   const addGoal = () => {
     if (!newGoal.label.trim()) return;
     const g = [...goals, { ...newGoal, id: Date.now(), manualProgress: 0 }];
@@ -735,18 +819,25 @@ export default function App() {
     setNewGoal({ label: "", category: "", color: C.red, sourceId: "manual", target: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reverse: false, manualProgress: 0 });
   };
   const deleteGoal = id => { const g = goals.filter(g => g.id !== id); setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
-  const updatePoche = (id, f, v) => { const p = patrimoine.map(p => p.id === id ? { ...p, [f]: v } : p); setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
-  const addPoche = () => {
-    if (!newPoche.name.trim()) return;
-    const p = [...patrimoine, { ...newPoche, id: Date.now(), amount: Number(newPoche.amount) }];
-    setPatrimoine(p); saveAll(history, todos, goals, p, profile); setNewPoche({ name: "", amount: 0, color: C.blue });
+  const moveGoal = (idx, dir) => {
+    const g = [...goals];
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= g.length) return;
+    [g[idx], g[newIdx]] = [g[newIdx], g[idx]];
+    setGoals(g); saveAll(history, todos, g, patrimoine, profile);
   };
+
+  const updatePoche = (id, f, v) => { const p = patrimoine.map(p => p.id === id ? { ...p, [f]: v } : p); setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
+  const addPoche = () => { if (!newPoche.name.trim()) return; const p = [...patrimoine, { ...newPoche, id: Date.now(), amount: Number(newPoche.amount) }]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); setNewPoche({ name: "", amount: 0, color: C.blue }); };
   const deletePoche = id => { const p = patrimoine.filter(p => p.id !== id); setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
+  const movePoche = (idx, dir) => { const p = [...patrimoine]; const ni = idx + dir; if (ni < 0 || ni >= p.length) return; [p[idx], p[ni]] = [p[ni], p[idx]]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
+
   const updateProfile = (f, v) => { const pr = { ...profile, [f]: v }; setProfile(pr); saveAll(history, todos, goals, patrimoine, pr); };
   const handleProfilePhoto = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => updateProfile("photo", ev.target.result); r.readAsDataURL(f); };
   const handleSportPhoto = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => update("sport", "photoUrl", ev.target.result); r.readAsDataURL(f); };
 
   const intel = getIntelligence(history, totalPatrimoine, goals);
+  const temporalInsights = getTemporalIntelligence(today, history, goals);
   const age = calcAge(profile.dob);
   const rangeH = history.slice(-parseInt(statRange));
   const scoreColor = today.score >= 80 ? C.green : today.score >= 60 ? C.orange : C.red;
@@ -758,6 +849,7 @@ export default function App() {
   const waterH = history.filter(d => d.nutrition?.water > 0);
   const pace = today.sport.running?.time > 0 && today.sport.running?.distance > 0 ? (today.sport.running.time / today.sport.running.distance).toFixed(1) : null;
   const computedGoals = goals.map(g => ({ ...g, computedProgress: calcGoalProgress(g, history, totalPatrimoine) }));
+
   const simResult = useMemo(() => {
     let total = Number(sim.amount) || 0;
     const data = [{ year: 0, value: Math.round(total) }];
@@ -781,6 +873,12 @@ export default function App() {
     () => { if (nav === "track") setTrackTab(TRACK_ORDER[Math.max(trackIdx - 1, 0)]); else setNav(NAV_ORDER[Math.max(navIdx - 1, 0)]); }
   );
 
+  // Nutrition message intelligent
+  const protGoal = goals.find(g => g.sourceId === "proteines");
+  const protTarget = protGoal ? Number(protGoal.target) : 150;
+  const protCurrent = today.nutrition.protein || 0;
+  const protMsg = protCurrent > 0 ? getEncouragingMessage(protCurrent, protTarget, "proteines", new Date().getHours()) : null;
+
   const STAT_CARDS = [
     { label: "Sommeil", value: today.sleep.duration ? `${today.sleep.duration}h` : "—", icon: "sleep", color: C.purple },
     { label: "Sport", value: today.sport.isRest ? "Repos" : today.sport.duration ? `${today.sport.duration}m` : "—", icon: "sport", color: C.red },
@@ -790,31 +888,15 @@ export default function App() {
     { label: "Humeur", value: today.mind.mood ? `${today.mind.mood}/5` : "—", icon: "mood", color: C.green },
   ];
 
-  // Drag helpers for goals and patrimoine
-  const makeDragHandleProps = (idx) => ({
-    onPointerDown: (e) => {
-      e.stopPropagation();
-      const timer = setTimeout(() => setDragEnabledIdx(idx), 350);
-      const cancel = () => { clearTimeout(timer); document.removeEventListener("pointerup", cancel); };
-      document.addEventListener("pointerup", cancel, { once: true });
-    },
-    style: { fontSize: 18, color: C.subtle, cursor: "grab", padding: "6px 8px", userSelect: "none", flexShrink: 0, touchAction: "none" }
-  });
-
-  if (onboarded === null) return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: 44, height: 44, border: `4px solid ${C.red}`, borderTopColor: "transparent", borderRadius: "50%" }}>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}div{animation:spin 0.8s linear infinite}`}</style>
-      </div>
-    </div>
-  );
-
+  if (onboarded === null) return <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ width: 44, height: 44, border: `4px solid ${C.red}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }}/><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
   if (!onboarded) return <Onboarding onComplete={handleOnboardingComplete} />;
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, color: C.text, maxWidth: 480, margin: "0 auto", paddingBottom: 80, position: "relative", overflow: "hidden" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');*{font-family:Inter,sans-serif!important;box-sizing:border-box}input,select,textarea{font-family:Inter,sans-serif!important}::-webkit-scrollbar{display:none}@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');*{font-family:Inter,sans-serif!important;box-sizing:border-box}input,select{font-family:Inter,sans-serif!important}::-webkit-scrollbar{display:none}`}</style>
       <BgDecor />
+
+      {editingGoal && <EditGoalModal goal={editingGoal} onSave={saveEditedGoal} onClose={() => setEditingGoal(null)} />}
 
       {/* HEADER */}
       <div style={{ padding: "16px 20px 14px", borderBottom: `1px solid ${C.border}`, background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.95) 100%)", backdropFilter: "blur(12px)", boxShadow: "0 2px 16px rgba(0,0,0,0.07)", position: "sticky", top: 0, zIndex: 10 }}>
@@ -831,8 +913,8 @@ export default function App() {
           </div>
           <ScoreRing score={today.score} delta={intel.scoreDelta} streak={streak} />
         </div>
-        {intel.alerts.length > 0 && <div style={{ marginTop: 10 }}><AlertBox type={intel.alerts[0].type} msg={intel.alerts[0].msg} /></div>}
-        {intel.alerts.length === 0 && intel.advice.length > 0 && <div style={{ marginTop: 10 }}><AdviceBox msg={intel.advice[0]} /></div>}
+        {intel.alerts.length > 0 && <div style={{ marginTop: 10 }}><MsgBox type={intel.alerts[0].type} msg={intel.alerts[0].msg} /></div>}
+        {intel.alerts.length === 0 && intel.advice.length > 0 && <div style={{ marginTop: 10 }}><MsgBox type="advice" msg={intel.advice[0]} /></div>}
       </div>
 
       <div style={{ padding: 16, position: "relative", zIndex: 1 }} {...swipeNav}>
@@ -860,14 +942,20 @@ export default function App() {
                 ))}
               </div>
 
-              {(intel.alerts.length > 1 || intel.patterns.length > 0 || intel.patrimoinePrediction || intel.todayPrediction) && (
-                <Card style={{ background: "linear-gradient(135deg, #fafafa, #f5f5f5)", borderLeft: `4px solid ${C.purple}` }}>
-                  <ST>Intelligence · Insights</ST>
-                  {intel.alerts.slice(1).map((a, i) => <AlertBox key={i} type={a.type} msg={a.msg} />)}
-                  {intel.advice.slice(1).map((a, i) => <AdviceBox key={i} msg={a} />)}
-                  {intel.patterns.map((p, i) => <InsightBox key={i} msg={p} />)}
-                  {intel.patrimoinePrediction && <InsightBox msg={intel.patrimoinePrediction} />}
-                  {intel.todayPrediction && <InsightBox msg={intel.todayPrediction} />}
+              {/* Intelligence temporelle */}
+              {temporalInsights.length > 0 && (
+                <Card style={{ borderLeft: `4px solid ${C.orange}` }}>
+                  <ST>Intelligence · Maintenant</ST>
+                  {temporalInsights.map((insight, i) => <MsgBox key={i} type={insight.type} msg={insight.msg} suggestions={insight.suggestions} />)}
+                </Card>
+              )}
+
+              {(intel.patterns.length > 0 || intel.patrimoinePrediction || intel.todayPrediction) && (
+                <Card style={{ borderLeft: `4px solid ${C.purple}` }}>
+                  <ST>Patterns & Prédictions</ST>
+                  {intel.patterns.map((p, i) => <MsgBox key={i} type="info" msg={p} />)}
+                  {intel.patrimoinePrediction && <MsgBox type="info" msg={intel.patrimoinePrediction} />}
+                  {intel.todayPrediction && <MsgBox type="info" msg={intel.todayPrediction} />}
                 </Card>
               )}
 
@@ -878,13 +966,12 @@ export default function App() {
                       <p style={{ margin: 0, fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: 1 }}>Semaine vs semaine précédente</p>
                       <p style={{ margin: "4px 0 0", fontSize: 26, fontWeight: 900, color: intel.scoreDelta >= 0 ? C.green : C.red }}>{intel.scoreDelta >= 0 ? `+${intel.scoreDelta}` : intel.scoreDelta} pts</p>
                     </div>
-                    <div style={{ fontSize: 40 }}>{intel.scoreDelta >= 10 ? "🚀" : intel.scoreDelta >= 0 ? "📈" : intel.scoreDelta >= -10 ? "📉" : "⚠️"}</div>
+                    <div style={{ fontSize: 40 }}>{intel.scoreDelta >= 10 ? "🚀" : intel.scoreDelta >= 0 ? "📈" : "📉"}</div>
                   </div>
                 </Card>
               )}
 
               <EvoChart data={history.slice(-30)} dataKey="score" color={C.red} label="Score global (30j)" unit="" />
-
               <Card>
                 <ST>Objectifs en cours</ST>
                 {computedGoals.slice(0, 4).map(g => (
@@ -894,13 +981,12 @@ export default function App() {
                       <span style={{ fontSize: 13, color: g.color, fontWeight: 800 }}>{g.computedProgress}%</span>
                     </div>
                     <div style={{ height: 8, background: C.surfaceAlt, borderRadius: 4, overflow: "hidden" }}>
-                      <div style={{ height: "100%", borderRadius: 4, background: `linear-gradient(90deg, ${g.color}, ${g.color}cc)`, width: `${g.computedProgress}%`, transition: "width 0.6s ease", boxShadow: `0 0 8px ${g.color}44` }} />
+                      <div style={{ height: "100%", borderRadius: 4, background: `linear-gradient(90deg, ${g.color}, ${g.color}cc)`, width: `${g.computedProgress}%`, transition: "width 0.6s ease" }} />
                     </div>
                   </div>
                 ))}
-                {computedGoals.length === 0 && <p style={{ fontSize: 12, color: C.muted }}>Aucun objectif → onglet Objectifs</p>}
+                {computedGoals.length === 0 && <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>Aucun objectif → onglet Objectifs</p>}
               </Card>
-
               <Card>
                 <ST>To-Do du jour</ST>
                 {todos.filter(t => t.date === today.date).slice(0, 5).map(t => (
@@ -938,7 +1024,7 @@ export default function App() {
                       <Field label="Réveil"><input type="time" value={today.sleep.wakeup} onChange={e => update("sleep", "wakeup", e.target.value)} style={inp} /></Field>
                     </div>
                     {today.sleep.duration > 0 && (
-                      <div style={{ textAlign: "center", padding: 16, background: today.sleep.duration >= 7.5 ? "rgba(22,163,74,0.06)" : today.sleep.duration >= 6.5 ? "rgba(234,88,12,0.06)" : "rgba(204,41,54,0.06)", borderRadius: 14, marginBottom: 14, border: `1px solid ${today.sleep.duration >= 7.5 ? C.green : today.sleep.duration >= 6.5 ? C.orange : C.red}33` }}>
+                      <div style={{ textAlign: "center", padding: 16, background: today.sleep.duration >= 7.5 ? "rgba(22,163,74,0.06)" : "rgba(204,41,54,0.06)", borderRadius: 14, marginBottom: 14, border: `1px solid ${today.sleep.duration >= 7.5 ? C.green : C.red}33` }}>
                         <span style={{ fontSize: 40, fontWeight: 900, color: today.sleep.duration >= 7.5 ? C.green : today.sleep.duration >= 6.5 ? C.orange : C.red }}>{today.sleep.duration}h</span>
                         <p style={{ margin: "4px 0 0", fontSize: 12, color: C.muted }}>{today.sleep.duration >= 7.5 ? "Optimal ✅" : today.sleep.duration >= 6.5 ? "Correct — vise 7h30+" : "Insuffisant ⚠️"}</p>
                       </div>
@@ -953,7 +1039,7 @@ export default function App() {
 
               {trackTab === "sport" && (
                 <div>
-                  {intel.todayRec === "rest" ? <AlertBox type="warning" msg={`💤 ${intel.consecutiveSport} jours consécutifs — repos recommandé.`} /> : intel.todayRec ? <AdviceBox msg={`🎯 Recommandation : ${intel.todayRec}`} /> : null}
+                  {intel.todayRec === "rest" ? <MsgBox type="warning" msg={`💤 ${intel.consecutiveSport} jours consécutifs — repos recommandé.`} /> : intel.todayRec ? <MsgBox type="advice" msg={`🎯 Recommandation : ${intel.todayRec}`} /> : null}
                   <EvoChart data={sportH.slice(-30)} dataKey="sport.duration" color={C.red} label="Durée des séances" unit="min" />
                   <Card>
                     <ST>Type de séance</ST>
@@ -981,7 +1067,7 @@ export default function App() {
                     <ST>Récupération musculaire</ST>
                     <Rating value={today.sport.recovery} onChange={v => update("sport", "recovery", v)} color={today.sport.recovery <= 2 ? C.red : today.sport.recovery <= 3 ? C.orange : C.green} />
                     <p style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>{["","Très douloureux 🔴 → Repos","Courbatures 🟠 → Légère","Correct 🟡 → Modéré","Bien 🟢 → Normal","Parfait 💪 → Intensif"][today.sport.recovery] || ""}</p>
-                    {today.sport.recovery > 0 && today.sport.recovery <= 2 && !today.sport.isRest && <AlertBox type="warning" msg="⚠️ Récupération insuffisante. Risque de blessure." />}
+                    {today.sport.recovery > 0 && today.sport.recovery <= 2 && !today.sport.isRest && <MsgBox type="warning" msg="⚠️ Récupération insuffisante. Risque de blessure." />}
                   </Card>
                   <Card>
                     <ST>Running 🏃</ST>
@@ -992,7 +1078,7 @@ export default function App() {
                           <Field label="Distance (km)"><input type="number" value={today.sport.running.distance} min={0} step={0.1} onChange={e => updateNested("sport", "running", "distance", +e.target.value)} style={inp} /></Field>
                           <Field label="Temps (min)"><input type="number" value={today.sport.running.time} min={0} onChange={e => updateNested("sport", "running", "time", +e.target.value)} style={inp} /></Field>
                         </div>
-                        {pace && <div style={{ textAlign: "center", background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 12, padding: 14 }}><span style={{ fontSize: 28, fontWeight: 900, color: C.blue }}>{pace} min/km</span><p style={{ margin: "4px 0 0", fontSize: 10, color: C.muted }}>Allure moyenne</p></div>}
+                        {pace && <div style={{ textAlign: "center", background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 12, padding: 14 }}><span style={{ fontSize: 28, fontWeight: 900, color: C.blue }}>{pace} min/km</span></div>}
                       </div>
                     )}
                     <EvoChart data={history.filter(d => d.sport?.running?.did && d.sport?.running?.distance > 0).slice(-20)} dataKey="sport.running.distance" color={C.blue} label="Distance running" unit="km" height={110} />
@@ -1009,8 +1095,8 @@ export default function App() {
                   <Card>
                     <ST>Photo de progression 📸</ST>
                     <input type="file" accept="image/*" ref={sportPhotoRef} style={{ display: "none" }} onChange={handleSportPhoto} />
-                    <button onClick={() => sportPhotoRef.current.click()} style={{ width: "100%", padding: 14, background: C.surfaceAlt, border: `2px dashed ${C.border}`, borderRadius: 12, cursor: "pointer", fontSize: 13, color: C.muted }}>📷 Importer une photo de progression</button>
-                    {today.sport.photoUrl && <img src={today.sport.photoUrl} alt="prog" style={{ width: "100%", borderRadius: 12, marginTop: 12, objectFit: "cover", maxHeight: 240, boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }} />}
+                    <button onClick={() => sportPhotoRef.current.click()} style={{ width: "100%", padding: 14, background: C.surfaceAlt, border: `2px dashed ${C.border}`, borderRadius: 12, cursor: "pointer", fontSize: 13, color: C.muted }}>📷 Importer une photo</button>
+                    {today.sport.photoUrl && <img src={today.sport.photoUrl} alt="prog" style={{ width: "100%", borderRadius: 12, marginTop: 12, objectFit: "cover", maxHeight: 240 }} />}
                   </Card>
                 </div>
               )}
@@ -1019,6 +1105,10 @@ export default function App() {
                 <div>
                   <EvoChart data={waterH.slice(-30)} dataKey="nutrition.water" color={C.blue} label="Hydratation" unit="L" />
                   <EvoChart data={history.filter(d => d.nutrition?.protein > 0).slice(-30)} dataKey="nutrition.protein" color={C.purple} label="Protéines" unit="g" />
+                  {/* Intelligence temporelle nutrition */}
+                  {temporalInsights.filter(i => i.msg.includes("prot") || i.msg.includes("repas") || i.msg.includes("💧")).map((ins, i) => (
+                    <MsgBox key={i} type={ins.type} msg={ins.msg} suggestions={ins.suggestions} />
+                  ))}
                   <Card>
                     <ST>Repas</ST>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
@@ -1030,9 +1120,20 @@ export default function App() {
                     <ST>Quantités</ST>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <Field label="Eau (L)"><input type="number" value={today.nutrition.water} min={0} max={5} step={0.25} onChange={e => update("nutrition", "water", +e.target.value)} style={inp} /></Field>
-                      <Field label="Protéines (g)"><input type="number" value={today.nutrition.protein} min={0} max={300} onChange={e => update("nutrition", "protein", +e.target.value)} style={inp} /></Field>
+                      <Field label={`Protéines (g) / ${protTarget}g`}><input type="number" value={today.nutrition.protein} min={0} max={300} onChange={e => update("nutrition", "protein", +e.target.value)} style={inp} /></Field>
                     </div>
-                    {today.nutrition.protein > 0 && today.nutrition.protein < 120 && <div style={{ marginTop: 10 }}><AlertBox type="warning" msg={`⚠️ ${today.nutrition.protein}g seulement. Objectif : 150g+.`} /></div>}
+                    {protMsg && <div style={{ marginTop: 12 }}><MsgBox type={protMsg.type} msg={protMsg.msg} /></div>}
+                    {/* Barre de progression protéines */}
+                    {protCurrent > 0 && (
+                      <div style={{ marginTop: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 11, color: C.muted }}>
+                          <span>Protéines</span><span style={{ fontWeight: 700, color: protCurrent >= protTarget ? C.green : C.orange }}>{protCurrent}/{protTarget}g</span>
+                        </div>
+                        <div style={{ height: 8, background: C.surfaceAlt, borderRadius: 4, overflow: "hidden" }}>
+                          <div style={{ height: "100%", borderRadius: 4, background: protCurrent >= protTarget ? `linear-gradient(90deg, ${C.green}, #128a3a)` : `linear-gradient(90deg, ${C.purple}, #5b21b6)`, width: `${Math.min(100, (protCurrent / protTarget) * 100)}%`, transition: "width 0.4s" }} />
+                        </div>
+                      </div>
+                    )}
                   </Card>
                 </div>
               )}
@@ -1057,7 +1158,7 @@ export default function App() {
               {trackTab === "work" && (
                 <div>
                   <EvoChart data={history.filter(d => d.work?.focus > 0).slice(-30)} dataKey="work.focus" color={C.orange} label="Niveau de focus" unit="/5" />
-                  {intel.avgScreen > 4 && <AlertBox type="warning" msg={`📱 ${Math.round(intel.avgScreen)}h d'écran/jour — sommeil dégradé.`} />}
+                  {intel.avgScreen > 4 && <MsgBox type="warning" msg={`📱 ${Math.round(intel.avgScreen)}h d'écran/jour — sommeil et focus dégradés.`} />}
                   <Card>
                     <ST>Focus & Productivité</ST>
                     <Rating value={today.work.focus} onChange={v => update("work", "focus", v)} />
@@ -1083,8 +1184,8 @@ export default function App() {
                     <ST>Temps d'écran</ST>
                     <Field label="Heures aujourd'hui"><input type="number" value={today.work.screenTime} min={0} max={24} step={0.5} onChange={e => update("work", "screenTime", +e.target.value)} style={inp} /></Field>
                     {today.work.screenTime > 0 && (
-                      <div style={{ marginTop: 10, padding: 12, background: today.work.screenTime <= 3 ? "rgba(22,163,74,0.06)" : today.work.screenTime <= 5 ? "rgba(234,88,12,0.06)" : "rgba(204,41,54,0.06)", border: `1px solid ${today.work.screenTime <= 3 ? C.green : today.work.screenTime <= 5 ? C.orange : C.red}33`, borderRadius: 10, fontSize: 12, color: today.work.screenTime <= 3 ? C.green : today.work.screenTime <= 5 ? C.orange : C.red }}>
-                        {today.work.screenTime <= 3 ? "✅ Excellent — focus et sommeil préservés" : today.work.screenTime <= 5 ? "⚠️ Limite — impact sur sommeil" : "🚨 Trop élevé — mélatonine perturbée"}
+                      <div style={{ marginTop: 10, padding: 12, background: today.work.screenTime <= 3 ? "rgba(22,163,74,0.06)" : "rgba(204,41,54,0.06)", border: `1px solid ${today.work.screenTime <= 3 ? C.green : C.red}33`, borderRadius: 10, fontSize: 12, color: today.work.screenTime <= 3 ? C.green : C.red }}>
+                        {today.work.screenTime <= 3 ? "✅ Excellent — focus préservé" : today.work.screenTime <= 5 ? "⚠️ Limite" : "🚨 Trop élevé — mélatonine perturbée"}
                       </div>
                     )}
                     <EvoChart data={screenH.slice(-30)} dataKey="work.screenTime" color={C.red} label="Temps d'écran" unit="h" height={100} />
@@ -1112,13 +1213,13 @@ export default function App() {
                           <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, padding: "10px 12px", background: t.done ? C.surfaceAlt : C.surface, borderRadius: 10, border: `1px solid ${C.border}` }}>
                             <span onClick={() => toggleTodo(t.id)} style={{ fontSize: 18, cursor: "pointer", flexShrink: 0 }}>{t.done ? "✅" : "⬜"}</span>
                             <span style={{ fontSize: 13, color: t.done ? C.muted : C.text, textDecoration: t.done ? "line-through" : "none", flex: 1 }}>{t.text}</span>
-                            <span onClick={() => deleteTodo(t.id)} style={{ fontSize: 12, color: C.subtle, cursor: "pointer", padding: "2px 6px" }}>✕</span>
+                            <span onClick={() => deleteTodo(t.id)} style={{ fontSize: 12, color: C.subtle, cursor: "pointer" }}>✕</span>
                           </div>
                         ))}
                       </Card>
                     );
                   })}
-                  {!todos.length && <Card><p style={{ color: C.muted, fontSize: 13, textAlign: "center", margin: 0 }}>Aucune tâche pour l'instant !</p></Card>}
+                  {!todos.length && <Card><p style={{ color: C.muted, fontSize: 13, textAlign: "center", margin: 0 }}>Aucune tâche !</p></Card>}
                 </div>
               )}
 
@@ -1129,7 +1230,7 @@ export default function App() {
                     <ST>Humeur du jour</ST>
                     <Rating value={today.mind.mood} onChange={v => update("mind", "mood", v)} color={today.mind.mood >= 4 ? C.green : today.mind.mood >= 3 ? C.orange : C.red} />
                     <p style={{ fontSize: 12, color: C.muted, marginTop: 6, marginBottom: 14 }}>{["","Difficile 😔","Moyen 😐","Correct 🙂","Bien 😊","Excellent 🔥"][today.mind.mood] || ""}</p>
-                    {today.mind.mood > 0 && today.mind.mood <= 2 && <AlertBox type="warning" msg="Moral bas — 5min cohérence cardiaque." />}
+                    {today.mind.mood > 0 && today.mind.mood <= 2 && <MsgBox type="warning" msg="Moral bas — 5min cohérence cardiaque maintenant." />}
                     <ST>Développement</ST>
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       <Field label="Lecture (pages)"><input type="number" value={today.mind.reading} min={0} max={300} onChange={e => update("mind", "reading", +e.target.value)} style={inp} /></Field>
@@ -1156,7 +1257,6 @@ export default function App() {
                 <p style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", margin: 0 }}>{new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p>
                 {intel.patrimoinePrediction && <div style={{ marginTop: 12, background: "rgba(255,255,255,0.12)", borderRadius: 10, padding: "8px 12px", fontSize: 11, color: "rgba(255,255,255,0.9)" }}>{intel.patrimoinePrediction}</div>}
               </Card>
-
               {patrimoine.some(p => p.amount > 0) && (
                 <Card>
                   <ST>Répartition</ST>
@@ -1178,41 +1278,41 @@ export default function App() {
                   </div>
                 </Card>
               )}
-
               <Card>
                 <ST>Mes poches d'investissement</ST>
                 {patrimoine.map((p, idx) => (
-                  <div key={p.id}
-                    draggable={dragEnabledIdx === idx}
-                    onDragStart={e => { if (dragEnabledIdx !== idx) { e.preventDefault(); return; } }}
-                    onDragOver={e => e.preventDefault()}
-                    onDrop={e => { e.preventDefault(); setDragEnabledIdx(null); }}
-                    style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, padding: "12px 14px", background: C.surfaceAlt, borderRadius: 14, borderLeft: `4px solid ${p.color}`, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-                    <span {...makeDragHandleProps(idx)}>⠿</span>
+                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, padding: "12px 14px", background: C.surfaceAlt, borderRadius: 14, borderLeft: `4px solid ${p.color}` }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <button onClick={() => movePoche(idx, -1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", color: C.muted, lineHeight: 1 }}>{Ico.up(C.muted, 14)}</button>
+                      <button onClick={() => movePoche(idx, 1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", color: C.muted, lineHeight: 1 }}>{Ico.down(C.muted, 14)}</button>
+                    </div>
                     <div style={{ flex: 1 }}>
                       {renamingPoche === p.id ? (
                         <input autoFocus value={p.name} onChange={e => updatePoche(p.id, "name", e.target.value)} onBlur={() => setRenamingPoche(null)} onKeyDown={e => e.key === "Enter" && setRenamingPoche(null)} style={{ ...inp, padding: "4px 8px", fontSize: 13, fontWeight: 600 }} />
-                      ) : <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{p.name}</p>}
+                      ) : <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>{p.name}</p>}
                       <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginTop: 3 }}>
                         <input type="number" value={p.amount} onChange={e => updatePoche(p.id, "amount", +e.target.value)} style={{ background: "transparent", border: "none", outline: "none", fontSize: 20, fontWeight: 900, color: p.color, width: 140 }} />
                         <span style={{ fontSize: 12, color: C.muted }}>€</span>
                       </div>
                     </div>
-                    <DotsMenu color={p.color} onRename={() => setRenamingPoche(p.id)} onColor={col => updatePoche(p.id, "color", col)} onDelete={() => deletePoche(p.id)} />
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button onClick={() => setRenamingPoche(p.id)} style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 8px", cursor: "pointer" }}>{Ico.edit(C.muted, 14)}</button>
+                      <input type="color" value={p.color} onChange={e => updatePoche(p.id, "color", e.target.value)} style={{ width: 32, height: 32, borderRadius: 8, border: "none", cursor: "pointer" }} />
+                      <button onClick={() => deletePoche(p.id)} style={{ background: "rgba(204,41,54,0.08)", border: `1px solid ${C.red}33`, borderRadius: 8, padding: "6px 8px", cursor: "pointer" }}>{Ico.trash(C.red, 14)}</button>
+                    </div>
                   </div>
                 ))}
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    <input value={newPoche.name} onChange={e => setNewPoche(p => ({ ...p, name: e.target.value }))} placeholder="Nom (ex: Livret A)" style={inp} />
+                    <input value={newPoche.name} onChange={e => setNewPoche(p => ({ ...p, name: e.target.value }))} placeholder="Nom" style={inp} />
                     <input type="number" value={newPoche.amount} onChange={e => setNewPoche(p => ({ ...p, amount: +e.target.value }))} placeholder="Montant €" style={inp} />
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <input type="color" value={newPoche.color} onChange={e => setNewPoche(p => ({ ...p, color: e.target.value }))} style={{ width: 42, height: 42, borderRadius: 10, border: "none", cursor: "pointer" }} />
-                    <button onClick={addPoche} style={{ flex: 1, padding: "12px", background: `linear-gradient(135deg, ${C.red}, #a01e28)`, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer", fontSize: 13, boxShadow: "0 4px 12px rgba(204,41,54,0.25)" }}>+ Ajouter une poche</button>
+                    <button onClick={addPoche} style={{ flex: 1, padding: "12px", background: `linear-gradient(135deg, ${C.red}, #a01e28)`, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer", fontSize: 13 }}>+ Ajouter une poche</button>
                   </div>
                 </div>
               </Card>
-
               <Card>
                 <ST>Flux du jour</ST>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
@@ -1222,9 +1322,8 @@ export default function App() {
                 <Field label="Investi (€)"><input type="number" value={today.money.invested} min={0} onChange={e => update("money", "invested", +e.target.value)} style={{ ...inp, marginBottom: 10 }} /></Field>
                 <Field label="Note"><input type="text" placeholder="Ex: DCA ETF World..." value={today.money.note} onChange={e => update("money", "note", e.target.value)} style={inp} /></Field>
               </Card>
-
               <Card>
-                <ST>Simulateur d'investissement 📈</ST>
+                <ST>Simulateur 📈</ST>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
                   <Field label="Capital (€)"><input type="number" value={sim.amount} onChange={e => setSim(s => ({ ...s, amount: +e.target.value }))} style={inp} /></Field>
                   <Field label="Versement/mois (€)"><input type="number" value={sim.monthly} onChange={e => setSim(s => ({ ...s, monthly: +e.target.value }))} style={inp} /></Field>
@@ -1234,7 +1333,6 @@ export default function App() {
                 <div style={{ textAlign: "center", padding: 18, background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)", borderRadius: 14, marginBottom: 14 }}>
                   <p style={{ fontSize: 10, color: C.muted, margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 1 }}>Dans {sim.years} ans</p>
                   <p style={{ fontSize: 36, fontWeight: 900, color: C.green, margin: 0 }}>{simResult[simResult.length-1]?.value.toLocaleString("fr-FR")} €</p>
-                  <p style={{ fontSize: 11, color: C.muted, margin: "4px 0 0" }}>à {sim.rate}%/an · {sim.monthly}€/mois</p>
                 </div>
                 <ResponsiveContainer width="100%" height={140}>
                   <AreaChart data={simResult}>
@@ -1243,7 +1341,7 @@ export default function App() {
                     <XAxis dataKey="year" tick={{ fill: C.muted, fontSize: 9 }} tickFormatter={y => `${y}a`} axisLine={false} tickLine={false}/>
                     <YAxis tick={{ fill: C.muted, fontSize: 9 }} width={40} tickFormatter={v => `${Math.round(v/1000)}k`} axisLine={false} tickLine={false}/>
                     <Tooltip contentStyle={{ background: C.surface, border: `1px solid ${C.green}`, borderRadius: 10, fontSize: 11 }} formatter={v => [`${v.toLocaleString("fr-FR")}€`, "Valeur"]}/>
-                    <Area type="monotone" dataKey="value" stroke={C.green} strokeWidth={2.5} fill="url(#simGrad)" dot={false} activeDot={{ r: 5, fill: C.green, stroke: "#fff", strokeWidth: 2 }}/>
+                    <Area type="monotone" dataKey="value" stroke={C.green} strokeWidth={2.5} fill="url(#simGrad)" dot={false}/>
                   </AreaChart>
                 </ResponsiveContainer>
               </Card>
@@ -1279,7 +1377,7 @@ export default function App() {
                     <label style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: 1.5, flexShrink: 0 }}>Couleur</label>
                     <input type="color" value={newGoal.color} onChange={e => setNewGoal(p => ({ ...p, color: e.target.value }))} style={{ width: 42, height: 42, borderRadius: 10, border: `2px solid ${C.border}`, cursor: "pointer", padding: 2 }} />
                   </div>
-                  <button onClick={addGoal} style={{ background: `linear-gradient(135deg, ${newGoal.color}, ${newGoal.color}bb)`, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontWeight: 800, cursor: "pointer", fontSize: 14, boxShadow: `0 6px 20px ${newGoal.color}44` }}>+ Ajouter l'objectif</button>
+                  <button onClick={addGoal} style={{ background: `linear-gradient(135deg, ${newGoal.color}, ${newGoal.color}bb)`, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontWeight: 800, cursor: "pointer", fontSize: 14 }}>+ Ajouter l'objectif</button>
                 </div>
               </Card>
 
@@ -1287,58 +1385,41 @@ export default function App() {
                 const src = DATA_SOURCES.find(s => s.id === g.sourceId);
                 const daysLeft = g.endDate ? Math.max(0, Math.round((new Date(g.endDate) - new Date()) / 86400000)) : null;
                 return (
-                  <Card key={g.id}
-                    draggable={dragEnabledIdx === idx}
-                    onDragStart={() => {}}
-                    onDragOver={e => e.preventDefault()}
-                    onDrop={e => {
-                      e.preventDefault();
-                      if (dragEnabledIdx === null || dragEnabledIdx === idx) { setDragEnabledIdx(null); return; }
-                      const n = [...goals]; const [r] = n.splice(dragEnabledIdx, 1); n.splice(idx, 0, r);
-                      setGoals(n); saveAll(history, todos, n, patrimoine, profile); setDragEnabledIdx(null);
-                    }}
-                    style={{ opacity: dragEnabledIdx === idx ? 0.5 : 1, borderLeft: `4px solid ${g.color}`, boxShadow: `0 2px 16px rgba(0,0,0,0.06)` }}>
+                  <Card key={g.id} style={{ borderLeft: `4px solid ${g.color}`, boxShadow: "0 2px 16px rgba(0,0,0,0.06)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-                        <span {...makeDragHandleProps(idx)}>⠿</span>
+                        {/* Flèches ↑↓ */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
+                          <button onClick={() => moveGoal(idx, -1)} disabled={idx === 0} style={{ background: "none", border: "none", cursor: idx === 0 ? "default" : "pointer", padding: "3px 6px", color: idx === 0 ? C.subtle : C.muted, lineHeight: 1, borderRadius: 6 }}>{Ico.up(idx === 0 ? C.subtle : C.muted, 15)}</button>
+                          <button onClick={() => moveGoal(idx, 1)} disabled={idx === computedGoals.length - 1} style={{ background: "none", border: "none", cursor: idx === computedGoals.length - 1 ? "default" : "pointer", padding: "3px 6px", color: idx === computedGoals.length - 1 ? C.subtle : C.muted, lineHeight: 1, borderRadius: 6 }}>{Ico.down(idx === computedGoals.length - 1 ? C.subtle : C.muted, 15)}</button>
+                        </div>
                         <div style={{ flex: 1 }}>
-                          {renamingGoal === g.id ? (
-                            <input autoFocus value={g.label} onChange={e => updateGoalField(g.id, "label", e.target.value)} onBlur={() => setRenamingGoal(null)} onKeyDown={e => e.key === "Enter" && setRenamingGoal(null)} style={{ ...inp, padding: "4px 8px", fontSize: 14, fontWeight: 700 }} />
-                          ) : <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>{g.label}</p>}
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>{g.label}</p>
                           <div style={{ display: "flex", gap: 6, marginTop: 5, flexWrap: "wrap" }}>
                             <span style={{ fontSize: 10, color: g.color, fontWeight: 700, background: `${g.color}18`, borderRadius: 6, padding: "2px 8px" }}>{g.category}</span>
-                            {src && src.id !== "manual" && <span style={{ fontSize: 10, color: C.muted, background: C.surfaceAlt, borderRadius: 6, padding: "2px 8px" }}>🔗 {src.label}</span>}
+                            {src && src.id !== "manual" && <span style={{ fontSize: 10, color: C.muted, background: C.surfaceAlt, borderRadius: 6, padding: "2px 8px" }}>🔗 {src.label} · cible: {Number(g.target).toLocaleString()}{src.unit}</span>}
                             {daysLeft !== null && <span style={{ fontSize: 10, color: daysLeft < 30 ? C.red : C.muted, background: C.surfaceAlt, borderRadius: 6, padding: "2px 8px" }}>⏱ {daysLeft}j</span>}
                           </div>
                         </div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                         <span style={{ fontSize: 20, fontWeight: 900, color: g.computedProgress >= 100 ? C.green : g.color }}>{g.computedProgress}%</span>
-                        <DotsMenu color={g.color} onRename={() => setRenamingGoal(g.id)} onColor={col => updateGoalField(g.id, "color", col)} onDelete={() => deleteGoal(g.id)} />
+                        <button onClick={() => setEditingGoal(g)} style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 8px", cursor: "pointer" }}>{Ico.edit(C.muted, 14)}</button>
+                        <button onClick={() => deleteGoal(g.id)} style={{ background: "rgba(204,41,54,0.08)", border: `1px solid ${C.red}33`, borderRadius: 8, padding: "6px 8px", cursor: "pointer" }}>{Ico.trash(C.red, 14)}</button>
                       </div>
                     </div>
                     <div style={{ height: 10, background: C.surfaceAlt, borderRadius: 5, marginBottom: 4, overflow: "hidden" }}>
-                      <div style={{ height: "100%", borderRadius: 5, background: g.computedProgress >= 100 ? `linear-gradient(90deg, ${C.green}, #128a3a)` : `linear-gradient(90deg, ${g.color}, ${g.color}bb)`, width: `${Math.min(100, g.computedProgress)}%`, transition: "width 0.6s ease", boxShadow: `0 0 8px ${g.color}44` }} />
+                      <div style={{ height: "100%", borderRadius: 5, background: g.computedProgress >= 100 ? `linear-gradient(90deg, ${C.green}, #128a3a)` : `linear-gradient(90deg, ${g.color}, ${g.color}bb)`, width: `${Math.min(100, g.computedProgress)}%`, transition: "width 0.6s ease" }} />
                     </div>
                     {g.sourceId === "manual" && (
-                      <div
-                        onPointerDown={e => e.stopPropagation()}
-                        onTouchStart={e => e.stopPropagation()}
-                        style={{ marginTop: 10, paddingTop: 4 }}>
-                        <input type="range" min={0} max={100} value={g.computedProgress}
-                          onChange={e => updateGoalField(g.id, "manualProgress", +e.target.value)}
-                          onPointerDown={e => e.stopPropagation()}
-                          onTouchStart={e => e.stopPropagation()}
-                          style={{ width: "100%", accentColor: g.color, cursor: "pointer" }} />
-                      </div>
-                    )}
-                    {g.sourceId !== "manual" && g.target && (
-                      <p style={{ fontSize: 10, color: C.muted, margin: "6px 0 0" }}>Cible : {Number(g.target).toLocaleString("fr-FR")}{src?.unit}{g.endDate ? ` · Échéance : ${new Date(g.endDate).toLocaleDateString("fr-FR")}` : ""}</p>
+                      <input type="range" min={0} max={100} value={g.computedProgress}
+                        onChange={e => updateGoalField(g.id, "manualProgress", +e.target.value)}
+                        style={{ width: "100%", accentColor: g.color, cursor: "pointer", marginTop: 8 }} />
                     )}
                   </Card>
                 );
               })}
-              {computedGoals.length === 0 && <Card><p style={{ color: C.muted, fontSize: 13, textAlign: "center", margin: 0 }}>Aucun objectif. Crée-en un ci-dessus !</p></Card>}
+              {computedGoals.length === 0 && <Card><p style={{ color: C.muted, fontSize: 13, textAlign: "center", margin: 0 }}>Aucun objectif. Crée-en un !</p></Card>}
             </div>
           )}
 
@@ -1347,10 +1428,9 @@ export default function App() {
             <div>
               <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
                 {[["7","7j"],["30","30j"],["90","3 mois"],["365","1 an"]].map(([v, l]) => (
-                  <button key={v} onClick={() => setStatRange(v)} style={{ flex: 1, padding: "8px 4px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: statRange === v ? `linear-gradient(135deg, ${C.red}, #a01e28)` : C.surfaceAlt, color: statRange === v ? "#fff" : C.muted, boxShadow: statRange === v ? "0 4px 12px rgba(204,41,54,0.25)" : "none" }}>{l}</button>
+                  <button key={v} onClick={() => setStatRange(v)} style={{ flex: 1, padding: "8px 4px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: statRange === v ? `linear-gradient(135deg, ${C.red}, #a01e28)` : C.surfaceAlt, color: statRange === v ? "#fff" : C.muted }}>{l}</button>
                 ))}
               </div>
-
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                 {[
                   { label: "Jours trackés", value: history.length, color: C.red },
@@ -1360,32 +1440,27 @@ export default function App() {
                   { label: "Streak actuel", value: `${streak}j 🔥`, color: C.orange },
                   { label: "Objectifs actifs", value: goals.length, color: C.green },
                 ].map(item => (
-                  <Card key={item.label} style={{ textAlign: "center", padding: 16, marginBottom: 0, borderTop: `3px solid ${item.color}`, boxShadow: "0 4px 16px rgba(0,0,0,0.07)" }}>
+                  <Card key={item.label} style={{ textAlign: "center", padding: 16, marginBottom: 0, borderTop: `3px solid ${item.color}` }}>
                     <div style={{ fontSize: 20, fontWeight: 900, color: item.color }}>{item.value}</div>
                     <div style={{ fontSize: 9, color: C.muted, marginTop: 3, textTransform: "uppercase", letterSpacing: 0.5 }}>{item.label}</div>
                   </Card>
                 ))}
               </div>
-
-              {/* Calendrier heatmap */}
               <Card>
                 <ST>Calendrier · 84 derniers jours</ST>
                 <CalendarHeatmap history={history} />
               </Card>
-
               {intel.patterns.length > 0 && (
                 <Card style={{ borderLeft: `4px solid ${C.purple}` }}>
                   <ST>Patterns détectés</ST>
-                  {intel.patterns.map((p, i) => <InsightBox key={i} msg={p} />)}
+                  {intel.patterns.map((p, i) => <MsgBox key={i} type="info" msg={p} />)}
                 </Card>
               )}
-
               <EvoChart data={rangeH} dataKey="score" color={C.red} label="Score global" unit="" height={170} />
               <EvoChart data={sleepH.slice(-parseInt(statRange))} dataKey="sleep.duration" color={C.purple} label="Sommeil" unit="h" />
               <EvoChart data={sportH.slice(-parseInt(statRange))} dataKey="sport.duration" color={C.red} label="Sport" unit="min" />
               <EvoChart data={moodH.slice(-parseInt(statRange))} dataKey="mind.mood" color={C.purple} label="Humeur" unit="/5" />
               <EvoChart data={screenH.slice(-parseInt(statRange))} dataKey="work.screenTime" color={C.orange} label="Temps d'écran" unit="h" />
-
               <Card>
                 <ST>Progression objectifs</ST>
                 {computedGoals.map(g => (
@@ -1395,11 +1470,10 @@ export default function App() {
                       <span style={{ fontSize: 13, color: g.color, fontWeight: 800 }}>{g.computedProgress}%</span>
                     </div>
                     <div style={{ height: 8, background: C.surfaceAlt, borderRadius: 4, overflow: "hidden" }}>
-                      <div style={{ height: "100%", borderRadius: 4, background: `linear-gradient(90deg, ${g.color}, ${g.color}cc)`, width: `${g.computedProgress}%`, boxShadow: `0 0 8px ${g.color}33` }} />
+                      <div style={{ height: "100%", borderRadius: 4, background: `linear-gradient(90deg, ${g.color}, ${g.color}cc)`, width: `${g.computedProgress}%` }} />
                     </div>
                   </div>
                 ))}
-                {computedGoals.length === 0 && <p style={{ color: C.muted, fontSize: 12, margin: 0 }}>Aucun objectif créé.</p>}
               </Card>
             </div>
           )}
@@ -1410,14 +1484,13 @@ export default function App() {
               <Card accent style={{ textAlign: "center" }}>
                 <input type="file" accept="image/*" ref={photoRef} style={{ display: "none" }} onChange={handleProfilePhoto} />
                 <div onClick={() => photoRef.current.click()} style={{ cursor: "pointer", display: "inline-block", position: "relative", marginBottom: 12 }}>
-                  {profile.photo ? <img src={profile.photo} alt="profil" style={{ width: 100, height: 100, borderRadius: "50%", objectFit: "cover", border: "4px solid rgba(255,255,255,0.4)", boxShadow: "0 8px 24px rgba(0,0,0,0.2)" }} />
+                  {profile.photo ? <img src={profile.photo} alt="profil" style={{ width: 100, height: 100, borderRadius: "50%", objectFit: "cover", border: "4px solid rgba(255,255,255,0.4)" }} />
                     : <div style={{ width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 40, fontWeight: 900, margin: "0 auto" }}>{profile.name?.[0] || "K"}</div>}
                   <div style={{ position: "absolute", bottom: 4, right: 4, background: "rgba(255,255,255,0.9)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>📷</div>
                 </div>
                 <p style={{ fontSize: 22, fontWeight: 900, color: "#fff", margin: "0 0 2px" }}>{profile.name}</p>
                 {age !== null && <p style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", margin: 0 }}>{age} ans · Kojihsports</p>}
               </Card>
-
               <Card>
                 <ST>Informations</ST>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1431,9 +1504,8 @@ export default function App() {
                   )}
                 </div>
               </Card>
-
               <Card>
-                <ST>Résumé de performance</ST>
+                <ST>Résumé</ST>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   {[
                     { label: "Jours trackés", value: history.length },
@@ -1443,21 +1515,19 @@ export default function App() {
                     { label: "Patrimoine", value: `${(totalPatrimoine/1000).toFixed(1)}k€` },
                     { label: "Tâches faites", value: todos.filter(t => t.done).length },
                   ].map(item => (
-                    <div key={item.label} style={{ background: C.surfaceAlt, borderRadius: 14, padding: 14, textAlign: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+                    <div key={item.label} style={{ background: C.surfaceAlt, borderRadius: 14, padding: 14, textAlign: "center" }}>
                       <div style={{ fontSize: 20, fontWeight: 900, color: C.red }}>{item.value}</div>
                       <div style={{ fontSize: 10, color: C.muted, marginTop: 3, textTransform: "uppercase", letterSpacing: 0.5 }}>{item.label}</div>
                     </div>
                   ))}
                 </div>
               </Card>
-
               <Card accent>
                 <ST light>Vision</ST>
-                <p style={{ color: "#fff", fontSize: 17, fontWeight: 800, margin: "0 0 4px", lineHeight: 1.4 }}>100k€ net/an · {age && age < 30 ? `avant ${30 - age} ans` : "objectif 30 ans"}</p>
+                <p style={{ color: "#fff", fontSize: 17, fontWeight: 800, margin: "0 0 4px" }}>100k€ net/an · {age && age < 30 ? `avant ${30 - age} ans` : "objectif 30 ans"}</p>
                 <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, margin: 0 }}>Kojihsports · Angers · Sept. 2026</p>
               </Card>
-
-              <button onClick={() => { localStorage.removeItem("kojihlife_v8"); setOnboarded(false); }} style={{ width: "100%", padding: "12px", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer", fontSize: 13, color: C.muted, marginTop: 4 }}>
+              <button onClick={() => { localStorage.removeItem("kojihlife_v9"); setOnboarded(false); }} style={{ width: "100%", padding: "12px", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer", fontSize: 13, color: C.muted, marginTop: 4 }}>
                 Refaire l'onboarding
               </button>
             </div>
@@ -1471,7 +1541,7 @@ export default function App() {
         {NAV.map(n => {
           const active = nav === n.id;
           return (
-            <button key={n.id} onClick={() => setNav(n.id)} style={{ flex: 1, padding: "10px 4px 8px", border: "none", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, transition: "all 0.2s" }}>
+            <button key={n.id} onClick={() => setNav(n.id)} style={{ flex: 1, padding: "10px 4px 8px", border: "none", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
               <div style={{ width: 38, height: 38, borderRadius: 12, background: active ? C.black : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", boxShadow: active ? "0 4px 12px rgba(0,0,0,0.2)" : "none" }}>
                 {Ico[n.icon](active ? C.red : C.black, 21)}
               </div>
