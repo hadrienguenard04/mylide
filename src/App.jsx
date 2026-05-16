@@ -2,12 +2,21 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "./supabase";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 
-const C = {
+const LIGHT = {
   bg: "#f2f2f2", surface: "#ffffff", surfaceAlt: "#ebebeb", border: "#e0e0e0",
   red: "#CC2936", redLight: "rgba(204,41,54,0.08)", redBorder: "rgba(204,41,54,0.2)",
   black: "#111111", text: "#1a1a1a", muted: "#888888", subtle: "#cccccc",
   green: "#16a34a", orange: "#ea580c", purple: "#7c3aed", blue: "#2563eb",
 };
+
+const DARK = {
+  bg: "#0f0f0f", surface: "#1a1a1a", surfaceAlt: "#252525", border: "#333333",
+  red: "#CC2936", redLight: "rgba(204,41,54,0.15)", redBorder: "rgba(204,41,54,0.3)",
+  black: "#ffffff", text: "#f0f0f0", muted: "#888888", subtle: "#444444",
+  green: "#22c55e", orange: "#f97316", purple: "#a855f7", blue: "#3b82f6",
+};
+
+const C = LIGHT;
 
 const NAV_ORDER = ["today", "track", "money", "goals", "stats", "profile"];
 const TRACK_ORDER = ["sleep", "sport", "nutrition", "body", "work", "todo", "mind"];
@@ -738,6 +747,8 @@ const Onboarding = ({ onComplete }) => {
 // ── APP ────────────────────────────────────────────────────────────────────
 export default function App() {
   const [onboarded, setOnboarded] = useState(null);
+  const [darkMode, setDarkMode] = useState(false);
+const C = darkMode ? DARK : LIGHT;
   const [nav, setNav] = useState("today");
   const [trackTab, setTrackTab] = useState("sleep");
   const [history, setHistory] = useState([]);
@@ -1676,6 +1687,15 @@ export default function App() {
                 <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, margin: 0 }}>Kojihsports · Angers · Sept. 2026</p>
               </Card>
               <button onClick={() => { localStorage.removeItem("kojihlife_v9"); setOnboarded(false); }} style={{ width: "100%", padding: "12px", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer", fontSize: 13, color: C.muted, marginTop: 4 }}>
+                <div onClick={() => setDarkMode(d => !d)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", background: C.surfaceAlt, borderRadius: 14, marginBottom: 10, cursor: "pointer" }}>
+  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <span style={{ fontSize: 20 }}>{darkMode ? "☀️" : "🌙"}</span>
+    <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{darkMode ? "Mode clair" : "Mode sombre"}</span>
+  </div>
+  <div style={{ width: 44, height: 26, borderRadius: 13, background: darkMode ? C.red : C.subtle, position: "relative", transition: "background 0.2s" }}>
+    <div style={{ position: "absolute", top: 3, left: darkMode ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
+  </div>
+</div>
                 Refaire l'onboarding
               </button>
             </div>
