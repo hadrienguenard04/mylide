@@ -431,7 +431,7 @@ const CalendarHeatmap = ({ history }) => {
 };
 
 // ── COMPOSANTS ─────────────────────────────────────────────────────────────
-const inp = { background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 14px", color: C.text, fontSize: 14, outline: "none", width: "100%", boxSizing: "border-box" };
+const inp = { background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 14px", color: C.text, fontSize: 16, outline: "none", width: "100%", boxSizing: "border-box", WebkitAppearance: "none", appearance: "none" };
 
 const EvoChart = ({ data, dataKey, color, label, unit, height = 150 }) => {
   if (data.length < 2) return <div style={{ background: C.surfaceAlt, borderRadius: 14, padding: 14, textAlign: "center", marginBottom: 14 }}><p style={{ fontSize: 11, color: C.muted, margin: 0 }}>📈 Graphique disponible après 2+ jours</p></div>;
@@ -582,7 +582,7 @@ const useSwipe = (onLeft, onRight) => {
       if (sx.current === null) return;
       const dx = e.changedTouches[0].clientX - sx.current;
       const dy = Math.abs(e.changedTouches[0].clientY - sy.current);
-      if (Math.abs(dx) > 60 && dy < 80) { if (dx < 0) onLeft(); else onRight(); }
+      if (Math.abs(dx) > 120 && dy < 80) { if (dx < 0) onLeft(); else onRight(); }
       sx.current = null;
     },
   };
