@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { supabase } from "./supabase";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 
 const C = {
@@ -756,24 +757,69 @@ export default function App() {
   const photoRef = useRef(); const sportPhotoRef = useRef();
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("kojihlife_v9");
-      if (raw) {
-        const data = JSON.parse(raw);
-        setOnboarded(true); setHistory(data.history || []); setTodos(data.todos || []);
-        setGoals(data.goals || []); setPatrimoine(data.patrimoine || defaultPatrimoine());
-        if (data.profile) setProfile(data.profile);
-        const entry = (data.history || []).find(d => d.date === new Date().toISOString().split("T")[0]);
-        if (entry) setToday(entry);
-      } else setOnboarded(false);
-    } catch (e) { setOnboarded(false); }
+    const loadData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setOnboarded(false); return; }
+
+      // Charger profil
+      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      if (profile) { setProfile({ name: profile.name || "", dob: profile.dob || "", photo: profile.photo || "" }); setOnboarded(true); }
+      else { setOnboarded(false); return; }
+
+      // Charger historique
+      const { data: logs } = await supabase.from("daily_logs").select("*").eq("user_id", user.id).order("date");
+      if (logs) {
+        const history = logs.map(l => ({ ...l.data, date: l.date, score: l.score }));
+        setHistory(history);
+        const todayEntry = history.find(d => d.date === new Date().toISOString().split("T")[0]);
+        if (todayEntry) setToday(todayEntry);
+      }
+
+      // Charger objectifs
+      const { data: goalsData } = await supabase.from("goals").select("*").eq("user_id", user.id);
+      if (goalsData?.length) setGoals(goalsData.map(g => g.data));
+
+      // Charger patrimoine
+      const { data: patrimoineData } = await supabase.from("patrimoine").select("*").eq("user_id", user.id).single();
+      if (patrimoineData) setPatrimoine(patrimoineData.data);
+
+      // Charger todos
+      const { data: todosData } = await supabase.from("todos").select("*").eq("user_id", user.id);
+      if (todosData?.length) setTodos(todosData.map(t => t.data));
+    };
+    loadData();
   }, []);
 
-  const saveAll = useCallback((h, t, g, p, pr) => {
-    localStorage.setItem("kojihlife_v9", JSON.stringify({ history: h, todos: t, goals: g, patrimoine: p, profile: pr }));
+  const saveAll = useCallback(async (h, t, g, p, pr) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Sauvegarder profil
+    await supabase.from("profiles").upsert({ id: user.id, name: pr.name, dob: pr.dob, photo: pr.photo });
+
+    // Sauvegarder historique du jour
+    const today = new Date().toISOString().split("T")[0];
+    const todayData = h.find(d => d.date === today);
+    if (todayData) {
+      await supabase.from("daily_logs").upsert({ user_id: user.id, date: today, data: todayData, score: todayData.score || 0 });
+    }
+
+    // Sauvegarder objectifs
+    await supabase.from("goals").delete().eq("user_id", user.id);
+    if (g.length) await supabase.from("goals").insert(g.map(goal => ({ user_id: user.id, data: goal })));
+
+    // Sauvegarder patrimoine
+    await supabase.from("patrimoine").upsert({ user_id: user.id, data: p });
+
+    // Sauvegarder todos
+    await supabase.from("todos").delete().eq("user_id", user.id);
+    if (t.length) await supabase.from("todos").insert(t.map(todo => ({ user_id: user.id, data: todo })));
   }, []);
 
-  const handleOnboardingComplete = (profileData, createdGoals) => {
+  const handleOnboardingComplete = async (profileData, createdGoals) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("profiles").upsert({ id: user.id, name: profileData.name, dob: profileData.dob, photo: profileData.photo });
     setProfile(profileData); setGoals(createdGoals); setOnboarded(true);
     saveAll([], [], createdGoals, defaultPatrimoine(), profileData);
   };
