@@ -16,7 +16,6 @@ const DARK = {
   green: "#22c55e", orange: "#f97316", purple: "#a855f7", blue: "#3b82f6",
 };
 
-const C = LIGHT;
 
 const NAV_ORDER = ["today", "track", "money", "goals", "stats", "profile"];
 const TRACK_ORDER = ["sleep", "sport", "nutrition", "body", "work", "todo", "mind"];
@@ -1708,7 +1707,7 @@ const C = darkMode ? DARK : LIGHT;
       </div>
 
       {/* BOTTOM NAV */}
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "rgba(255,255,255,0.97)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20, paddingBottom: "env(safe-area-inset-bottom)", boxShadow: "0 -4px 20px rgba(0,0,0,0.06)" }}>
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: darkMode ? "rgba(15,15,15,0.97)" : "rgba(255,255,255,0.97)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20, paddingBottom: "env(safe-area-inset-bottom)", boxShadow: "0 -4px 20px rgba(0,0,0,0.06)" }}>
         {NAV.map(n => {
           const active = nav === n.id;
           return (
