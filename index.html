@@ -3,11 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#CC2936" />
     <title>KojihTrack</title>
+    <style>
+      * { -webkit-tap-highlight-color: transparent; }
+      input, select, textarea { font-size: 16px !important; transform: translateZ(0); }
+      body { overflow: hidden; position: fixed; width: 100%; }
+      #root { overflow-y: auto; height: 100dvh; width: 100%; -webkit-overflow-scrolling: touch; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

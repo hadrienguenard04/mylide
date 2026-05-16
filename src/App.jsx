@@ -582,7 +582,7 @@ const useSwipe = (onLeft, onRight) => {
       if (sx.current === null) return;
       const dx = e.changedTouches[0].clientX - sx.current;
       const dy = Math.abs(e.changedTouches[0].clientY - sy.current);
-      if (Math.abs(dx) > 120 && dy < 80) { if (dx < 0) onLeft(); else onRight(); }
+      if (Math.abs(dx) > 150 && dy < 80) { if (dx < 0) onLeft(); else onRight(); }
       sx.current = null;
     },
   };
@@ -938,7 +938,7 @@ export default function App() {
   if (!onboarded) return <Onboarding onComplete={handleOnboardingComplete} />;
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, color: C.text, maxWidth: 480, margin: "0 auto", paddingBottom: 80, position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, color: C.text, maxWidth: 480, margin: "0 auto", paddingBottom: 80, position: "relative", overflow: "hidden", touchAction: "pan-y", touchAction: "pan-y" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');*{font-family:Inter,sans-serif!important;box-sizing:border-box}input,select{font-family:Inter,sans-serif!important}::-webkit-scrollbar{display:none}`}</style>
       <BgDecor />
 
