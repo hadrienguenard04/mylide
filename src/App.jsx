@@ -1686,18 +1686,21 @@ const C = darkMode ? DARK : LIGHT;
                 <p style={{ color: "#fff", fontSize: 17, fontWeight: 800, margin: "0 0 4px" }}>100k€ net/an · {age && age < 30 ? `avant ${30 - age} ans` : "objectif 30 ans"}</p>
                 <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, margin: 0 }}>Kojihsports · Angers · Sept. 2026</p>
               </Card>
-              <button onClick={() => { localStorage.removeItem("kojihlife_v9"); setOnboarded(false); }} style={{ width: "100%", padding: "12px", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer", fontSize: 13, color: C.muted, marginTop: 4 }}>
-                <div onClick={() => setDarkMode(d => !d)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", background: C.surfaceAlt, borderRadius: 14, marginBottom: 10, cursor: "pointer" }}>
-  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-    <span style={{ fontSize: 20 }}>{darkMode ? "☀️" : "🌙"}</span>
-    <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{darkMode ? "Mode clair" : "Mode sombre"}</span>
+              <Card>
+  <ST>Paramètres</ST>
+  <div onClick={() => setDarkMode(d => !d)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", background: C.surfaceAlt, borderRadius: 14, marginBottom: 10, cursor: "pointer" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <span style={{ fontSize: 20 }}>{darkMode ? "☀️" : "🌙"}</span>
+      <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{darkMode ? "Mode clair" : "Mode sombre"}</span>
+    </div>
+    <div style={{ width: 44, height: 26, borderRadius: 13, background: darkMode ? C.red : C.subtle, position: "relative", transition: "background 0.2s" }}>
+      <div style={{ position: "absolute", top: 3, left: darkMode ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
+    </div>
   </div>
-  <div style={{ width: 44, height: 26, borderRadius: 13, background: darkMode ? C.red : C.subtle, position: "relative", transition: "background 0.2s" }}>
-    <div style={{ position: "absolute", top: 3, left: darkMode ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
-  </div>
-</div>
-                Refaire l'onboarding
-              </button>
+  <button onClick={() => { localStorage.removeItem("kojihlife_v9"); setOnboarded(false); }} style={{ width: "100%", padding: "12px", background: "rgba(204,41,54,0.08)", border: `1px solid ${C.red}33`, borderRadius: 12, cursor: "pointer", fontSize: 13, color: C.red, fontWeight: 600 }}>
+    🔄 Refaire l'onboarding
+  </button>
+</Card>
             </div>
           )}
 
