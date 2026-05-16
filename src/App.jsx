@@ -46,7 +46,7 @@ const getMealSuggestions = (proteinNeeded, hour) => {
       name: "Collation protéinée",
       items: ["200g fromage blanc 0% (16g prot)", "2 œufs entiers (12g prot)"],
       totalProtein: 28,
-      timing: hour >= 21 ? "⚠️ Léger — dernier repas avant 23h" : "Parfait pour combler",
+      timing: hour >= 21 ? "⚠️ Léger  dernier repas avant 23h" : "Parfait pour combler",
     });
   }
   if (proteinNeeded >= 20) {
@@ -78,18 +78,18 @@ function getTemporalIntelligence(today, history, goals) {
   if (protCurrent > 0 || protTarget > 0) {
     const pct = Math.round((protCurrent / protTarget) * 100);
     if (pct >= 100) {
-      insights.push({ type: "success", msg: `🏆 Objectif protéines atteint ! ${protCurrent}g — excellent travail !`, priority: 1 });
+      insights.push({ type: "success", msg: `🏆 Objectif protéines atteint ! ${protCurrent}g  excellent travail !`, priority: 1 });
     } else if (pct >= 75) {
       insights.push({ type: "success", msg: `💪 ${pct}% de tes protéines ! Plus que ${protRemaining}g pour finir fort.`, priority: 2 });
     } else if (pct >= 50) {
       insights.push({ type: "advice", msg: `✅ À mi-chemin sur les protéines (${protCurrent}/${protTarget}g). Bon rythme !`, priority: 3 });
     } else if (protCurrent > 0) {
       if (timeDecimal >= 22) {
-        insights.push({ type: "warning", msg: `⏰ 22h — il te reste ${protRemaining}g de protéines. Trop tard pour un gros repas (digestion + sommeil). Max une collation légère de 20-30g avant 23h.`, priority: 1, suggestions: getMealSuggestions(Math.min(protRemaining, 25), hour) });
+        insights.push({ type: "warning", msg: `⏰ 22h  il te reste ${protRemaining}g de protéines. Trop tard pour un gros repas (digestion + sommeil). Max une collation légère de 20-30g avant 23h.`, priority: 1, suggestions: getMealSuggestions(Math.min(protRemaining, 25), hour) });
       } else if (timeDecimal >= 20) {
-        insights.push({ type: "advice", msg: `🍽️ ${protCurrent}g sur ${protTarget}g — il te reste ${protRemaining}g. Dernier repas maintenant pour finir avant 22h (3h avant le coucher).`, priority: 2, suggestions: getMealSuggestions(protRemaining, hour) });
+        insights.push({ type: "advice", msg: `🍽️ ${protCurrent}g sur ${protTarget}g  il te reste ${protRemaining}g. Dernier repas maintenant pour finir avant 22h (3h avant le coucher).`, priority: 2, suggestions: getMealSuggestions(protRemaining, hour) });
       } else {
-        insights.push({ type: "advice", msg: `🥗 ${protCurrent}g sur ${protTarget}g — ${protRemaining}g restants. Tu as le temps !`, priority: 4, suggestions: protRemaining > 40 ? getMealSuggestions(protRemaining, hour) : [] });
+        insights.push({ type: "advice", msg: `🥗 ${protCurrent}g sur ${protTarget}g  ${protRemaining}g restants. Tu as le temps !`, priority: 4, suggestions: protRemaining > 40 ? getMealSuggestions(protRemaining, hour) : [] });
       }
     }
   }
@@ -175,11 +175,11 @@ const calcGoalProgress = (goal, history, patrimoineTotal) => {
 
 const getEncouragingMessage = (current, target, sourceId, hour) => {
   const pct = target > 0 ? Math.round((current / target) * 100) : 0;
-  if (pct >= 100) return { type: "success", msg: `🏆 Objectif atteint ! ${current}/${target} — incroyable !` };
-  if (pct >= 75) return { type: "success", msg: `🔥 ${pct}% — tu y es presque ! Plus que ${Math.round(target - current)} restants.` };
-  if (pct >= 50) return { type: "advice", msg: `💪 Mi-chemin atteint ! ${current}/${target} — continue comme ça !` };
-  if (pct >= 25) return { type: "warning", msg: `📈 ${pct}% du chemin — chaque effort compte. Lance-toi !` };
-  if (current > 0) return { type: "warning", msg: `⚡ Démarrage en cours (${pct}%) — tu peux faire encore mieux !` };
+  if (pct >= 100) return { type: "success", msg: `🏆 Objectif atteint ! ${current}/${target}  incroyable !` };
+  if (pct >= 75) return { type: "success", msg: `🔥 ${pct}%  tu y es presque ! Plus que ${Math.round(target - current)} restants.` };
+  if (pct >= 50) return { type: "advice", msg: `💪 Mi-chemin atteint ! ${current}/${target}  continue comme ça !` };
+  if (pct >= 25) return { type: "warning", msg: `📈 ${pct}% du chemin  chaque effort compte. Lance-toi !` };
+  if (current > 0) return { type: "warning", msg: `⚡ Démarrage en cours (${pct}%)  tu peux faire encore mieux !` };
   return { type: "info", msg: `🎯 Objectif aujourd'hui : ${target}. C'est l'heure de commencer !` };
 };
 
@@ -255,12 +255,12 @@ function getIntelligence(history, totalPatrimoine, goals) {
   const bedtimes = last7.filter(d => d.sleep?.bedtime).map(d => { const [h, m] = d.sleep.bedtime.split(":").map(Number); return h * 60 + m; });
   const bedVariance = bedtimes.length > 2 ? Math.max(...bedtimes) - Math.min(...bedtimes) : 0;
   const alerts = []; const advice = []; let todayRec = "";
-  if (consecutiveSport >= 3) { alerts.push({ type: "warning", msg: `💤 ${consecutiveSport} jours consécutifs — repos actif recommandé.` }); todayRec = "rest"; }
+  if (consecutiveSport >= 3) { alerts.push({ type: "warning", msg: `💤 ${consecutiveSport} jours consécutifs  repos actif recommandé.` }); todayRec = "rest"; }
   else if (avgRecovery < 2.5) alerts.push({ type: "warning", msg: "⚠️ Récupération faible ces derniers jours." });
   if (avgSleep < 6.5) alerts.push({ type: "danger", msg: "🚨 Moins de 6h30 en moyenne. Performances -20%." });
   else if (avgSleep < 7) alerts.push({ type: "warning", msg: "🌙 Sommeil insuffisant. Couche-toi 30min plus tôt." });
   if (bedVariance > 90) alerts.push({ type: "warning", msg: `⏰ Heure de coucher irrégulière (±${Math.round(bedVariance / 60)}h). Régulation circadienne perturbée.` });
-  if (avgScreen > 5) alerts.push({ type: "warning", msg: `📱 ${Math.round(avgScreen)}h d'écran/jour — sommeil dégradé.` });
+  if (avgScreen > 5) alerts.push({ type: "warning", msg: `📱 ${Math.round(avgScreen)}h d'écran/jour  sommeil dégradé.` });
   if (!todayRec && lastSportType) {
     const ppl = ["Push", "Pull", "Legs"]; const lastIdx = ppl.findIndex(x => lastSportType.includes(x));
     if (lastIdx >= 0) { todayRec = `PPL ${ppl[(lastIdx + 1) % 3]}`; advice.push(`💪 Recommandation : ${todayRec}`); }
@@ -690,7 +690,7 @@ const Onboarding = ({ onComplete }) => {
           <div style={{ background: C.surface, borderRadius: 24, padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.1)" }}>
             <div style={{ display: "flex", gap: 4, marginBottom: 24 }}>{[1,2,3].map(s => <div key={s} style={{ flex: 1, height: 4, borderRadius: 2, background: s <= 2 ? C.red : C.surfaceAlt }} />)}</div>
             <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 8px" }}>Tes priorités</h2>
-            <p style={{ fontSize: 13, color: C.muted, margin: "0 0 16px" }}>Coche tout ce que tu veux améliorer — pas de limite !</p>
+            <p style={{ fontSize: 13, color: C.muted, margin: "0 0 16px" }}>Coche tout ce que tu veux améliorer  pas de limite !</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 380, overflowY: "auto" }}>
               {PRIORITIES.map(p => {
                 const selected = priorities.includes(p.id);
@@ -926,12 +926,12 @@ export default function App() {
   const protMsg = protCurrent > 0 ? getEncouragingMessage(protCurrent, protTarget, "proteines", new Date().getHours()) : null;
 
   const STAT_CARDS = [
-    { label: "Sommeil", value: today.sleep.duration ? `${today.sleep.duration}h` : "—", icon: "sleep", color: C.purple },
-    { label: "Sport", value: today.sport.isRest ? "Repos" : today.sport.duration ? `${today.sport.duration}m` : "—", icon: "sport", color: C.red },
-    { label: "Eau", value: today.nutrition.water ? `${today.nutrition.water}L` : "—", icon: "water", color: C.blue },
-    { label: "Poids", value: today.body?.weight ? `${today.body.weight}kg` : "—", icon: "scale", color: C.orange },
-    { label: "Focus", value: today.work.focus ? `${today.work.focus}/5` : "—", icon: "focus", color: C.red },
-    { label: "Humeur", value: today.mind.mood ? `${today.mind.mood}/5` : "—", icon: "mood", color: C.green },
+    { label: "Sommeil", value: today.sleep.duration ? `${today.sleep.duration}h` : "", icon: "sleep", color: C.purple },
+    { label: "Sport", value: today.sport.isRest ? "Repos" : today.sport.duration ? `${today.sport.duration}m` : "", icon: "sport", color: C.red },
+    { label: "Eau", value: today.nutrition.water ? `${today.nutrition.water}L` : "", icon: "water", color: C.blue },
+    { label: "Poids", value: today.body?.weight ? `${today.body.weight}kg` : "", icon: "scale", color: C.orange },
+    { label: "Focus", value: today.work.focus ? `${today.work.focus}/5` : "", icon: "focus", color: C.red },
+    { label: "Humeur", value: today.mind.mood ? `${today.mind.mood}/5` : "", icon: "mood", color: C.green },
   ];
 
   if (onboarded === null) return <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ width: 44, height: 44, border: `4px solid ${C.red}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }}/><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
@@ -1072,7 +1072,7 @@ export default function App() {
                     {today.sleep.duration > 0 && (
                       <div style={{ textAlign: "center", padding: 16, background: today.sleep.duration >= 7.5 ? "rgba(22,163,74,0.06)" : "rgba(204,41,54,0.06)", borderRadius: 14, marginBottom: 14, border: `1px solid ${today.sleep.duration >= 7.5 ? C.green : C.red}33` }}>
                         <span style={{ fontSize: 40, fontWeight: 900, color: today.sleep.duration >= 7.5 ? C.green : today.sleep.duration >= 6.5 ? C.orange : C.red }}>{today.sleep.duration}h</span>
-                        <p style={{ margin: "4px 0 0", fontSize: 12, color: C.muted }}>{today.sleep.duration >= 7.5 ? "Optimal ✅" : today.sleep.duration >= 6.5 ? "Correct — vise 7h30+" : "Insuffisant ⚠️"}</p>
+                        <p style={{ margin: "4px 0 0", fontSize: 12, color: C.muted }}>{today.sleep.duration >= 7.5 ? "Optimal ✅" : today.sleep.duration >= 6.5 ? "Correct  vise 7h30+" : "Insuffisant ⚠️"}</p>
                       </div>
                     )}
                     <ST>Qualité</ST>
@@ -1083,7 +1083,7 @@ export default function App() {
                 </div>
               )}{trackTab === "sport" && (
                 <div>
-                  {intel.todayRec === "rest" ? <MsgBox type="warning" msg={`💤 ${intel.consecutiveSport} jours consécutifs — repos recommandé.`} /> : intel.todayRec ? <MsgBox type="advice" msg={`🎯 Recommandation : ${intel.todayRec}`} /> : null}
+                  {intel.todayRec === "rest" ? <MsgBox type="warning" msg={`💤 ${intel.consecutiveSport} jours consécutifs  repos recommandé.`} /> : intel.todayRec ? <MsgBox type="advice" msg={`🎯 Recommandation : ${intel.todayRec}`} /> : null}
 
                   {/* Sélection du sport */}
                   <Card>
@@ -1103,7 +1103,7 @@ export default function App() {
                     {/* Repos */}
                     {today.sport.type === "Repos" && (
                       <div>
-                        <MsgBox type="advice" msg="🛌 Jour de repos — la récupération fait partie de la progression !" />
+                        <MsgBox type="advice" msg="🛌 Jour de repos  la récupération fait partie de la progression !" />
                         <Toggle value={today.sport.stretching} onChange={v => update("sport", "stretching", v)} label="Étirements / Mobilité ✅" />
                       </div>
                     )}
@@ -1306,7 +1306,7 @@ export default function App() {
               {trackTab === "work" && (
                 <div>
                   <EvoChart data={history.filter(d => d.work?.focus > 0).slice(-30)} dataKey="work.focus" color={C.orange} label="Niveau de focus" unit="/5" />
-                  {intel.avgScreen > 4 && <MsgBox type="warning" msg={`📱 ${Math.round(intel.avgScreen)}h d'écran/jour — sommeil et focus dégradés.`} />}
+                  {intel.avgScreen > 4 && <MsgBox type="warning" msg={`📱 ${Math.round(intel.avgScreen)}h d'écran/jour  sommeil et focus dégradés.`} />}
                   <Card>
                     <ST>Focus & Productivité</ST>
                     <Rating value={today.work.focus} onChange={v => update("work", "focus", v)} />
@@ -1333,7 +1333,7 @@ export default function App() {
                     <Field label="Heures aujourd'hui"><input type="number" value={today.work.screenTime} min={0} max={24} step={0.5} onChange={e => update("work", "screenTime", +e.target.value)} style={inp} /></Field>
                     {today.work.screenTime > 0 && (
                       <div style={{ marginTop: 10, padding: 12, background: today.work.screenTime <= 3 ? "rgba(22,163,74,0.06)" : "rgba(204,41,54,0.06)", border: `1px solid ${today.work.screenTime <= 3 ? C.green : C.red}33`, borderRadius: 10, fontSize: 12, color: today.work.screenTime <= 3 ? C.green : C.red }}>
-                        {today.work.screenTime <= 3 ? "✅ Excellent — focus préservé" : today.work.screenTime <= 5 ? "⚠️ Limite" : "🚨 Trop élevé — mélatonine perturbée"}
+                        {today.work.screenTime <= 3 ? "✅ Excellent  focus préservé" : today.work.screenTime <= 5 ? "⚠️ Limite" : "🚨 Trop élevé  mélatonine perturbée"}
                       </div>
                     )}
                     <EvoChart data={screenH.slice(-30)} dataKey="work.screenTime" color={C.red} label="Temps d'écran" unit="h" height={100} />
@@ -1378,7 +1378,7 @@ export default function App() {
                     <ST>Humeur du jour</ST>
                     <Rating value={today.mind.mood} onChange={v => update("mind", "mood", v)} color={today.mind.mood >= 4 ? C.green : today.mind.mood >= 3 ? C.orange : C.red} />
                     <p style={{ fontSize: 12, color: C.muted, marginTop: 6, marginBottom: 14 }}>{["","Difficile 😔","Moyen 😐","Correct 🙂","Bien 😊","Excellent 🔥"][today.mind.mood] || ""}</p>
-                    {today.mind.mood > 0 && today.mind.mood <= 2 && <MsgBox type="warning" msg="Moral bas — 5min cohérence cardiaque maintenant." />}
+                    {today.mind.mood > 0 && today.mind.mood <= 2 && <MsgBox type="warning" msg="Moral bas  5min cohérence cardiaque maintenant." />}
                     <ST>Développement</ST>
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       <Field label="Lecture (pages)"><input type="number" value={today.mind.reading} min={0} max={300} onChange={e => update("mind", "reading", +e.target.value)} style={inp} /></Field>
