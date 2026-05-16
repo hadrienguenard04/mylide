@@ -1081,71 +1081,173 @@ export default function App() {
                     <Toggle value={today.sleep.noScreen} onChange={v => update("sleep", "noScreen", v)} label="Pas d'écran 30min avant de dormir 📵" />
                   </Card>
                 </div>
-              )}
-
-              {trackTab === "sport" && (
+              )}{trackTab === "sport" && (
                 <div>
                   {intel.todayRec === "rest" ? <MsgBox type="warning" msg={`💤 ${intel.consecutiveSport} jours consécutifs — repos recommandé.`} /> : intel.todayRec ? <MsgBox type="advice" msg={`🎯 Recommandation : ${intel.todayRec}`} /> : null}
-                  <EvoChart data={sportH.slice(-30)} dataKey="sport.duration" color={C.red} label="Durée des séances" unit="min" />
+
+                  {/* Sélection du sport */}
                   <Card>
-                    <ST>Type de séance</ST>
-                    <Toggle value={today.sport.isRest} onChange={v => update("sport", "isRest", v)} label="Jour de repos 🛌" />
-                    {today.sport.isRest ? (
-                      <div style={{ marginTop: 12 }}><Toggle value={today.sport.stretching} onChange={v => update("sport", "stretching", v)} label="Étirements / Mobilité ✅" /></div>
-                    ) : (
-                      <div style={{ marginTop: 12 }}>
-                        <Field label="Type">
-                          <select value={today.sport.type} onChange={e => update("sport", "type", e.target.value)} style={{ ...inp, color: C.text }}>
-                            <option value="">Choisir...</option>
-                            {["PPL Push","PPL Pull","PPL Legs","Running","Football","Cardio","Full Body","Autre"].map(o => <option key={o}>{o}</option>)}
-                          </select>
+                    <ST>Type d'activité</ST>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+                      {["Musculation", "Running", "Football", "Tennis", "Boxe", "Repos"].map(sport => {
+                        const active = today.sport.type === sport;
+                        const icons = { Musculation: "💪", Running: "🏃", Football: "⚽", Tennis: "🎾", Boxe: "🥊", Repos: "🛌" };
+                        return (
+                          <button key={sport} onClick={() => { update("sport", "type", sport); update("sport", "isRest", sport === "Repos"); }} style={{ padding: "10px 16px", borderRadius: 12, border: `2px solid ${active ? C.red : C.border}`, background: active ? C.redLight : C.surface, color: active ? C.red : C.muted, fontWeight: 700, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                            {icons[sport]} {sport}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Repos */}
+                    {today.sport.type === "Repos" && (
+                      <div>
+                        <MsgBox type="advice" msg="🛌 Jour de repos — la récupération fait partie de la progression !" />
+                        <Toggle value={today.sport.stretching} onChange={v => update("sport", "stretching", v)} label="Étirements / Mobilité ✅" />
+                      </div>
+                    )}
+
+                    {/* Musculation */}
+                    {today.sport.type === "Musculation" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <Field label="Nom de la séance (ex: Push, Pull, Legs)">
+                          <input type="text" value={today.sport.sessionName || ""} onChange={e => update("sport", "sessionName", e.target.value)} placeholder="Ex: PPL Push, Full Body..." style={inp} />
                         </Field>
-                        <div style={{ height: 12 }} />
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                          <Field label="Durée (min)"><input type="number" value={today.sport.duration} min={0} max={300} onChange={e => update("sport", "duration", +e.target.value)} style={inp} /></Field>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                          <Field label="Durée (min)"><input type="number" value={today.sport.duration || ""} min={0} max={300} onChange={e => update("sport", "duration", +e.target.value)} style={inp} /></Field>
                           <Field label="Intensité"><div style={{ paddingTop: 6 }}><Rating value={today.sport.intensity} onChange={v => update("sport", "intensity", v)} /></div></Field>
                         </div>
-                        <Field label="Notes / PR"><input type="text" placeholder="Ex: Bench 90kg ×5 🔥" value={today.sport.notes} onChange={e => update("sport", "notes", e.target.value)} style={inp} /></Field>
+                        <Field label="PR / Notes"><input type="text" value={today.sport.notes || ""} placeholder="Ex: Bench 90kg ×5 🔥" onChange={e => update("sport", "notes", e.target.value)} style={inp} /></Field>
+                        <ST>Récupération</ST>
+                        <Rating value={today.sport.recovery || 0} onChange={v => update("sport", "recovery", v)} color={today.sport.recovery <= 2 ? C.red : today.sport.recovery <= 3 ? C.orange : C.green} />
+                        <p style={{ fontSize: 11, color: C.muted, margin: 0 }}>{["","Très douloureux","Courbatures","Correct","Bien","Parfait 💪"][today.sport.recovery] || ""}</p>
                       </div>
                     )}
-                  </Card>
-                  <Card>
-                    <ST>Récupération musculaire</ST>
-                    <Rating value={today.sport.recovery} onChange={v => update("sport", "recovery", v)} color={today.sport.recovery <= 2 ? C.red : today.sport.recovery <= 3 ? C.orange : C.green} />
-                    <p style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>{["","Très douloureux 🔴 → Repos","Courbatures 🟠 → Légère","Correct 🟡 → Modéré","Bien 🟢 → Normal","Parfait 💪 → Intensif"][today.sport.recovery] || ""}</p>
-                    {today.sport.recovery > 0 && today.sport.recovery <= 2 && !today.sport.isRest && <MsgBox type="warning" msg="⚠️ Récupération insuffisante. Risque de blessure." />}
-                  </Card>
-                  <Card>
-                    <ST>Running 🏃</ST>
-                    <Toggle value={today.sport.running?.did} onChange={v => updateNested("sport", "running", "did", v)} label="Sortie running aujourd'hui" />
-                    {today.sport.running?.did && (
-                      <div style={{ marginTop: 12 }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                          <Field label="Distance (km)"><input type="number" value={today.sport.running.distance} min={0} step={0.1} onChange={e => updateNested("sport", "running", "distance", +e.target.value)} style={inp} /></Field>
-                          <Field label="Temps (min)"><input type="number" value={today.sport.running.time} min={0} onChange={e => updateNested("sport", "running", "time", +e.target.value)} style={inp} /></Field>
+
+                    {/* Running */}
+                    {today.sport.type === "Running" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                          <Field label="Distance (km)"><input type="number" value={today.sport.running?.distance || ""} min={0} step={0.1} onChange={e => updateNested("sport", "running", "distance", +e.target.value)} style={inp} /></Field>
+                          <Field label="Temps (min)"><input type="number" value={today.sport.running?.time || ""} min={0} onChange={e => updateNested("sport", "running", "time", +e.target.value)} style={inp} /></Field>
                         </div>
-                        {pace && <div style={{ textAlign: "center", background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 12, padding: 14 }}><span style={{ fontSize: 28, fontWeight: 900, color: C.blue }}>{pace} min/km</span></div>}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                          <Field label="FC moyenne (bpm)"><input type="number" value={today.sport.heartRate || ""} min={0} max={220} onChange={e => update("sport", "heartRate", +e.target.value)} style={inp} /></Field>
+                          <Field label="FC max (bpm)"><input type="number" value={today.sport.heartRateMax || ""} min={0} max={220} onChange={e => update("sport", "heartRateMax", +e.target.value)} style={inp} /></Field>
+                        </div>
+                        {today.sport.running?.distance > 0 && today.sport.running?.time > 0 && (
+                          <div style={{ textAlign: "center", background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 12, padding: 14 }}>
+                            <span style={{ fontSize: 28, fontWeight: 900, color: C.blue }}>{(today.sport.running.time / today.sport.running.distance).toFixed(1)} min/km</span>
+                            <p style={{ margin: "4px 0 0", fontSize: 11, color: C.muted }}>Allure moyenne</p>
+                          </div>
+                        )}
+                        <Field label="Notes"><input type="text" value={today.sport.notes || ""} placeholder="Parcours, ressenti..." onChange={e => update("sport", "notes", e.target.value)} style={inp} /></Field>
                       </div>
                     )}
-                    <EvoChart data={history.filter(d => d.sport?.running?.did && d.sport?.running?.distance > 0).slice(-20)} dataKey="sport.running.distance" color={C.blue} label="Distance running" unit="km" height={110} />
+
+                    {/* Football */}
+                    {today.sport.type === "Football" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <Field label="Type de séance">
+                          <select value={today.sport.footballType || ""} onChange={e => update("sport", "footballType", e.target.value)} style={{ ...inp, color: C.text }}>
+                            <option value="">Choisir...</option>
+                            <option>Match</option>
+                            <option>Entraînement</option>
+                            <option>Futsal</option>
+                          </select>
+                        </Field>
+                        {today.sport.footballType === "Match" && (
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                            <Field label="Buts pour"><input type="number" value={today.sport.scoreFor || ""} min={0} onChange={e => update("sport", "scoreFor", +e.target.value)} style={inp} /></Field>
+                            <Field label="Buts contre"><input type="number" value={today.sport.scoreAgainst || ""} min={0} onChange={e => update("sport", "scoreAgainst", +e.target.value)} style={inp} /></Field>
+                            <Field label="Résultat">
+                              <div style={{ padding: "11px 14px", borderRadius: 10, background: today.sport.scoreFor > today.sport.scoreAgainst ? "rgba(22,163,74,0.1)" : today.sport.scoreFor < today.sport.scoreAgainst ? "rgba(204,41,54,0.1)" : C.surfaceAlt, textAlign: "center", fontWeight: 800, color: today.sport.scoreFor > today.sport.scoreAgainst ? C.green : today.sport.scoreFor < today.sport.scoreAgainst ? C.red : C.muted }}>
+                                {today.sport.scoreFor > today.sport.scoreAgainst ? "Victoire 🏆" : today.sport.scoreFor < today.sport.scoreAgainst ? "Défaite" : "Nul"}
+                              </div>
+                            </Field>
+                          </div>
+                        )}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                          <Field label="Durée (min)"><input type="number" value={today.sport.duration || ""} min={0} onChange={e => update("sport", "duration", +e.target.value)} style={inp} /></Field>
+                          <Field label="FC moyenne (bpm)"><input type="number" value={today.sport.heartRate || ""} min={0} max={220} onChange={e => update("sport", "heartRate", +e.target.value)} style={inp} /></Field>
+                        </div>
+                        <Field label="Notes / performance"><input type="text" value={today.sport.notes || ""} placeholder="Poste, ressenti, buts marqués..." onChange={e => update("sport", "notes", e.target.value)} style={inp} /></Field>
+                      </div>
+                    )}
+
+                    {/* Tennis */}
+                    {today.sport.type === "Tennis" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <Field label="Type">
+                          <select value={today.sport.tennisType || ""} onChange={e => update("sport", "tennisType", e.target.value)} style={{ ...inp, color: C.text }}>
+                            <option value="">Choisir...</option>
+                            <option>Match</option>
+                            <option>Entraînement</option>
+                          </select>
+                        </Field>
+                        {today.sport.tennisType === "Match" && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            <Field label="Score (ex: 6-3, 4-6, 6-4)"><input type="text" value={today.sport.tennisScore || ""} placeholder="6-3, 4-6, 6-4" onChange={e => update("sport", "tennisScore", e.target.value)} style={inp} /></Field>
+                            <Field label="Adversaire"><input type="text" value={today.sport.tennisOpponent || ""} placeholder="Nom de l'adversaire" onChange={e => update("sport", "tennisOpponent", e.target.value)} style={inp} /></Field>
+                            <div style={{ display: "flex", gap: 10 }}>
+                              {["Victoire", "Défaite"].map(r => (
+                                <button key={r} onClick={() => update("sport", "tennisResult", r)} style={{ flex: 1, padding: 12, borderRadius: 12, border: `2px solid ${today.sport.tennisResult === r ? (r === "Victoire" ? C.green : C.red) : C.border}`, background: today.sport.tennisResult === r ? (r === "Victoire" ? "rgba(22,163,74,0.1)" : "rgba(204,41,54,0.1)") : C.surface, fontWeight: 700, color: today.sport.tennisResult === r ? (r === "Victoire" ? C.green : C.red) : C.muted, cursor: "pointer" }}>
+                                  {r === "Victoire" ? "🏆 " : "😤 "}{r}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                          <Field label="Durée (min)"><input type="number" value={today.sport.duration || ""} min={0} onChange={e => update("sport", "duration", +e.target.value)} style={inp} /></Field>
+                          <Field label="FC moyenne (bpm)"><input type="number" value={today.sport.heartRate || ""} min={0} max={220} onChange={e => update("sport", "heartRate", +e.target.value)} style={inp} /></Field>
+                        </div>
+                        <Field label="Notes"><input type="text" value={today.sport.notes || ""} placeholder="Surface, ressenti..." onChange={e => update("sport", "notes", e.target.value)} style={inp} /></Field>
+                      </div>
+                    )}
+
+                    {/* Boxe */}
+                    {today.sport.type === "Boxe" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <Field label="Type de séance">
+                          <select value={today.sport.boxeType || ""} onChange={e => update("sport", "boxeType", e.target.value)} style={{ ...inp, color: C.text }}>
+                            <option value="">Choisir...</option>
+                            <option>Sparring</option>
+                            <option>Sac / Pattes</option>
+                            <option>Technique</option>
+                            <option>Combat</option>
+                          </select>
+                        </Field>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                          <Field label="Rounds"><input type="number" value={today.sport.boxeRounds || ""} min={0} max={20} onChange={e => update("sport", "boxeRounds", +e.target.value)} style={inp} /></Field>
+                          <Field label="Durée round (min)"><input type="number" value={today.sport.boxeRoundDuration || ""} min={0} max={10} onChange={e => update("sport", "boxeRoundDuration", +e.target.value)} style={inp} /></Field>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                          <Field label="FC moyenne (bpm)"><input type="number" value={today.sport.heartRate || ""} min={0} max={220} onChange={e => update("sport", "heartRate", +e.target.value)} style={inp} /></Field>
+                          <Field label="FC max (bpm)"><input type="number" value={today.sport.heartRateMax || ""} min={0} max={220} onChange={e => update("sport", "heartRateMax", +e.target.value)} style={inp} /></Field>
+                        </div>
+                        <Field label="Notes"><input type="text" value={today.sport.notes || ""} placeholder="Ressenti, technique travaillée..." onChange={e => update("sport", "notes", e.target.value)} style={inp} /></Field>
+                      </div>
+                    )}
                   </Card>
-                  <Card>
-                    <ST>Composition corporelle</ST>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                      <Field label="Masse graisseuse (%)"><input type="number" value={today.sport.bodyFat || ""} step={0.1} min={0} onChange={e => update("sport", "bodyFat", +e.target.value)} style={inp} /></Field>
-                      <Field label="Masse musculaire (kg)"><input type="number" value={today.sport.muscleMass || ""} step={0.1} min={0} onChange={e => update("sport", "muscleMass", +e.target.value)} style={inp} /></Field>
-                    </div>
-                    <EvoChart data={history.filter(d => d.sport?.bodyFat > 0).slice(-30)} dataKey="sport.bodyFat" color={C.orange} label="Masse graisseuse" unit="%" height={100} />
-                    <EvoChart data={history.filter(d => d.sport?.muscleMass > 0).slice(-30)} dataKey="sport.muscleMass" color={C.green} label="Masse musculaire" unit="kg" height={100} />
-                  </Card>
-                  <Card>
-                    <ST>Photo de progression 📸</ST>
-                    <input type="file" accept="image/*" ref={sportPhotoRef} style={{ display: "none" }} onChange={handleSportPhoto} />
-                    <button onClick={() => sportPhotoRef.current.click()} style={{ width: "100%", padding: 14, background: C.surfaceAlt, border: `2px dashed ${C.border}`, borderRadius: 12, cursor: "pointer", fontSize: 13, color: C.muted }}>📷 Importer une photo</button>
-                    {today.sport.photoUrl && <img src={today.sport.photoUrl} alt="prog" style={{ width: "100%", borderRadius: 12, marginTop: 12, objectFit: "cover", maxHeight: 240 }} />}
-                  </Card>
+
+                  {/* Photo progression */}
+                  {today.sport.type && today.sport.type !== "Repos" && (
+                    <Card>
+                      <ST>Photo de progression 📸</ST>
+                      <input type="file" accept="image/*" ref={sportPhotoRef} style={{ display: "none" }} onChange={handleSportPhoto} />
+                      <button onClick={() => sportPhotoRef.current.click()} style={{ width: "100%", padding: 14, background: C.surfaceAlt, border: `2px dashed ${C.border}`, borderRadius: 12, cursor: "pointer", fontSize: 13, color: C.muted }}>📷 Importer une photo</button>
+                      {today.sport.photoUrl && <img src={today.sport.photoUrl} alt="prog" style={{ width: "100%", borderRadius: 12, marginTop: 12, objectFit: "cover", maxHeight: 240 }} />}
+                    </Card>
+                  )}
+
+                  {/* Graphiques */}
+                  <EvoChart data={sportH.slice(-30)} dataKey="sport.duration" color={C.red} label="Durée des séances" unit="min" />
                 </div>
               )}
+
+              
 
               {trackTab === "nutrition" && (
                 <div>
