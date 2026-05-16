@@ -1065,9 +1065,9 @@ export default function App() {
                   <EvoChart data={sleepH.slice(-30)} dataKey="sleep.duration" color={C.purple} label="Durée de sommeil" unit="h" />
                   <Card>
                     <ST>Horaires</ST>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-                      <Field label="Coucher"><input type="time" value={today.sleep.bedtime} onChange={e => update("sleep", "bedtime", e.target.value)} style={inp} /></Field>
-                      <Field label="Réveil"><input type="time" value={today.sleep.wakeup} onChange={e => update("sleep", "wakeup", e.target.value)} style={inp} /></Field>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 14 }}>
+                      <Field label="Coucher"><input type="time" value={today.sleep.bedtime} onChange={e => update("sleep", "bedtime", e.target.value)} style={{ ...inp, minHeight: 50 }} /></Field>
+                      <Field label="Réveil"><input type="time" value={today.sleep.wakeup} onChange={e => update("sleep", "wakeup", e.target.value)} style={{ ...inp, minHeight: 50 }} /></Field>
                     </div>
                     {today.sleep.duration > 0 && (
                       <div style={{ textAlign: "center", padding: 16, background: today.sleep.duration >= 7.5 ? "rgba(22,163,74,0.06)" : "rgba(204,41,54,0.06)", borderRadius: 14, marginBottom: 14, border: `1px solid ${today.sleep.duration >= 7.5 ? C.green : C.red}33` }}>
