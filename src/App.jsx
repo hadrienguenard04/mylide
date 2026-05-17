@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "./supabase";
+import Subscription from "./Subscription";
+import { useTheme } from "./theme";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 
 const LIGHT = {
@@ -15,7 +17,8 @@ const DARK = {
   black: "#ffffff", text: "#f0f0f0", muted: "#888888", subtle: "#444444",
   green: "#22c55e", orange: "#f97316", purple: "#a855f7", blue: "#3b82f6",
 };
-
+let C = LIGHT;
+export const setGlobalC = (newC) => { Object.assign(C, newC); };
 
 const NAV_ORDER = ["today", "track", "money", "goals", "stats", "profile"];
 const TRACK_ORDER = ["sleep", "sport", "nutrition", "body", "work", "todo", "mind"];
@@ -746,8 +749,9 @@ const Onboarding = ({ onComplete }) => {
 // ── APP ────────────────────────────────────────────────────────────────────
 export default function App() {
   const [onboarded, setOnboarded] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
+const { darkMode, setDarkMode } = useTheme();
 const C = darkMode ? DARK : LIGHT;
+useEffect(() => { document.body.classList.toggle("dark", darkMode); Object.assign(C, darkMode ? DARK : LIGHT); }, [darkMode]);
   const [nav, setNav] = useState("today");
   const [trackTab, setTrackTab] = useState("sleep");
   const [history, setHistory] = useState([]);
@@ -757,6 +761,7 @@ const C = darkMode ? DARK : LIGHT;
   const [newTodo, setNewTodo] = useState("");
   const [goals, setGoals] = useState([]);
   const [editingGoal, setEditingGoal] = useState(null);
+  const [showSubscription, setShowSubscription] = useState(false);
   const [patrimoine, setPatrimoine] = useState(defaultPatrimoine());
   const [newPoche, setNewPoche] = useState({ name: "", amount: 0, color: C.blue });
   const [statRange, setStatRange] = useState("30");
@@ -953,6 +958,7 @@ const C = darkMode ? DARK : LIGHT;
       <BgDecor />
 
       {editingGoal && <EditGoalModal goal={editingGoal} onSave={saveEditedGoal} onClose={() => setEditingGoal(null)} />}
+      {showSubscription && <Subscription onClose={() => setShowSubscription(false)} />}
 
       {/* HEADER */}
       <div style={{ padding: "16px 20px 14px", borderBottom: `1px solid ${C.border}`, background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.95) 100%)", backdropFilter: "blur(12px)", boxShadow: "0 2px 16px rgba(0,0,0,0.07)", position: "sticky", top: 0, zIndex: 10 }}>
@@ -1686,6 +1692,13 @@ const C = darkMode ? DARK : LIGHT;
                 <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, margin: 0 }}>Kojihsports · Angers · Sept. 2026</p>
               </Card>
               <Card>
+  <div onClick={() => setShowSubscription(true)} style={{ background: `linear-gradient(135deg, #CC2936, #a01e28)`, borderRadius: 16, padding: "16px 20px", marginBottom: 14, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 8px 24px rgba(204,41,54,0.3)" }}>
+  <div>
+    <p style={{ color: "#fff", fontWeight: 900, fontSize: 16, margin: "0 0 2px" }}>Passer à Pro ⭐</p>
+    <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, margin: 0 }}>1 mois gratuit · 3,59€/mois ensuite</p>
+  </div>
+  <span style={{ color: "#fff", fontSize: 24 }}>→</span>
+</div>
   <ST>Paramètres</ST>
   <div onClick={() => setDarkMode(d => !d)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", background: C.surfaceAlt, borderRadius: 14, marginBottom: 10, cursor: "pointer" }}>
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

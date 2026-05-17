@@ -4,6 +4,7 @@ import App from './App.jsx'
 import Auth from './Auth.jsx'
 import { supabase } from './supabase.js'
 import { useState, useEffect } from 'react'
+import { ThemeProvider } from './theme.jsx'
 
 function Root() {
   const [session, setSession] = useState(null)
@@ -34,6 +35,8 @@ function Root() {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <Root />
+    <ThemeProvider>
+      <Root />
+    </ThemeProvider>
   </React.StrictMode>
 )
