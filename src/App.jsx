@@ -328,11 +328,8 @@ const defaultDay = () => ({
 });
 
 const defaultPatrimoine = () => ([
-  { id: 1, name: "PEA Fortuneo", amount: 0, color: "#2563eb" },
-  { id: 2, name: "AV Linxea", amount: 0, color: "#7c3aed" },
-  { id: 3, name: "Trade Republic", amount: 0, color: "#16a34a" },
-  { id: 4, name: "Livret A", amount: 0, color: "#ea580c" },
-  { id: 5, name: "Corum", amount: 0, color: "#0891b2" },
+  { id: 1, name: "Compte courant", amount: 0, color: "#2563eb" },
+  { id: 2, name: "Livret A", amount: 0, color: "#16a34a" },
 ]);
 
 const PRIORITIES = [
@@ -762,6 +759,7 @@ useEffect(() => { document.body.classList.toggle("dark", darkMode); Object.assig
   const [goals, setGoals] = useState([]);
   const [editingGoal, setEditingGoal] = useState(null);
   const [showSubscription, setShowSubscription] = useState(false);
+  const [isPro, setIsPro] = useState(false);
   const [patrimoine, setPatrimoine] = useState(defaultPatrimoine());
   const [newPoche, setNewPoche] = useState({ name: "", amount: 0, color: C.blue });
   const [statRange, setStatRange] = useState("30");
@@ -778,7 +776,7 @@ useEffect(() => { document.body.classList.toggle("dark", darkMode); Object.assig
 
       // Charger profil
       const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      if (profile) { setProfile({ name: profile.name || "", dob: profile.dob || "", photo: profile.photo || "" }); setOnboarded(true); }
+      if (profile) { setProfile({ name: profile.name || "", dob: profile.dob || "", photo: profile.photo || "" }); setIsPro(profile.is_pro || false); setOnboarded(true); }
       else { setOnboarded(false); return; }
 
       // Charger historique
@@ -873,8 +871,9 @@ useEffect(() => { document.body.classList.toggle("dark", darkMode); Object.assig
 
   const updateGoalField = (id, f, v) => { const g = goals.map(g => g.id === id ? { ...g, [f]: v } : g); setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
   const saveEditedGoal = (edited) => { const g = goals.map(g => g.id === edited.id ? edited : g); setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
-  const addGoal = () => {
-    if (!newGoal.label.trim()) return;
+    const addGoal = () => {if (!newGoal.label.trim()) return;
+      console.log("isPro:", isPro, "goals:", goals.length);
+    if (!isPro && goals.length >= 3) { setShowSubscription(true); return; }
     const g = [...goals, { ...newGoal, id: Date.now(), manualProgress: 0 }];
     setGoals(g); saveAll(history, todos, g, patrimoine, profile);
     setNewGoal({ label: "", category: "", color: C.red, sourceId: "manual", target: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reverse: false, manualProgress: 0 });
@@ -889,7 +888,8 @@ useEffect(() => { document.body.classList.toggle("dark", darkMode); Object.assig
   };
 
   const updatePoche = (id, f, v) => { const p = patrimoine.map(p => p.id === id ? { ...p, [f]: v } : p); setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
-  const addPoche = () => { if (!newPoche.name.trim()) return; const p = [...patrimoine, { ...newPoche, id: Date.now(), amount: Number(newPoche.amount) }]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); setNewPoche({ name: "", amount: 0, color: C.blue }); };
+  const addPoche = () => { if (!newPoche.name.trim()) return;
+    if (!isPro && patrimoine.length >= 2) { setShowSubscription(true); return; } const p = [...patrimoine, { ...newPoche, id: Date.now(), amount: Number(newPoche.amount) }]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); setNewPoche({ name: "", amount: 0, color: C.blue }); };
   const deletePoche = id => { const p = patrimoine.filter(p => p.id !== id); setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
   const movePoche = (idx, dir) => { const p = [...patrimoine]; const ni = idx + dir; if (ni < 0 || ni >= p.length) return; [p[idx], p[ni]] = [p[ni], p[idx]]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
 
@@ -909,7 +909,8 @@ useEffect(() => { document.body.classList.toggle("dark", darkMode); Object.assig
   const screenH = history.filter(d => d.work?.screenTime > 0);
   const waterH = history.filter(d => d.nutrition?.water > 0);
   const pace = today.sport.running?.time > 0 && today.sport.running?.distance > 0 ? (today.sport.running.time / today.sport.running.distance).toFixed(1) : null;
-  const computedGoals = goals.map(g => ({ ...g, computedProgress: calcGoalProgress(g, history, totalPatrimoine) }));
+  const displayedGoals = isPro ? goals : goals.slice(0, 3);
+const computedGoals = displayedGoals.map(g => ({ ...g, computedProgress: calcGoalProgress(g, history, totalPatrimoine) }));
 
   const simResult = useMemo(() => {
     let total = Number(sim.amount) || 0;
@@ -1592,7 +1593,7 @@ useEffect(() => { document.body.classList.toggle("dark", darkMode); Object.assig
             <div>
               <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
                 {[["7","7j"],["30","30j"],["90","3 mois"],["365","1 an"]].map(([v, l]) => (
-                  <button key={v} onClick={() => setStatRange(v)} style={{ flex: 1, padding: "8px 4px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: statRange === v ? `linear-gradient(135deg, ${C.red}, #a01e28)` : C.surfaceAlt, color: statRange === v ? "#fff" : C.muted }}>{l}</button>
+                  <button key={v} onClick={() => { if (!isPro && v !== "7") { setShowSubscription(true); return; } setStatRange(v); }} style={{ flex: 1, padding: "8px 4px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: statRange === v ? `linear-gradient(135deg, ${C.red}, #a01e28)` : C.surfaceAlt, color: statRange === v ? "#fff" : C.muted, opacity: !isPro && v !== "7" ? 0.5 : 1 }}>{l}{!isPro && v !== "7" ? " 🔒" : ""}</button>
                 ))}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
