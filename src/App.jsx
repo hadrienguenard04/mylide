@@ -214,9 +214,122 @@ const getNestedVal = (obj, path) => path?.split(".").reduce((o, k) => o?.[k] ?? 
 const calcAge = (dob) => { if (!dob) return null; const today = new Date(); const birth = new Date(dob); let age = today.getFullYear() - birth.getFullYear(); if (today.getMonth() - birth.getMonth() < 0 || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) age--; return age; };
 function calcDuration(bed, wake) { if (!bed || !wake) return 0; const [bh, bm] = bed.split(":").map(Number); const [wh, wm] = wake.split(":").map(Number); let diff = (wh * 60 + wm) - (bh * 60 + bm); if (diff < 0) diff += 24 * 60; return Math.round(diff / 6) / 10; }
 
+function calcSleepScore(sleep, age, recentBedtimeMins = [], yesterdayHadSport = false) {
+  const dur = sleep.duration || 0;
+  const quality = sleep.quality || 0;
+  const hasQuality = quality > 0;
+
+  // Age-based optimal zone [optMin, optMax, highMax]
+  let optMin = 7, optMax = 9, highMax = 10;
+  if (age !== null && age !== undefined) {
+    if (age >= 65)             { optMin = 7;   optMax = 8.5; highMax = 9.5; }
+    else if (age < 14)         { optMin = 9;   optMax = 11;  highMax = 12;  }
+    else if (age < 18)         { optMin = 8;   optMax = 10;  highMax = 11;  }
+  }
+
+  // Duration status
+  let durationStatus, durationColor;
+  if (!dur)                           { durationStatus = null;              durationColor = "#6B6B6B"; }
+  else if (dur < 5)                   { durationStatus = "Très insuffisant"; durationColor = "#CC2936"; }
+  else if (dur < optMin - 0.5)        { durationStatus = "Insuffisant";      durationColor = "#CC2936"; }
+  else if (dur < optMin)              { durationStatus = "Légèrement bas";   durationColor = "#D4580A"; }
+  else if (dur <= optMax)             { durationStatus = "Optimal";          durationColor = "#1A7A4A"; }
+  else if (dur <= highMax)            { durationStatus = "Élevé";            durationColor = "#D4580A"; }
+  else if (dur <= highMax + 1)        { durationStatus = "Long";             durationColor = "#D4580A"; }
+  else                                { durationStatus = "Inhabituel";       durationColor = "#6B35C8"; }
+
+  // Duration component (0–40 pts) — sport de la veille assouplit les nuits longues
+  let dScore;
+  if (!dur)                     dScore = 0;
+  else if (dur < 5)             dScore = 3;
+  else if (dur < optMin - 0.5)  dScore = 13;
+  else if (dur < optMin)        dScore = 26;
+  else if (dur <= optMax)       dScore = 40;
+  else if (dur <= highMax)      dScore = yesterdayHadSport ? 36 : 28;
+  else if (dur <= highMax + 1)  dScore = yesterdayHadSport ? 25 : 15;
+  else                          dScore = yesterdayHadSport ? 16 : 6;
+
+  // Quality component (0–20 pts)
+  const qScore = hasQuality ? Math.round((quality / 5) * 20) : 0;
+
+  // Regularity component (0–25 pts)
+  let rScore = 0, isIrregular = false;
+  if (recentBedtimeMins.length >= 3) {
+    const variance = Math.max(...recentBedtimeMins) - Math.min(...recentBedtimeMins);
+    if (variance <= 30)       rScore = 25;
+    else if (variance <= 60)  rScore = 18;
+    else if (variance <= 90)  rScore = 10;
+    else                      { rScore = 3; isIrregular = true; }
+  }
+
+  // Context component (0–15 pts)
+  const cScore = dur > 0 ? (yesterdayHadSport ? 12 : 8) : 0;
+
+  // Weighted total — redistribuer les poids manquants
+  let score = 0;
+  if (dur > 0) {
+    let totalW = 40, weightedSum = dScore;
+    if (hasQuality)                   { totalW += 20; weightedSum += qScore; }
+    if (recentBedtimeMins.length >= 3) { totalW += 25; weightedSum += rScore; }
+    totalW += 15; weightedSum += cScore;
+    score = Math.min(100, Math.max(0, Math.round((weightedSum / totalW) * 100)));
+  }
+
+  // Messages nuancés
+  let message = "", advice = "";
+  if (dur < 5) {
+    message = "Votre durée de sommeil est très basse. Une récupération complète nécessite plus de repos.";
+    advice = "Essayez de vous coucher 1 à 2h plus tôt ce soir.";
+  } else if (durationStatus === "Insuffisant") {
+    message = (hasQuality && quality >= 4)
+      ? "Votre ressenti est positif, mais la durée reste basse pour une récupération complète."
+      : "Votre sommeil est un peu court pour votre tranche d'âge.";
+    advice = "Visez 30 minutes supplémentaires progressivement.";
+  } else if (durationStatus === "Légèrement bas") {
+    message = "Durée légèrement en dessous de la zone recommandée, mais correct pour la plupart des nuits.";
+    advice = "Couchez-vous 15 à 30 minutes plus tôt si possible.";
+  } else if (durationStatus === "Optimal") {
+    if (isIrregular) {
+      message = "Bonne durée de sommeil, mais vos horaires sont irréguliers. La régularité améliore la qualité de récupération.";
+      advice = "Essayez de maintenir une heure de coucher similaire chaque soir.";
+    } else if (hasQuality && quality >= 4) {
+      message = "Votre nuit est dans une bonne zone de récupération et votre ressenti confirme cela.";
+      advice = "Continuez à maintenir ces horaires réguliers.";
+    } else {
+      message = "Votre durée de sommeil est dans la zone optimale pour votre tranche d'âge.";
+      advice = "Gardez une heure de coucher similaire ce soir.";
+    }
+  } else if (durationStatus === "Élevé") {
+    message = yesterdayHadSport
+      ? "Sommeil long, cohérent avec un besoin de récupération plus élevé après l'effort d'hier."
+      : "Votre durée de sommeil est un peu élevée. Cela peut être normal ponctuellement.";
+    advice = "Si cela se répète sans activité intense, vérifiez votre rythme de coucher.";
+  } else if (durationStatus === "Long") {
+    message = "Votre sommeil est long aujourd'hui. Cela peut arriver après une grande fatigue, mais à surveiller si cela se répète.";
+    advice = "Exposez-vous à la lumière naturelle le matin pour aider à réguler votre rythme.";
+  } else if (durationStatus === "Inhabituel") {
+    message = "Durée très inhabituelle. Cela peut arriver après une forte dette de sommeil. Si cela se répète, il peut être utile d'en parler à un professionnel.";
+    advice = "Maintenez des horaires réguliers pour retrouver un rythme stable.";
+  }
+
+  // Note sur la qualité des données
+  let dataNote = null;
+  if (dur > 0 && !hasQuality && recentBedtimeMins.length < 3) {
+    dataNote = "Analyse basée uniquement sur la durée. Ajoutez votre ressenti pour une estimation plus précise.";
+  } else if (dur > 0 && !hasQuality) {
+    dataNote = "Ajoutez votre ressenti pour affiner l'analyse.";
+  }
+
+  return { score, durationStatus, durationColor, message, advice, dataNote, isIrregular, optMin, optMax };
+}
+
 function calcScore(day) {
   let s = 0; const sl = day.sleep;
-  if (sl.duration >= 7.5) s += 25; else if (sl.duration >= 7) s += 18; else if (sl.duration >= 6) s += 10;
+  const d = sl.duration;
+  if (d >= 7 && d <= 9) s += 25;
+  else if ((d >= 6.5 && d < 7) || (d > 9 && d <= 10)) s += 18;
+  else if ((d >= 6 && d < 6.5) || (d > 10 && d <= 11)) s += 10;
+  else if (d > 11) s += 5;
   if (sl.quality >= 4) s += 5; if (sl.noScreen) s += 3;
   const sp = day.sport;
   if (sp.isRest) { s += 10; if (sp.stretching) s += 5; } else { if (sp.duration >= 45) s += 15; else if (sp.duration >= 30) s += 10; if (sp.intensity >= 3) s += 5; }
@@ -1302,8 +1415,15 @@ export default function App() {
     return data;
   }, [sim]);
 
+  // Sleep analysis — computed once, used in tracker UI and radar
+  const recentBedtimeMins = history.slice(-7).filter(d => d.sleep?.bedtime).map(d => { const [h, m] = d.sleep.bedtime.split(":").map(Number); return h * 60 + m; });
+  const todayDate = new Date().toISOString().split("T")[0];
+  const yesterdayEntry = [...history].reverse().find(d => d.date !== todayDate);
+  const yesterdayHadSport = !!(yesterdayEntry?.sport?.duration >= 30 || yesterdayEntry?.sport?.intensity >= 3);
+  const sleepAnalysis = calcSleepScore(today.sleep, age, recentBedtimeMins, yesterdayHadSport);
+
   const radar = [
-    { s: "Sommeil", v: Math.max(5, Math.min(100, (today.sleep.duration / 9) * 100)) },
+    { s: "Sommeil", v: today.sleep.duration > 0 ? Math.max(5, sleepAnalysis.score) : 5 },
     { s: "Sport", v: today.sport.isRest ? 60 : Math.max(5, Math.min(100, today.sport.duration * 2)) },
     { s: "Nutrition", v: Math.max(5, (today.nutrition.breakfast ? 20 : 0) + (today.nutrition.lunch ? 20 : 0) + (today.nutrition.dinner ? 20 : 0) + Math.min(40, today.nutrition.water * 16)) },
     { s: "Travail", v: Math.max(5, today.work.focus * 20) },
@@ -1462,12 +1582,38 @@ export default function App() {
                       <Field label={tr("sleep_bedtime")}><input type="time" value={today.sleep.bedtime} onChange={e => update("sleep", "bedtime", e.target.value)} style={{ ...inp, minHeight: 52 }} /></Field>
                       <Field label={tr("sleep_wakeup")}><input type="time" value={today.sleep.wakeup} onChange={e => update("sleep", "wakeup", e.target.value)} style={{ ...inp, minHeight: 52 }} /></Field>
                     </div>
-                    {today.sleep.duration > 0 && (
-                      <div style={{ textAlign: "center", padding: 20, background: today.sleep.duration >= 7.5 ? `${C.green}10` : `${C.red}10`, borderRadius: 16, marginBottom: 16, border: `1.5px solid ${today.sleep.duration >= 7.5 ? C.green : C.red}22` }}>
-                        <span style={{ fontSize: 44, fontWeight: 900, color: today.sleep.duration >= 7.5 ? C.green : today.sleep.duration >= 6.5 ? C.orange : C.red, letterSpacing: -1 }}>{today.sleep.duration}h</span>
-                        <p style={{ margin: "6px 0 0", fontSize: 13, color: C.muted, fontWeight: 500 }}>{today.sleep.duration >= 7.5 ? tr("sleep_optimal") : today.sleep.duration >= 6.5 ? tr("sleep_ok") : tr("sleep_insufficient")}</p>
-                      </div>
-                    )}
+                    {today.sleep.duration > 0 && (() => {
+                      const sa = sleepAnalysis;
+                      return (
+                        <div style={{ borderRadius: 16, marginBottom: 16, overflow: "hidden", border: `1.5px solid ${sa.durationColor}30` }}>
+                          {/* Header : durée + score */}
+                          <div style={{ background: `${sa.durationColor}14`, padding: "16px 20px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div>
+                              <div style={{ fontSize: 46, fontWeight: 900, color: sa.durationColor, letterSpacing: -2, lineHeight: 1 }}>{today.sleep.duration}h</div>
+                              <div style={{ fontSize: 11, color: sa.durationColor, fontWeight: 700, marginTop: 5, textTransform: "uppercase", letterSpacing: 0.8 }}>{sa.durationStatus}</div>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontSize: 32, fontWeight: 900, color: sa.durationColor, letterSpacing: -1, lineHeight: 1 }}>{sa.score}</div>
+                              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginTop: 2 }}>/ 100</div>
+                              <div style={{ fontSize: 10, color: C.muted, marginTop: 1, textTransform: "uppercase", letterSpacing: 0.5 }}>Score sommeil</div>
+                            </div>
+                          </div>
+                          {/* Message + conseil */}
+                          <div style={{ padding: "14px 18px 16px", background: C.surface }}>
+                            <p style={{ margin: "0 0 10px", fontSize: 13, color: C.text, lineHeight: 1.55 }}>{sa.message}</p>
+                            <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                              <span style={{ fontSize: 15, flexShrink: 0 }}>💡</span>
+                              <p style={{ margin: 0, fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{sa.advice}</p>
+                            </div>
+                            {sa.dataNote && (
+                              <div style={{ marginTop: 12, padding: "8px 12px", background: "rgba(30,95,204,0.08)", borderRadius: 8, borderLeft: "3px solid #1E5FCC" }}>
+                                <p style={{ margin: 0, fontSize: 11, color: "#1E5FCC", lineHeight: 1.45 }}>ℹ️ {sa.dataNote}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                     <ST>{tr("sleep_quality")}</ST>
                     <Rating value={today.sleep.quality} onChange={v => update("sleep", "quality", v)} />
                     <div style={{ height: 16 }} />
