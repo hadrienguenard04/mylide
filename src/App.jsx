@@ -882,12 +882,7 @@ const AthleticRadar = ({ data }) => {
             const col = COLORS[payload.value] || "#888";
             return <text x={x} y={y} textAnchor="middle" dominantBaseline="middle" fill={col} fontSize={10} fontWeight={700}>{payload.value}</text>;
           }} />
-          <Radar dataKey="v" stroke="none" fill="transparent" />
-          {data.map((item, i) => {
-            const col = COLORS[item.s] || "#888";
-            const pct = item.v / 100;
-            return <Radar key={i} dataKey="v" data={[item]} stroke={col} fill={col} fillOpacity={0.15} strokeWidth={2} />;
-          })}
+          <Radar dataKey="v" stroke="#E8384A" fill="#E8384A" fillOpacity={0.25} strokeWidth={2} dot={{ r: 3, fill: "#E8384A", strokeWidth: 0 }} />
         </RadarChart>
       </ResponsiveContainer>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 4 }}>
@@ -1204,7 +1199,7 @@ export default function App() {
       if (profileData) { setProfile({ name: profileData.name || "", dob: profileData.dob || "", photo: profileData.photo || "" }); setIsPro(profileData.is_pro || false); setOnboarded(true); }
       else { setOnboarded(false); return; }
       const { data: logs } = await supabase.from("daily_logs").select("*").eq("user_id", user.id).order("date");
-      if (logs) { const hist = logs.map(l => ({ ...l.data, date: l.date, score: l.score })); setHistory(hist); const todayEntry = hist.find(d => d.date === new Date().toISOString().split("T")[0]); if (todayEntry) setToday(todayEntry); }
+      if (logs) { const hist = logs.map(l => ({ ...l.data, date: l.date, score: l.score })); setHistory(hist); const todayEntry = hist.find(d => d.date === new Date().toISOString().split("T")[0]); if (todayEntry) { if (todayEntry.sleep?.bedtime && todayEntry.sleep?.wakeup && !todayEntry.sleep?.duration) todayEntry.sleep.duration = calcDuration(todayEntry.sleep.bedtime, todayEntry.sleep.wakeup); setToday(todayEntry); } }
       const { data: goalsData } = await supabase.from("goals").select("*").eq("user_id", user.id);
       if (goalsData?.length) setGoals(goalsData.map(g => g.data));
       const { data: patrimoineData } = await supabase.from("patrimoine").select("*").eq("user_id", user.id).single();
@@ -1308,11 +1303,11 @@ export default function App() {
   }, [sim]);
 
   const radar = [
-    { s: "Sommeil", v: Math.min(100, (today.sleep.duration / 9) * 100) },
-    { s: "Sport", v: today.sport.isRest ? 60 : Math.min(100, today.sport.duration * 2) },
-    { s: "Nutrition", v: (today.nutrition.breakfast ? 20 : 0) + (today.nutrition.lunch ? 20 : 0) + (today.nutrition.dinner ? 20 : 0) + Math.min(40, today.nutrition.water * 16) },
-    { s: "Travail", v: today.work.focus * 20 },
-    { s: "Mental", v: today.mind.mood * 20 },
+    { s: "Sommeil", v: Math.max(5, Math.min(100, (today.sleep.duration / 9) * 100)) },
+    { s: "Sport", v: today.sport.isRest ? 60 : Math.max(5, Math.min(100, today.sport.duration * 2)) },
+    { s: "Nutrition", v: Math.max(5, (today.nutrition.breakfast ? 20 : 0) + (today.nutrition.lunch ? 20 : 0) + (today.nutrition.dinner ? 20 : 0) + Math.min(40, today.nutrition.water * 16)) },
+    { s: "Travail", v: Math.max(5, today.work.focus * 20) },
+    { s: "Mental", v: Math.max(5, today.mind.mood * 20) },
     { s: "Corps", v: today.body?.weight > 0 ? 80 : 20 },
   ];
 
