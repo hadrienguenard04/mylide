@@ -810,6 +810,52 @@ const SubPageLanguage = ({ onBack, setLang: setAppLang }) => {
   );
 };
 
+// ── LEGAL PAGES ────────────────────────────────────────────────────────────
+const SubPageLegal = ({ onBack, title, sections }) => (
+  <div style={{ position: "fixed", inset: 0, background: C.bg, zIndex: 300, overflowY: "auto", maxWidth: 480, margin: "0 auto", fontFamily: "DM Sans, sans-serif" }}>
+    <div style={{ padding: "18px 20px 14px", background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(20px)", display: "flex", alignItems: "center", gap: 12 }}>
+      <button onClick={onBack} style={{ background: C.surfaceAlt, border: "none", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontSize: 18, color: C.black, fontFamily: "inherit" }}>←</button>
+      <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.black, flex: 1 }}>{title}</p>
+    </div>
+    <div style={{ padding: "20px 20px 48px" }}>
+      <p style={{ fontSize: 11, color: C.muted, margin: "0 0 20px" }}>Dernière mise à jour : mai 2025 · Kojihsports</p>
+      {sections.map((sec, i) => (
+        <div key={i} style={{ marginBottom: 24 }}>
+          <p style={{ fontSize: 13, fontWeight: 800, color: C.black, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: 0.6 }}>{sec.heading}</p>
+          <p style={{ fontSize: 14, color: C.text, lineHeight: 1.65, margin: 0 }}>{sec.body}</p>
+        </div>
+      ))}
+      <div style={{ marginTop: 32, padding: "16px", background: C.surfaceAlt, borderRadius: 14 }}>
+        <p style={{ margin: 0, fontSize: 13, color: C.muted, textAlign: "center" }}>Questions ? <span style={{ color: C.red, fontWeight: 700 }}>support@kojihsports.com</span></p>
+      </div>
+    </div>
+  </div>
+);
+
+const CGU_SECTIONS = [
+  { heading: "1. Présentation", body: "Mylide est une application de suivi de santé et de bien-être développée par Kojihsports. Elle permet aux utilisateurs de suivre leur sommeil, leur activité physique, leur nutrition, leur état mental et leurs finances personnelles." },
+  { heading: "2. Acceptation des conditions", body: "En utilisant Mylide, vous acceptez l'intégralité des présentes conditions d'utilisation. Si vous n'acceptez pas ces conditions, veuillez ne pas utiliser l'application." },
+  { heading: "3. Utilisation de l'application", body: "Mylide est destinée à un usage strictement personnel. Elle ne remplace en aucun cas un avis médical professionnel. Les analyses et recommandations fournies sont à titre informatif uniquement. En cas de doute sur votre santé, consultez un professionnel de santé qualifié." },
+  { heading: "4. Compte utilisateur", body: "Vous êtes responsable de la confidentialité de vos identifiants de connexion et de l'ensemble des activités effectuées depuis votre compte. Toute utilisation frauduleuse doit être signalée immédiatement à support@kojihsports.com." },
+  { heading: "5. Abonnement et paiement", body: "Mylide propose un abonnement Pro donnant accès à des fonctionnalités avancées. L'abonnement se renouvelle automatiquement chaque mois. Vous pouvez annuler à tout moment depuis les paramètres de votre compte ou via les stores (App Store / Google Play). Aucun remboursement n'est accordé pour les périodes entamées." },
+  { heading: "6. Propriété intellectuelle", body: "L'ensemble des contenus de l'application (textes, graphiques, logo, algorithmes, code source) est la propriété exclusive de Kojihsports. Toute reproduction, distribution ou modification est interdite sans autorisation écrite préalable." },
+  { heading: "7. Limitation de responsabilité", body: "Kojihsports ne saurait être tenu responsable des décisions prises sur la base des informations affichées dans l'application, ni des dommages directs ou indirects résultant de son utilisation. L'application est fournie « en l'état »." },
+  { heading: "8. Résiliation", body: "Vous pouvez demander la suppression de votre compte à tout moment en écrivant à support@kojihsports.com. Kojihsports se réserve le droit de suspendre ou supprimer tout compte en cas de violation des présentes conditions." },
+  { heading: "9. Droit applicable", body: "Les présentes conditions générales d'utilisation sont régies par le droit français. Tout litige sera soumis à la compétence exclusive des tribunaux de Paris." },
+];
+
+const PRIVACY_SECTIONS = [
+  { heading: "1. Responsable du traitement", body: "Kojihsports, éditeur de l'application Mylide, est responsable du traitement de vos données personnelles au sens du Règlement Général sur la Protection des Données (RGPD — UE 2016/679)." },
+  { heading: "2. Données collectées", body: "Nous collectons les données que vous saisissez dans l'application : informations de profil (nom, date de naissance, photo), données de santé (sommeil, activité physique, nutrition, poids, humeur), données financières (objectifs patrimoniaux, transactions), et données techniques (adresse e-mail, identifiant d'appareil pour les notifications push)." },
+  { heading: "3. Finalité du traitement", body: "Vos données sont utilisées pour personnaliser votre expérience, générer vos analyses de santé, vous envoyer des notifications pertinentes et améliorer l'application. Elles ne sont utilisées à aucune fin publicitaire." },
+  { heading: "4. Stockage et sécurité", body: "Vos données sont stockées de manière sécurisée via Supabase, hébergé sur des serveurs conformes au RGPD situés en Europe. Les communications sont chiffrées (TLS). Vos données de santé ne transitent jamais en clair." },
+  { heading: "5. Partage des données", body: "Kojihsports ne vend jamais vos données personnelles. Seuls nos prestataires techniques strictement nécessaires au fonctionnement du service (Supabase pour la base de données, services de notification) y ont accès, dans le cadre de contrats de sous-traitance conformes au RGPD." },
+  { heading: "6. Vos droits", body: "Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement (« droit à l'oubli »), de limitation du traitement, de portabilité et d'opposition. L'export de vos données est disponible dans Paramètres → Confidentialité. Pour toute autre demande, écrivez à support@kojihsports.com — réponse garantie sous 30 jours." },
+  { heading: "7. Durée de conservation", body: "Vos données sont conservées tant que votre compte est actif. En cas de suppression de compte, l'ensemble de vos données personnelles est supprimé dans un délai maximum de 30 jours, sauf obligation légale contraire." },
+  { heading: "8. Cookies et traceurs", body: "Mylide n'utilise pas de cookies publicitaires ou de traceurs tiers. Des cookies techniques strictement nécessaires au bon fonctionnement de l'authentification et de la session sont utilisés." },
+  { heading: "9. Modifications", body: "Kojihsports se réserve le droit de modifier la présente politique. Toute modification substantielle vous sera notifiée dans l'application. La version en vigueur est celle affichée dans les paramètres." },
+];
+
 // ── SETTINGS PAGE ──────────────────────────────────────────────────────────
 const SettingsPage = ({ onClose, darkMode, setDarkMode, profile, updateProfile, isPro, setShowSubscription, nutritionGoals, setNutritionGoals, onSignOut, setLang }) => {
   const [sub, setSub] = useState(null);
@@ -867,6 +913,18 @@ const SettingsPage = ({ onClose, darkMode, setDarkMode, profile, updateProfile, 
   if (sub === "phone") return <SubPagePhone onBack={() => setSub(null)} profile={profile} updateProfile={updateProfile} darkMode={darkMode} />;
   if (sub === "language") return <SubPageLanguage onBack={() => setSub(null)} setLang={setLang} />;
   if (sub === "notif") return <SubPageNotif onBack={() => setSub(null)} darkMode={darkMode} />;
+  if (sub === "cgu") return <SubPageLegal onBack={() => setSub(null)} title="Conditions d'utilisation" sections={CGU_SECTIONS} />;
+  if (sub === "privacy") return <SubPageLegal onBack={() => setSub(null)} title="Politique de confidentialité" sections={PRIVACY_SECTIONS} />;
+
+  const SubscriptionBlock = () => (
+    <Sec title={tr("sec_subscription")}>
+      <div onClick={() => { onClose(); setTimeout(() => setShowSubscription(true), 120); }} style={{ background: "linear-gradient(135deg, #CC2936, #8B1A22)", borderRadius: 14, padding: "16px 18px", cursor: "pointer", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 8px 24px rgba(204,41,54,0.25)" }}>
+        <div><p style={{ color: "#fff", fontWeight: 900, fontSize: 16, margin: "0 0 2px" }}>{isPro ? "⭐ Membre Pro actif" : "Passer à Pro"}</p><p style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, margin: 0 }}>{isPro ? "Renouvellement dans 23 jours" : "1 mois gratuit · 3,59€/mois"}</p></div>
+        <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 22 }}>›</span>
+      </div>
+      <Row icon="🔄" label="Restaurer les achats" onClick={() => {}} last />
+    </Sec>
+  );
 
   return (
     <div style={{ position: "fixed", inset: 0, background: C.bg, zIndex: 200, overflowY: "auto", maxWidth: 480, margin: "0 auto", fontFamily: "DM Sans, sans-serif" }}>
@@ -881,6 +939,10 @@ const SettingsPage = ({ onClose, darkMode, setDarkMode, profile, updateProfile, 
           <div style={{ flex: 1 }}><p style={{ margin: "0 0 2px", fontSize: 17, fontWeight: 800, color: "#fff" }}>{profile.name}</p><p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{isPro ? tr("pro_member") : tr("free_member")}</p></div>
           <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, fontWeight: 600 }}>{tr("settings_edit")}</span>
         </div>
+
+        {/* Abonnement EN HAUT si pas Pro — maximise la conversion */}
+        {!isPro && <SubscriptionBlock />}
+
         <Sec title={tr("sec_account")}>
           <Row icon="👤" label={tr("row_info")} desc={tr("row_info_desc")} onClick={() => setSub("info")} />
           <Row icon="📧" label={tr("row_email")} desc={userEmail || "..."} onClick={() => setSub("email")} />
@@ -900,47 +962,36 @@ const SettingsPage = ({ onClose, darkMode, setDarkMode, profile, updateProfile, 
             { k: "strava", icon: "🚴", label: "Strava", sub: "Running & cyclisme" },
           ].map((item, i, arr) => <Row key={item.k} icon={item.icon} label={item.label} desc={connApps[item.k] ? "✅ Connecté · sync. à l'instant" : item.sub} right={<Tog value={connApps[item.k]} onChange={v => upCA(item.k, v)} />} last={i === arr.length - 1} />)}
         </Sec>
+
         <Sec title={tr("sec_notif")}>
           <Row icon="🔔" label="Gérer les notifications" desc={`${Object.entries(notif).filter(([k,v]) => k !== "silentMode" && v).length} active(s)`} onClick={() => setSub("notif")} last />
         </Sec>
+
         <Sec title={tr("sec_appearance")}>
-          <Row icon={darkMode ? "☀️" : "🌙"} label={darkMode ? tr("row_darkmode_on") : tr("row_darkmode_off")} right={<Tog value={darkMode} onChange={setDarkMode} />} />
-          <Row icon="📐" label={tr("row_textsize")} desc={appPref.textSize === "small" ? "Petite" : appPref.textSize === "large" ? "Grande" : "Normale"} onClick={() => { const s = ["small", "normal", "large"]; upApp("textSize", s[(s.indexOf(appPref.textSize) + 1) % 3]); }} />
-          <Row icon="✨" label={tr("row_anim")} right={<Tog value={appPref.animations} onChange={v => upApp("animations", v)} />} />
-          <Row icon="📱" label={tr("row_compact")} right={<Tog value={appPref.compact} onChange={v => upApp("compact", v)} />} last />
+          <Row icon={darkMode ? "☀️" : "🌙"} label={darkMode ? tr("row_darkmode_on") : tr("row_darkmode_off")} right={<Tog value={darkMode} onChange={setDarkMode} />} last />
         </Sec>
+
         <Sec title={tr("sec_privacy")}>
-          <Row icon="🔒" label="Face ID / Touch ID" right={<Tog value={false} onChange={() => {}} />} />
-          <Row icon="🔢" label="Code PIN" desc="Non configuré" onClick={() => {}} />
           <Row icon="📤" label="Télécharger mes données" desc="Export au format JSON" onClick={exportData} />
-          <Row icon="🛡️" label="Gérer permissions santé" onClick={() => {}} />
           <Row icon="🗑️" label="Supprimer mon compte" desc="Action irréversible" onClick={() => { if (window.confirm("Supprimer définitivement votre compte ? Cette action est irréversible.")) alert("Contactez support@kojihsports.com pour supprimer votre compte."); }} last />
         </Sec>
-        <Sec title={tr("sec_ai")}>
-          <Row icon="🤖" label="Coach IA activé" right={<Tog value={aiPref.coach} onChange={v => upAI("coach", v)} />} />
-          <Row icon="🔬" label="Analyse automatique" right={<Tog value={aiPref.autoAnalysis} onChange={v => upAI("autoAnalysis", v)} />} />
-          <Row icon="🧠" label="Résumé santé intelligent" right={<Tog value={aiPref.healthSummary} onChange={v => upAI("healthSummary", v)} />} />
-          <Row icon="🔮" label="Notifications prédictives" right={<Tog value={aiPref.predictive} onChange={v => upAI("predictive", v)} />} last />
-        </Sec>
-        <Sec title={tr("sec_subscription")}>
-          <div onClick={() => { onClose(); setTimeout(() => setShowSubscription(true), 120); }} style={{ background: "linear-gradient(135deg, #CC2936, #8B1A22)", borderRadius: 14, padding: "16px 18px", cursor: "pointer", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 8px 24px rgba(204,41,54,0.25)" }}>
-            <div><p style={{ color: "#fff", fontWeight: 900, fontSize: 16, margin: "0 0 2px" }}>{isPro ? "⭐ Membre Pro actif" : "Passer à Pro"}</p><p style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, margin: 0 }}>{isPro ? "Renouvellement dans 23 jours" : "1 mois gratuit · 3,59€/mois"}</p></div>
-            <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 22 }}>›</span>
-          </div>
-          <Row icon="🔄" label="Restaurer les achats" onClick={() => {}} last />
-        </Sec>
+
         <Sec title={tr("sec_support")}>
           <Row icon="❓" label="FAQ" onClick={() => {}} />
           <Row icon="💬" label="Contacter l'équipe" desc="support@kojihsports.com" onClick={() => window.open("mailto:support@kojihsports.com")} />
-          <Row icon="📖" label="Tutoriels" onClick={() => {}} />
           <Row icon="🐛" label="Signaler un bug" onClick={() => window.open("mailto:bugs@kojihsports.com")} last />
         </Sec>
+
         <Sec title={tr("sec_about")}>
           <Row icon="📱" label="Version de l'app" desc="Mylide 1.0.0 · Kojihsports" />
-          <Row icon="📄" label="Conditions d'utilisation" onClick={() => {}} />
-          <Row icon="🔐" label="Politique de confidentialité" onClick={() => {}} />
+          <Row icon="📄" label="Conditions d'utilisation" onClick={() => setSub("cgu")} />
+          <Row icon="🔐" label="Politique de confidentialité" onClick={() => setSub("privacy")} />
           <Row icon="📸" label="Réseaux sociaux" desc="@kojihsports" onClick={() => {}} last />
         </Sec>
+
+        {/* Abonnement EN BAS si Pro — réduit la visibilité de la résiliation */}
+        {isPro && <SubscriptionBlock />}
+
         <div style={{ height: 40 }} />
       </div>
     </div>
