@@ -595,6 +595,89 @@ const SubPagePhone = ({ onBack, profile, updateProfile, darkMode }) => {
   );
 };
 
+const SubPageNotif = ({ onBack, darkMode }) => {
+  const [notif, setNotif] = useState(() => { try { return JSON.parse(localStorage.getItem("notif")) || { hydration: true, sleep: true, training: true, walk: false, motivation: true, daily: true, weekly: true, silentMode: false }; } catch { return { hydration: true, sleep: true, training: true, walk: false, motivation: true, daily: true, weekly: true, silentMode: false }; } });
+  const [wakeTime, setWakeTime] = useState(() => localStorage.getItem("wakeTime") || "07:00");
+  const [sleepTime, setSleepTime] = useState(() => localStorage.getItem("sleepTime") || "23:00");
+  const [confirmSilent, setConfirmSilent] = useState(false);
+
+  const upN = (k, v) => {
+    const n = { ...notif, [k]: v };
+    setNotif(n);
+    localStorage.setItem("notif", JSON.stringify(n));
+    const anyOn = Object.entries(n).some(([key, val]) => key !== "silentMode" && val);
+    if (anyOn) registerPush(n, wakeTime, sleepTime);
+  };
+  const upTime = (type, val) => {
+    if (type === "wake") { setWakeTime(val); localStorage.setItem("wakeTime", val); registerPush(notif, val, sleepTime); }
+    else { setSleepTime(val); localStorage.setItem("sleepTime", val); registerPush(notif, wakeTime, val); }
+  };
+  const handleSilent = () => {
+    if (!notif.silentMode) setConfirmSilent(true);
+    else upN("silentMode", false);
+  };
+  const confirmSilentMode = () => {
+    const n = { hydration: false, sleep: false, training: false, walk: false, motivation: false, daily: false, weekly: false, silentMode: true };
+    setNotif(n);
+    localStorage.setItem("notif", JSON.stringify(n));
+    setConfirmSilent(false);
+  };
+
+  const Tog = ({ value, onChange }) => (
+    <div onClick={onChange} style={{ width: 44, height: 26, borderRadius: 13, background: value ? C.red : C.subtle, position: "relative", transition: "background 0.25s", cursor: "pointer", flexShrink: 0 }}>
+      <div style={{ position: "absolute", top: 3, left: value ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.25)" }} />
+    </div>
+  );
+  const Row = ({ icon, label, desc, right, last }) => (
+    <div style={{ display: "flex", alignItems: "center", padding: "13px 0", borderBottom: last ? "none" : `1px solid ${C.border}`, gap: 12 }}>
+      <span style={{ fontSize: 18, width: 28, textAlign: "center", flexShrink: 0 }}>{icon}</span>
+      <div style={{ flex: 1 }}><p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.black }}>{label}</p>{desc && <p style={{ margin: "2px 0 0", fontSize: 12, color: C.muted }}>{desc}</p>}</div>
+      {right}
+    </div>
+  );
+
+  return (
+    <SubLayout onBack={onBack} title="Notifications">
+      {confirmSilent && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div style={{ background: C.surface, borderRadius: 20, padding: 24, maxWidth: 320, width: "100%" }}>
+            <p style={{ fontSize: 17, fontWeight: 800, color: C.black, margin: "0 0 8px" }}>🔕 Mode silencieux</p>
+            <p style={{ fontSize: 14, color: C.muted, margin: "0 0 20px", lineHeight: 1.5 }}>Toutes tes notifications vont être désactivées. Tu peux les réactiver à tout moment.</p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setConfirmSilent(false)} style={{ flex: 1, padding: 14, borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surfaceAlt, color: C.muted, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Annuler</button>
+              <button onClick={confirmSilentMode} style={{ flex: 1, padding: 14, borderRadius: 12, border: "none", background: C.red, color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>Confirmer</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "0 16px", marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: "14px 0" }}>
+          {[{ k: "wake", label: "🌅 Je me lève à", val: wakeTime }, { k: "sleep_t", label: "🌙 Je dors à", val: sleepTime }].map(({ k, label, val }) => (
+            <div key={k}>
+              <p style={{ fontSize: 11, color: C.muted, fontWeight: 700, marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</p>
+              <input type="time" value={val} onChange={e => upTime(k === "wake" ? "wake" : "sleep", e.target.value)} style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", color: C.black, fontSize: 15, fontWeight: 700, width: "100%", boxSizing: "border-box", outline: "none", fontFamily: "inherit" }} />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "0 16px", marginBottom: 16 }}>
+        {[
+          { k: "motivation", icon: "⚡", label: "Motivation", desc: `Lever + 30min` },
+          { k: "hydration", icon: "💧", label: "Rappel hydratation", desc: "Toutes les 2h30 dans la journée" },
+          { k: "training", icon: "🏋️", label: "Rappel entraînement", desc: "17h00" },
+          { k: "walk", icon: "👟", label: "Rappel marche", desc: "12h30" },
+          { k: "daily", icon: "📊", label: "Résumé quotidien", desc: "Coucher - 2h" },
+          { k: "weekly", icon: "📅", label: "Résumé hebdomadaire", desc: "Dimanche soir" },
+          { k: "sleep", icon: "🌙", label: "Rappel coucher", desc: "Coucher - 30min" },
+        ].map((item, i, arr) => <Row key={item.k} icon={item.icon} label={item.label} desc={item.desc} right={<Tog value={notif[item.k]} onChange={() => upN(item.k, !notif[item.k])} />} last={i === arr.length - 1} />)}
+      </div>
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "0 16px" }}>
+        <Row icon="🔕" label="Mode silencieux" desc="Désactive toutes les notifications" right={<Tog value={notif.silentMode} onChange={handleSilent} />} last />
+      </div>
+    </SubLayout>
+  );
+};
+
 const SubPageLanguage = ({ onBack, setLang: setAppLang }) => {
   const [selected, setSelected] = useState(() => localStorage.getItem("lang") || "fr");
   const langs = [{ k: "fr", flag: "🇫🇷", label: "Français" }, { k: "en", flag: "🇬🇧", label: "English" }, { k: "es", flag: "🇪🇸", label: "Español" }, { k: "de", flag: "🇩🇪", label: "Deutsch" }];
@@ -670,6 +753,7 @@ const SettingsPage = ({ onClose, darkMode, setDarkMode, profile, updateProfile, 
   if (sub === "password") return <SubPagePassword onBack={() => setSub(null)} darkMode={darkMode} />;
   if (sub === "phone") return <SubPagePhone onBack={() => setSub(null)} profile={profile} updateProfile={updateProfile} darkMode={darkMode} />;
   if (sub === "language") return <SubPageLanguage onBack={() => setSub(null)} setLang={setLang} />;
+  if (sub === "notif") return <SubPageNotif onBack={() => setSub(null)} darkMode={darkMode} />;
 
   return (
     <div style={{ position: "fixed", inset: 0, background: C.bg, zIndex: 200, overflowY: "auto", maxWidth: 480, margin: "0 auto", fontFamily: "DM Sans, sans-serif" }}>
@@ -704,30 +788,7 @@ const SettingsPage = ({ onClose, darkMode, setDarkMode, profile, updateProfile, 
           ].map((item, i, arr) => <Row key={item.k} icon={item.icon} label={item.label} desc={connApps[item.k] ? "✅ Connecté · sync. à l'instant" : item.sub} right={<Tog value={connApps[item.k]} onChange={v => upCA(item.k, v)} />} last={i === arr.length - 1} />)}
         </Sec>
         <Sec title={tr("sec_notif")}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: "10px 0 4px" }}>
-            {[
-              { k: "wake", label: "🌅 Je me lève à", val: wakeTime },
-              { k: "sleep_t", label: "🌙 Je dors à", val: sleepTime },
-            ].map(({ k, label, val }) => (
-              <div key={k}>
-                <p style={{ fontSize: 11, color: C.muted, fontWeight: 700, marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</p>
-                <input type="time" value={val} onChange={e => upTime(k === "wake" ? "wake" : "sleep", e.target.value)} style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", color: C.black, fontSize: 15, fontWeight: 700, width: "100%", boxSizing: "border-box", outline: "none", fontFamily: "inherit" }} />
-              </div>
-            ))}
-          </div>
-          <div style={{ height: 8 }} />
-          {[
-            { k: "motivation", icon: "⚡", label: "Motivation", desc: `Lever + 30min (${new Date(`2000-01-01T${wakeTime}`).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h")})` },
-            { k: "hydration", icon: "💧", label: "Rappel hydratation", desc: "Toutes les 2h30 dans la journée" },
-            { k: "training", icon: "🏋️", label: "Rappel entraînement", desc: "17h00" },
-            { k: "walk", icon: "👟", label: "Rappel marche", desc: "12h30" },
-            { k: "daily", icon: "📊", label: "Résumé quotidien", desc: `Coucher - 2h (${new Date(`2000-01-01T${sleepTime}`).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h").replace(/(..)(..)/,"$1h$2")})` },
-            { k: "weekly", icon: "📅", label: "Résumé hebdomadaire", desc: "Dimanche soir" },
-            { k: "sleep", icon: "🌙", label: "Rappel coucher", desc: `Coucher - 30min` },
-          ].map((item, i, arr) => <Row key={item.k} icon={item.icon} label={item.label} desc={item.desc} right={<Tog value={notif[item.k]} onChange={v => upN(item.k, v)} />} last={i === arr.length - 1} />)}
-          <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 8, marginTop: 4 }}>
-            <Row icon="🔕" label="Mode silencieux" desc="Aucune notif hors de tes horaires" right={<Tog value={notif.silentMode} onChange={v => upN("silentMode", v)} />} last />
-          </div>
+          <Row icon="🔔" label="Gérer les notifications" desc={`${Object.entries(notif).filter(([k,v]) => k !== "silentMode" && v).length} active(s)`} onClick={() => setSub("notif")} last />
         </Sec>
         <Sec title={tr("sec_appearance")}>
           <Row icon={darkMode ? "☀️" : "🌙"} label={darkMode ? tr("row_darkmode_on") : tr("row_darkmode_off")} right={<Tog value={darkMode} onChange={setDarkMode} />} />
@@ -1152,6 +1213,17 @@ export default function App() {
       if (todosData?.length) setTodos(todosData.map(t => t.data));
     };
     loadData();
+
+    // Demande permission notifs au premier lancement
+    if (!localStorage.getItem("notifAsked") && "Notification" in window) {
+      localStorage.setItem("notifAsked", "true");
+      setTimeout(async () => {
+        const notifPrefs = JSON.parse(localStorage.getItem("notif") || "{}");
+        const wake = localStorage.getItem("wakeTime") || "07:00";
+        const sleep = localStorage.getItem("sleepTime") || "23:00";
+        await registerPush(notifPrefs, wake, sleep);
+      }, 3000);
+    }
   }, []);
 
   const saveAll = useCallback(async (h, t, g, p, pr) => {
