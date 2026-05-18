@@ -1,5 +1,31 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "./supabase";
+
+const VAPID_PUBLIC_KEY = "BHfX8lG2QQGuaE8AW9qOykb2GZaxtzONoy7k3feJBGzf-Dyrx4h2qUk4xt9FQyo8H1Cr1EuemZLucqdd0iEt7M4";
+
+async function registerPush(notifPrefs, wakeTime = "07:00", sleepTime = "23:00") {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.ready;
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") return;
+    const existing = await reg.pushManager.getSubscription();
+    const sub = existing || await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: VAPID_PUBLIC_KEY,
+    });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("push_subscriptions").upsert({
+      user_id: user.id,
+      subscription: sub.toJSON(),
+      notif_prefs: notifPrefs,
+      wake_time: wakeTime,
+      sleep_time: sleepTime,
+    }, { onConflict: "user_id" });
+  } catch (e) { console.warn("Push registration failed", e); }
+}
 import Subscription from "./Subscription";
 import { useTheme } from "./theme.jsx";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
@@ -593,13 +619,25 @@ const SettingsPage = ({ onClose, darkMode, setDarkMode, profile, updateProfile, 
   const [sub, setSub] = useState(null);
   const [userEmail, setUserEmail] = useState("");
   const [notif, setNotif] = useState(() => { try { return JSON.parse(localStorage.getItem("notif")) || { hydration: true, sleep: true, training: true, walk: false, motivation: true, daily: true, weekly: true, silentMode: false }; } catch { return { hydration: true, sleep: true, training: true, walk: false, motivation: true, daily: true, weekly: true, silentMode: false }; } });
+  const [wakeTime, setWakeTime] = useState(() => localStorage.getItem("wakeTime") || "07:00");
+  const [sleepTime, setSleepTime] = useState(() => localStorage.getItem("sleepTime") || "23:00");
   const [connApps, setConnApps] = useState(() => { try { return JSON.parse(localStorage.getItem("connApps")) || { appleWatch: false, appleHealth: false, garmin: false, fitbit: false, oura: false, strava: false }; } catch { return { appleWatch: false, appleHealth: false, garmin: false, fitbit: false, oura: false, strava: false }; } });
   const [aiPref, setAiPref] = useState(() => { try { return JSON.parse(localStorage.getItem("aiPref")) || { coach: true, autoAnalysis: true, healthSummary: true, predictive: false }; } catch { return { coach: true, autoAnalysis: true, healthSummary: true, predictive: false }; } });
   const [appPref, setAppPref] = useState(() => { try { return JSON.parse(localStorage.getItem("appPref")) || { textSize: "normal", animations: true, compact: false }; } catch { return { textSize: "normal", animations: true, compact: false }; } });
 
   useEffect(() => { supabase.auth.getUser().then(({ data: { user } }) => { if (user) setUserEmail(user.email || ""); }); }, []);
 
-  const upN = (k, v) => { const n = { ...notif, [k]: v }; setNotif(n); localStorage.setItem("notif", JSON.stringify(n)); };
+  const upN = (k, v) => {
+    const n = { ...notif, [k]: v };
+    setNotif(n);
+    localStorage.setItem("notif", JSON.stringify(n));
+    const anyOn = Object.entries(n).some(([key, val]) => key !== "silentMode" && val);
+    if (anyOn) registerPush(n, wakeTime, sleepTime);
+  };
+  const upTime = (type, val) => {
+    if (type === "wake") { setWakeTime(val); localStorage.setItem("wakeTime", val); registerPush(notif, val, sleepTime); }
+    else { setSleepTime(val); localStorage.setItem("sleepTime", val); registerPush(notif, wakeTime, val); }
+  };
   const upCA = (k, v) => { const a = { ...connApps, [k]: v }; setConnApps(a); localStorage.setItem("connApps", JSON.stringify(a)); };
   const upAI = (k, v) => { const a = { ...aiPref, [k]: v }; setAiPref(a); localStorage.setItem("aiPref", JSON.stringify(a)); };
   const upApp = (k, v) => { const a = { ...appPref, [k]: v }; setAppPref(a); localStorage.setItem("appPref", JSON.stringify(a)); };
@@ -666,17 +704,29 @@ const SettingsPage = ({ onClose, darkMode, setDarkMode, profile, updateProfile, 
           ].map((item, i, arr) => <Row key={item.k} icon={item.icon} label={item.label} desc={connApps[item.k] ? "✅ Connecté · sync. à l'instant" : item.sub} right={<Tog value={connApps[item.k]} onChange={v => upCA(item.k, v)} />} last={i === arr.length - 1} />)}
         </Sec>
         <Sec title={tr("sec_notif")}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: "10px 0 4px" }}>
+            {[
+              { k: "wake", label: "🌅 Je me lève à", val: wakeTime },
+              { k: "sleep_t", label: "🌙 Je dors à", val: sleepTime },
+            ].map(({ k, label, val }) => (
+              <div key={k}>
+                <p style={{ fontSize: 11, color: C.muted, fontWeight: 700, marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</p>
+                <input type="time" value={val} onChange={e => upTime(k === "wake" ? "wake" : "sleep", e.target.value)} style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", color: C.black, fontSize: 15, fontWeight: 700, width: "100%", boxSizing: "border-box", outline: "none", fontFamily: "inherit" }} />
+              </div>
+            ))}
+          </div>
+          <div style={{ height: 8 }} />
           {[
-            { k: "hydration", icon: "💧", label: "Rappel hydratation" },
-            { k: "sleep", icon: "🌙", label: "Rappel coucher" },
-            { k: "training", icon: "🏋️", label: "Rappel entraînement" },
-            { k: "walk", icon: "👟", label: "Rappel marche" },
-            { k: "motivation", icon: "⚡", label: "Notifications motivation" },
-            { k: "daily", icon: "📊", label: "Résumé quotidien" },
-            { k: "weekly", icon: "📅", label: "Résumé hebdomadaire" },
-          ].map((item, i, arr) => <Row key={item.k} icon={item.icon} label={item.label} right={<Tog value={notif[item.k]} onChange={v => upN(item.k, v)} />} last={i === arr.length - 1} />)}
+            { k: "motivation", icon: "⚡", label: "Motivation", desc: `Lever + 30min (${new Date(`2000-01-01T${wakeTime}`).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h")})` },
+            { k: "hydration", icon: "💧", label: "Rappel hydratation", desc: "Toutes les 2h30 dans la journée" },
+            { k: "training", icon: "🏋️", label: "Rappel entraînement", desc: "17h00" },
+            { k: "walk", icon: "👟", label: "Rappel marche", desc: "12h30" },
+            { k: "daily", icon: "📊", label: "Résumé quotidien", desc: `Coucher - 2h (${new Date(`2000-01-01T${sleepTime}`).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }).replace(":", "h").replace(/(..)(..)/,"$1h$2")})` },
+            { k: "weekly", icon: "📅", label: "Résumé hebdomadaire", desc: "Dimanche soir" },
+            { k: "sleep", icon: "🌙", label: "Rappel coucher", desc: `Coucher - 30min` },
+          ].map((item, i, arr) => <Row key={item.k} icon={item.icon} label={item.label} desc={item.desc} right={<Tog value={notif[item.k]} onChange={v => upN(item.k, v)} />} last={i === arr.length - 1} />)}
           <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 8, marginTop: 4 }}>
-            <Row icon="🔕" label="Mode silencieux" right={<Tog value={notif.silentMode} onChange={v => upN("silentMode", v)} />} last />
+            <Row icon="🔕" label="Mode silencieux" desc="Aucune notif hors de tes horaires" right={<Tog value={notif.silentMode} onChange={v => upN("silentMode", v)} />} last />
           </div>
         </Sec>
         <Sec title={tr("sec_appearance")}>
