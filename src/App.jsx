@@ -654,16 +654,7 @@ const SettingsPage = ({ onClose, darkMode, setDarkMode, profile, updateProfile, 
           <Row icon="🌍" label={tr("row_lang")} desc={currentLang} onClick={() => setSub("language")} />
           <Row icon="🚪" label={tr("row_logout")} desc={tr("row_logout_desc")} onClick={onSignOut} last />
         </Sec>
-        <Sec title={tr("sec_goals")}>
-          <Row icon="🔥" label="Calories journalières" desc={`${nutritionGoals.calTarget} kcal`} onClick={onClose} />
-          <Row icon="🥩" label="Protéines" desc={`${nutritionGoals.protTarget}g / jour`} onClick={onClose} />
-          <Row icon="🍞" label="Glucides" desc={`${nutritionGoals.carbsTarget}g / jour`} onClick={onClose} />
-          <Row icon="🫒" label="Lipides" desc={`${nutritionGoals.fatTarget}g / jour`} onClick={onClose} />
-          <Row icon="💧" label="Hydratation" desc="2,5 L / jour" onClick={onClose} />
-          <Row icon="😴" label="Sommeil" desc="8h / nuit" onClick={onClose} />
-          <Row icon="👟" label="Pas quotidiens" desc="10 000 pas / jour" onClick={onClose} />
-          <Row icon="🏋️" label="Séances / semaine" desc="4 séances" onClick={onClose} last />
-        </Sec>
+
         <Sec title={tr("sec_devices")}>
           {[
             { k: "appleWatch", icon: "⌚", label: "Apple Watch", sub: "Fréquence cardiaque, activité" },
