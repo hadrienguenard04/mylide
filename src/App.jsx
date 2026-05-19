@@ -1092,7 +1092,7 @@ const EvoChart = ({ data, dataKey, color, label, unit, height = 150 }) => {
           <CartesianGrid stroke={C.border} vertical={false} strokeDasharray="3 3"/>
           <XAxis dataKey="date" tick={{ fill: C.muted, fontSize: 9, fontWeight: 500 }} tickFormatter={d => d.slice(5)} axisLine={false} tickLine={false}/>
           <YAxis tick={{ fill: C.muted, fontSize: 9 }} width={28} domain={["auto","auto"]} axisLine={false} tickLine={false}/>
-          <Tooltip contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }} formatter={v => [`${v}${unit}`, label]}/>
+          <Tooltip contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 12, color: C.text, boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }} formatter={v => [`${v}${unit}`, label]}/>
           <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5} fill={`url(#g${label.replace(/\s/g,"")})`} dot={false} activeDot={{ r: 5, fill: color, stroke: C.surface, strokeWidth: 2 }}/>
         </AreaChart>
       </ResponsiveContainer>
@@ -1340,8 +1340,9 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [onboarded, setOnboarded] = useState(null);
   const { darkMode, setDarkMode } = useTheme();
-  const C = darkMode ? DARK : LIGHT;
-  useEffect(() => { Object.assign(C, darkMode ? DARK : LIGHT); document.body.style.background = C.bg; }, [darkMode]);
+  // Sync: update module-level C BEFORE any JSX so Card/ST/EvoChart etc. get correct theme
+  Object.assign(C, darkMode ? DARK : LIGHT);
+  useEffect(() => { document.body.style.background = C.bg; }, [darkMode]);
 
   const [nav, setNav] = useState("today");
   const [trackTab, setTrackTab] = useState("sleep");
@@ -2183,7 +2184,7 @@ export default function App() {
                     <CartesianGrid stroke={C.border} vertical={false} strokeDasharray="3 3"/>
                     <XAxis dataKey="year" tick={{ fill: C.muted, fontSize: 9 }} tickFormatter={y => `${y}a`} axisLine={false} tickLine={false}/>
                     <YAxis tick={{ fill: C.muted, fontSize: 9 }} width={38} tickFormatter={v => `${Math.round(v/1000)}k`} axisLine={false} tickLine={false}/>
-                    <Tooltip contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 12 }} formatter={v => [`${v.toLocaleString("fr-FR")}€`, "Valeur"]}/>
+                    <Tooltip contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 12, color: C.text }} formatter={v => [`${v.toLocaleString("fr-FR")}€`, "Valeur"]}/>
                     <Area type="monotone" dataKey="value" stroke={C.green} strokeWidth={2.5} fill="url(#simGrad)" dot={false}/>
                   </AreaChart>
                 </ResponsiveContainer>
