@@ -1005,7 +1005,7 @@ const ScoreRing = ({ score, delta, streak }) => {
   return (
     <div style={{ position: "relative", width: 84, height: 84, flexShrink: 0 }}>
       <svg width="84" height="84" style={{ transform: "rotate(-90deg)" }}>
-        <circle cx="42" cy="42" r={r} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="6"/>
+        <circle cx="42" cy="42" r={r} fill="none" stroke={C.border} strokeWidth="6"/>
         <circle cx="42" cy="42" r={r} fill="none" stroke={col} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${fill} ${circ - fill}`} style={{ transition: "stroke-dasharray 1s cubic-bezier(0.4,0,0.2,1)" }}/>
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
@@ -1038,19 +1038,19 @@ const CalendarHeatmap = ({ history }) => {
 const AthleticRadar = ({ data }) => {
   const COLORS = { Sommeil: "#A855F7", Sport: "#CC2936", Nutrition: "#F97316", Travail: "#3B82F6", Mental: "#22C55E", Corps: "#F59E0B" };
   return (
-    <div style={{ background: "#0C0C0C", borderRadius: 16, padding: 16, position: "relative" }}>
+    <div style={{ background: C.surfaceAlt, borderRadius: 16, padding: 16, position: "relative" }}>
       <ResponsiveContainer width="100%" height={220}>
         <RadarChart data={data} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
-          <PolarGrid stroke="rgba(255,255,255,0.08)" />
+          <PolarGrid stroke={C.border} />
           <PolarAngleAxis dataKey="s" tick={({ x, y, payload }) => {
-            const col = COLORS[payload.value] || "#888";
+            const col = COLORS[payload.value] || C.muted;
             return <text x={x} y={y} textAnchor="middle" dominantBaseline="middle" fill={col} fontSize={10} fontWeight={700}>{payload.value}</text>;
           }} />
-          <Radar dataKey="v" stroke="#E8384A" fill="#E8384A" fillOpacity={0.25} strokeWidth={2} dot={{ r: 3, fill: "#E8384A", strokeWidth: 0 }} />
+          <Radar dataKey="v" stroke={C.red} fill={C.red} fillOpacity={0.22} strokeWidth={2} dot={{ r: 3, fill: C.red, strokeWidth: 0 }} />
         </RadarChart>
       </ResponsiveContainer>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 4 }}>
-        {data.map(item => <div key={item.s} style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: COLORS[item.s] }} /><span style={{ fontSize: 10, color: "rgba(255,255,255,0.6)" }}>{item.s} {Math.round(item.v)}%</span></div>)}
+        {data.map(item => <div key={item.s} style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: COLORS[item.s] }} /><span style={{ fontSize: 10, color: C.muted }}>{item.s} {Math.round(item.v)}%</span></div>)}
       </div>
     </div>
   );
@@ -1128,7 +1128,7 @@ const Field = ({ label, children }) => (
 );
 
 const Card = ({ children, style = {}, accent, dark }) => {
-  const bg = accent ? `linear-gradient(135deg, ${C.red} 0%, #8B1A22 100%)` : dark ? "#0C0C0C" : C.surface;
+  const bg = accent ? `linear-gradient(135deg, ${C.red} 0%, #8B1A22 100%)` : dark ? C.bg : C.surface;
   return (
     <div style={{ background: bg, border: accent || dark ? "none" : `1px solid ${C.border}`, borderRadius: 20, padding: 20, marginBottom: 12, boxShadow: accent ? "0 12px 40px rgba(204,41,54,0.22)" : "0 2px 16px rgba(0,0,0,0.05)", ...style }}>{children}</div>
   );
@@ -2118,9 +2118,9 @@ export default function App() {
                 <Card>
                   <ST>{tr("money_split")}</ST>
                   <ResponsiveContainer width="100%" height={180}>
-                    <PieChart><Pie data={patrimoine.filter(p => p.amount > 0)} dataKey="amount" nameKey="name" cx="50%" cy="50%" outerRadius={72} innerRadius={32} label={({ name, percent }) => `${(percent*100).toFixed(0)}%`} fontSize={10}>
+                    <PieChart><Pie data={patrimoine.filter(p => p.amount > 0)} dataKey="amount" nameKey="name" cx="50%" cy="50%" outerRadius={72} innerRadius={32} label={({ name, percent }) => `${(percent*100).toFixed(0)}%`} labelLine={false} fontSize={10} fill={C.text}>
                       {patrimoine.filter(p => p.amount > 0).map((p, i) => <Cell key={i} fill={p.color} />)}
-                    </Pie><Tooltip formatter={v => [`${v.toLocaleString("fr-FR")}€`, ""]} /></PieChart>
+                    </Pie><Tooltip contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 12, color: C.text }} formatter={v => [`${v.toLocaleString("fr-FR")}€`, ""]} /></PieChart>
                   </ResponsiveContainer>
                 </Card>
               )}
