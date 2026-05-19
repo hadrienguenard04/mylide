@@ -1057,7 +1057,21 @@ const AthleticRadar = ({ data }) => {
 };
 
 // ── COMPOSANTS ─────────────────────────────────────────────────────────────
-const inp = { background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "13px 16px", color: C.text, fontSize: 16, outline: "none", width: "100%", boxSizing: "border-box", WebkitAppearance: "none", appearance: "none", fontFamily: "inherit" };
+// inp uses getters so C.xxx is evaluated at render time (not at module init)
+const inp = {
+  get background() { return C.surfaceAlt; },
+  get border() { return `1px solid ${C.border}`; },
+  borderRadius: 12,
+  padding: "13px 16px",
+  get color() { return C.text; },
+  fontSize: 16,
+  outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
+  WebkitAppearance: "none",
+  appearance: "none",
+  fontFamily: "inherit",
+};
 
 const EvoChart = ({ data, dataKey, color, label, unit, height = 150 }) => {
   if (data.length < 2) return <div style={{ background: C.surfaceAlt, borderRadius: 14, padding: 14, textAlign: "center", marginBottom: 14 }}><p style={{ fontSize: 12, color: C.muted, margin: 0 }}>Graphique disponible apres 2+ jours</p></div>;
@@ -1161,8 +1175,8 @@ const EditGoalModal = ({ goal, onSave, onClose }) => {
           <Field label="Nom"><input value={edited.label} onChange={e => setEdited(p => ({ ...p, label: e.target.value }))} style={inp} /></Field>
           <Field label="Categorie"><input value={edited.category} onChange={e => setEdited(p => ({ ...p, category: e.target.value }))} style={inp} /></Field>
           <Field label="Source de donnees">
-            <select value={edited.sourceId} onChange={e => setEdited(p => ({ ...p, sourceId: e.target.value }))} style={{ ...inp, color: C.text }}>
-              {DATA_SOURCES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+            <select value={edited.sourceId} onChange={e => setEdited(p => ({ ...p, sourceId: e.target.value }))} style={{ ...inp, color: C.text, background: C.surfaceAlt }}>
+              {DATA_SOURCES.map(s => <option key={s.id} value={s.id} style={{ background: C.surfaceAlt, color: C.text }}>{s.label}</option>)}
             </select>
           </Field>
           {edited.sourceId !== "manual" && (<>
@@ -1509,6 +1523,19 @@ export default function App() {
         input, select, textarea { font-family: 'DM Sans', sans-serif !important; font-size: 16px !important; }
         ::-webkit-scrollbar { display: none; }
         * { -webkit-tap-highlight-color: transparent; }
+        ${darkMode ? `
+          input, select, textarea {
+            background: ${C.surfaceAlt} !important;
+            color: ${C.text} !important;
+            border-color: ${C.border} !important;
+            color-scheme: dark;
+          }
+          input::placeholder { color: ${C.muted} !important; }
+          option { background: ${C.surfaceAlt} !important; color: ${C.text} !important; }
+        ` : `
+          input::placeholder { color: ${C.muted}; }
+          color-scheme: light;
+        `}
       `}</style>
 
       {editingGoal && <EditGoalModal goal={editingGoal} onSave={saveEditedGoal} onClose={() => setEditingGoal(null)} />}
@@ -1622,7 +1649,7 @@ export default function App() {
                 })}
               </div>
 
-              {(() => { const C = LIGHT; return (<div style={{ background: C.bg, borderRadius: 20, marginTop: 8, padding: "4px 0 8px" }}>
+              <div style={{ background: C.bg, borderRadius: 20, marginTop: 8, padding: "4px 0 8px" }}>
 
               {trackTab === "sleep" && (
                 <div>
@@ -1725,8 +1752,8 @@ export default function App() {
                     {today.sport.type === "Football" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                         <Field label="Type de seance">
-                          <select value={today.sport.footballType || ""} onChange={e => update("sport", "footballType", e.target.value)} style={{ ...inp, color: C.text }}>
-                            <option value="">Choisir...</option><option>Match</option><option>Entrainement</option><option>Futsal</option>
+                          <select value={today.sport.footballType || ""} onChange={e => update("sport", "footballType", e.target.value)} style={{ ...inp, color: C.text, background: C.surfaceAlt }}>
+                            <option value="" style={{ background: C.surfaceAlt, color: C.text }}>Choisir...</option><option style={{ background: C.surfaceAlt, color: C.text }}>Match</option><option style={{ background: C.surfaceAlt, color: C.text }}>Entrainement</option><option style={{ background: C.surfaceAlt, color: C.text }}>Futsal</option>
                           </select>
                         </Field>
                         {today.sport.footballType === "Match" && (
@@ -1750,8 +1777,8 @@ export default function App() {
                     {today.sport.type === "Tennis" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                         <Field label="Type">
-                          <select value={today.sport.tennisType || ""} onChange={e => update("sport", "tennisType", e.target.value)} style={{ ...inp, color: C.text }}>
-                            <option value="">Choisir...</option><option>Match</option><option>Entrainement</option>
+                          <select value={today.sport.tennisType || ""} onChange={e => update("sport", "tennisType", e.target.value)} style={{ ...inp, color: C.text, background: C.surfaceAlt }}>
+                            <option value="" style={{ background: C.surfaceAlt, color: C.text }}>Choisir...</option><option style={{ background: C.surfaceAlt, color: C.text }}>Match</option><option style={{ background: C.surfaceAlt, color: C.text }}>Entrainement</option>
                           </select>
                         </Field>
                         {today.sport.tennisType === "Match" && (
@@ -1776,8 +1803,8 @@ export default function App() {
                     {today.sport.type === "Boxe" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                         <Field label="Type de seance">
-                          <select value={today.sport.boxeType || ""} onChange={e => update("sport", "boxeType", e.target.value)} style={{ ...inp, color: C.text }}>
-                            <option value="">Choisir...</option><option>Sparring</option><option>Sac / Pattes</option><option>Technique</option><option>Combat</option>
+                          <select value={today.sport.boxeType || ""} onChange={e => update("sport", "boxeType", e.target.value)} style={{ ...inp, color: C.text, background: C.surfaceAlt }}>
+                            <option value="" style={{ background: C.surfaceAlt, color: C.text }}>Choisir...</option><option style={{ background: C.surfaceAlt, color: C.text }}>Sparring</option><option style={{ background: C.surfaceAlt, color: C.text }}>Sac / Pattes</option><option style={{ background: C.surfaceAlt, color: C.text }}>Technique</option><option style={{ background: C.surfaceAlt, color: C.text }}>Combat</option>
                           </select>
                         </Field>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -2073,7 +2100,7 @@ export default function App() {
               <button onClick={saveDay} style={{ width: "100%", padding: "16px", borderRadius: 16, border: "none", cursor: "pointer", background: saved ? `linear-gradient(135deg, ${C.green}, #128a3a)` : `linear-gradient(135deg, #CC2936, #8B1A22)`, color: "#fff", fontSize: 16, fontWeight: 800, transition: "all 0.35s", marginTop: 6, boxShadow: saved ? `0 8px 28px ${C.green}44` : "0 8px 28px rgba(204,41,54,0.4)", letterSpacing: 0.2 }}>
                 {saved ? tr("saved") : tr("save_day")}
               </button>
-              </div>); })()}
+              </div>
             </div>
           )}
 
@@ -2173,8 +2200,8 @@ export default function App() {
                   <input value={newGoal.label} onChange={e => setNewGoal(p => ({ ...p, label: e.target.value }))} placeholder="Ex: 170g de proteines/jour" style={inp} />
                   <input value={newGoal.category} onChange={e => setNewGoal(p => ({ ...p, category: e.target.value }))} placeholder="Categorie" style={inp} />
                   <Field label="Source de donnees">
-                    <select value={newGoal.sourceId} onChange={e => setNewGoal(p => ({ ...p, sourceId: e.target.value }))} style={{ ...inp, color: C.text }}>
-                      {DATA_SOURCES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                    <select value={newGoal.sourceId} onChange={e => setNewGoal(p => ({ ...p, sourceId: e.target.value }))} style={{ ...inp, color: C.text, background: C.surfaceAlt }}>
+                      {DATA_SOURCES.map(s => <option key={s.id} value={s.id} style={{ background: C.surfaceAlt, color: C.text }}>{s.label}</option>)}
                     </select>
                   </Field>
                   {newGoal.sourceId !== "manual" && (<>
