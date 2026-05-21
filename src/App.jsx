@@ -3614,11 +3614,13 @@ export default function App() {
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
-                        {/* Rond coloré cliquable → color picker natif */}
-                        <label style={{ position: "relative", width: 28, height: 28, borderRadius: "50%", background: p.color, cursor: "pointer", display: "block", flexShrink: 0, boxShadow: `0 0 0 2px ${C.surface}, 0 0 0 4px ${p.color}40` }}>
-                          <input type="color" value={p.color} onChange={e => updatePoche(p.id, "color", e.target.value)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", border: "none", padding: 0 }} />
-                        </label>
-                        <button onClick={() => setRenamingPoche(isEditing ? null : p.id)} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>{Ico.edit(C.muted, 14)}</button>
+                        {/* Bouton edit avec badge couleur intégré */}
+                        <button onClick={() => setRenamingPoche(isEditing ? null : p.id)} style={{ position: "relative", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                          {Ico.edit(C.muted, 14)}
+                          <label onClick={e => e.stopPropagation()} style={{ position: "absolute", top: -4, right: -4, width: 12, height: 12, borderRadius: "50%", background: p.color, cursor: "pointer", boxShadow: `0 0 0 2px ${C.surface}`, display: "block" }}>
+                            <input type="color" value={p.color} onChange={e => updatePoche(p.id, "color", e.target.value)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", border: "none", padding: 0 }} />
+                          </label>
+                        </button>
                         <button onClick={() => deletePoche(p.id)} style={{ background: `${C.red12}`, border: `1px solid ${C.red22}`, borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>{Ico.trash(C.red, 14)}</button>
                       </div>
                     </div>
