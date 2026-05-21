@@ -4,9 +4,11 @@ import App from './App.jsx'
 import Auth from './Auth.jsx'
 import { supabase } from './supabase.js'
 import { useState, useEffect } from 'react'
-import { ThemeProvider } from './theme.jsx'
+import { ThemeProvider, useTheme } from './theme.jsx'
 
 function Root() {
+  // S'abonner au contexte thème → Root re-render sur chaque changement → App reçoit un nouveau render parent
+  useTheme();
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
 

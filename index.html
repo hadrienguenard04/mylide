@@ -11,14 +11,7 @@
     <style>
       * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
       input, select, textarea { font-size: 16px !important; transform: translateZ(0); }
-      body { overflow: hidden; position: fixed; width: 100%; height: 100%; margin: 0; padding: 0; background: #f2f2f2; }
-      body.dark { background: #0f0f0f; }
-      body.dark .card-surface { background: #1a1a1a !important; border-color: #333333 !important; }
-      body.dark .surface-alt { background: #252525 !important; }
-      body.dark .text-main { color: #f0f0f0 !important; }
-      body.dark .text-muted { color: #aaaaaa !important; }
-      body.dark .nav-bar { background: rgba(15,15,15,0.97) !important; border-color: #333333 !important; }
-      body.dark .header-bar { background: rgba(15,15,15,0.98) !important; border-color: #333333 !important; }
+      body { overflow: hidden; position: fixed; width: 100%; height: 100%; margin: 0; padding: 0; background: var(--c-bg, #F8F8F6); }
       #root { overflow-y: auto; height: 100dvh; width: 100vw; -webkit-overflow-scrolling: touch; overscroll-behavior: none; padding-bottom: env(safe-area-inset-bottom); }
     </style>
   </head>

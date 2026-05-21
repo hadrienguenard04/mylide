@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "./supabase";
+import FAQPage from "./FAQ.jsx";
 
 const VAPID_PUBLIC_KEY = "BHfX8lG2QQGuaE8AW9qOykb2GZaxtzONoy7k3feJBGzf-Dyrx4h2qUk4xt9FQyo8H1Cr1EuemZLucqdd0iEt7M4";
 
@@ -27,7 +28,7 @@ async function registerPush(notifPrefs, wakeTime = "07:00", sleepTime = "23:00")
   } catch (e) { console.warn("Push registration failed", e); }
 }
 import Subscription from "./Subscription";
-import { useTheme } from "./theme.jsx";
+import { useTheme, useC } from "./theme.jsx";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 import kojihLogo from "./assets/logo.png";
 
@@ -46,7 +47,9 @@ const DARK = {
   green: "#22C55E", orange: "#F97316", purple: "#A855F7", blue: "#3B82F6",
   navBg: "rgba(12,12,12,0.95)",
 };
-let C = LIGHT;
+// _themeC : copie mutable pour les getters d'objets de style définis hors composants (inp, settingsInp)
+// Les composants React utilisent useC() ou const C = darkMode ? DARK : LIGHT (immutable)
+let _themeC = { ...LIGHT };
 
 const NAV_ORDER = ["today", "track", "money", "goals", "stats", "profile"];
 const TRACK_ORDER = ["sleep", "sport", "nutrition", "body", "work", "todo", "mind"];
@@ -94,6 +97,16 @@ const MEAL_DB = {
     { name: "2 tranches pain complet + 100g ricotta + 50g framboises", protein: 14, carbs: 35, fat: 10, calories: 290, vegan: false, goals: ["maintenance","perte"] },
     { name: "200g yaourt soja + 40g granola + 100g mangue", protein: 10, carbs: 55, fat: 6, calories: 314, vegan: true, goals: ["maintenance","masse"] },
     { name: "30g whey + 200ml lait + 1 banane + 20g beurre cacahuète (shake matin)", protein: 40, carbs: 42, fat: 12, calories: 436, vegan: false, goals: ["masse","seche"] },
+    { name: "2 oeufs + 100g blancs de poulet + 50g épinards sautés (wrap protéiné)", protein: 36, carbs: 32, fat: 10, calories: 362, vegan: false, goals: ["masse","seche","maintenance"] },
+    { name: "70g granola maison (flocons + miel + amandes) + 200g yaourt nature", protein: 16, carbs: 60, fat: 14, calories: 434, vegan: false, goals: ["masse","maintenance"] },
+    { name: "150g fromage blanc 0% + 2 c.à.s spiruline + 1 kiwi (80g)", protein: 24, carbs: 18, fat: 2, calories: 186, vegan: false, goals: ["perte","seche"] },
+    { name: "2 galettes riz + 40g saumon fumé + 50g avocat + citron", protein: 16, carbs: 28, fat: 12, calories: 280, vegan: false, goals: ["perte","maintenance"] },
+    { name: "200ml kéfir + 50g flocons avoine + 1 banane (120g) + 10g graines chia", protein: 14, carbs: 62, fat: 6, calories: 354, vegan: false, goals: ["maintenance","masse"] },
+    { name: "4 blancs d'oeufs omelette + 100g champignons + 30g parmesan", protein: 30, carbs: 4, fat: 10, calories: 222, vegan: false, goals: ["seche","perte"] },
+    { name: "80g pain d'épautre + 50g houmous + 1 oeuf dur + tomates cerises (100g)", protein: 20, carbs: 50, fat: 12, calories: 390, vegan: false, goals: ["maintenance","masse","perte"] },
+    { name: "200g compote pomme nature + 100g skyr + 20g noix concassées", protein: 16, carbs: 36, fat: 10, calories: 300, vegan: false, goals: ["perte","maintenance"] },
+    { name: "3 crêpes complètes + 1 oeuf + 100ml lait végétal (pâte légère)", protein: 16, carbs: 48, fat: 8, calories: 328, vegan: false, goals: ["maintenance","masse"] },
+    { name: "1 bol açaï (100g purée açaï + 1 banane + 30g granola + 100g fruits rouges)", protein: 8, carbs: 58, fat: 8, calories: 338, vegan: true, goals: ["maintenance","perte"] },
   ],
   lunch: [
     { name: "150g poulet grillé + 80g riz cru cuit + 200g brocolis vapeur", protein: 48, carbs: 58, fat: 5, calories: 469, vegan: false, goals: ["masse","maintenance","seche"] },
@@ -116,6 +129,16 @@ const MEAL_DB = {
     { name: "1 pain complet + 150g steak haché 5% + 100g légumes + 30g sauce maison (burger)", protein: 44, carbs: 58, fat: 14, calories: 546, vegan: false, goals: ["masse","maintenance"] },
     { name: "200g tempeh + 200g patate douce + 100g chou kale sauté", protein: 28, carbs: 42, fat: 10, calories: 370, vegan: true, goals: ["maintenance","masse","perte"] },
     { name: "80g riz complet cuit + 2 oeufs pochés + 2 c.à.s sauce soja + graines sésame", protein: 20, carbs: 58, fat: 10, calories: 406, vegan: false, goals: ["maintenance","masse"] },
+    { name: "180g filet de dorade + 200g asperges vapeur + 80g boulgour cuit", protein: 40, carbs: 42, fat: 5, calories: 377, vegan: false, goals: ["seche","perte","maintenance"] },
+    { name: "200g poulet effiloché + 150g salade mesclun + 1 avocat (150g) + citron", protein: 48, carbs: 8, fat: 22, calories: 420, vegan: false, goals: ["seche","perte","masse"] },
+    { name: "150g pâtes complètes + 100g pesto maison (basilic + pignons) + 30g parmesan", protein: 24, carbs: 78, fat: 18, calories: 578, vegan: false, goals: ["masse","maintenance"] },
+    { name: "250ml soupe miso + 150g edamame + 80g riz vapeur", protein: 24, carbs: 48, fat: 8, calories: 360, vegan: true, goals: ["perte","maintenance"] },
+    { name: "180g boeuf haché 5% + 150g champignons sautés + 80g quinoa cuit", protein: 46, carbs: 38, fat: 10, calories: 430, vegan: false, goals: ["masse","seche"] },
+    { name: "200g pois cassés cuits + 1 tranche pain complet + 1 c.à.c curcuma", protein: 22, carbs: 62, fat: 2, calories: 354, vegan: true, goals: ["maintenance","perte","masse"] },
+    { name: "150g saumon teriyaki + 80g riz basmati cuit + 150g brocolis + graines sésame", protein: 44, carbs: 58, fat: 18, calories: 578, vegan: false, goals: ["masse","maintenance"] },
+    { name: "2 wraps complets + 120g dinde + 50g guacamole + 100g salade iceberg", protein: 38, carbs: 52, fat: 16, calories: 502, vegan: false, goals: ["masse","maintenance","seche"] },
+    { name: "300g gaspacho maison + 100g mozzarella + 150g tomates + basilic", protein: 20, carbs: 18, fat: 16, calories: 296, vegan: false, goals: ["perte","maintenance"] },
+    { name: "180g seitan mariné + 100g haricots rouges + 150g riz brun cuit + salsa", protein: 46, carbs: 68, fat: 6, calories: 514, vegan: true, goals: ["masse","maintenance"] },
   ],
   snack: [
     { name: "30g whey + 200ml lait demi-écrémé (shake)", protein: 32, carbs: 12, fat: 5, calories: 221, vegan: false, goals: ["masse","maintenance","seche"] },
@@ -138,6 +161,16 @@ const MEAL_DB = {
     { name: "1 pomme (150g) + 20g beurre cacahuète", protein: 5, carbs: 28, fat: 10, calories: 218, vegan: true, goals: ["maintenance","perte"] },
     { name: "60g mélange fruits secs + oléagineux (abricot + amande + noix)", protein: 8, carbs: 30, fat: 14, calories: 278, vegan: true, goals: ["masse","maintenance"] },
     { name: "2 oeufs durs + 30g fromage gouda + 1 tomate (120g)", protein: 18, carbs: 6, fat: 14, calories: 222, vegan: false, goals: ["maintenance","seche"] },
+    { name: "30g whey + 250ml lait d'avoine + 1 c.à.s beurre amande + cacao (shake goût)", protein: 30, carbs: 26, fat: 10, calories: 314, vegan: false, goals: ["masse","maintenance","seche"] },
+    { name: "150g kéfir + 50g muesli sans sucre + 1 poire (150g)", protein: 10, carbs: 52, fat: 4, calories: 286, vegan: false, goals: ["maintenance","perte"] },
+    { name: "2 galettes riz + 80g houmous + 100g concombre + paprika", protein: 12, carbs: 38, fat: 10, calories: 290, vegan: true, goals: ["maintenance","perte"] },
+    { name: "100g fromage blanc 0% + 10g whey vanille + 50g framboises (crème protéinée)", protein: 26, carbs: 12, fat: 1, calories: 161, vegan: false, goals: ["perte","seche"] },
+    { name: "1 tortilla complète + 120g blanc de dinde + 50g avocat + moutarde", protein: 32, carbs: 30, fat: 10, calories: 338, vegan: false, goals: ["masse","maintenance","seche"] },
+    { name: "30g noix de cajou + 20g chocolat noir 85% + 1 clémentine (100g)", protein: 8, carbs: 22, fat: 20, calories: 296, vegan: true, goals: ["maintenance","masse"] },
+    { name: "300ml smoothie protéiné (1 banane + 30g whey + 200ml lait + 30g flocons)", protein: 36, carbs: 60, fat: 6, calories: 442, vegan: false, goals: ["masse"] },
+    { name: "3 crackers seigle + 100g skyr + 30g canneberges séchées", protein: 16, carbs: 40, fat: 2, calories: 242, vegan: false, goals: ["maintenance","perte"] },
+    { name: "150g gelée protéinée (gelatine + whey + fruits rouges) + 20g amandes", protein: 24, carbs: 14, fat: 12, calories: 258, vegan: false, goals: ["perte","seche"] },
+    { name: "1 mini bowl (100g riz soufflé + 150ml lait + 1 c.à.s miel + cannelle)", protein: 8, carbs: 54, fat: 4, calories: 288, vegan: false, goals: ["maintenance","masse"] },
   ],
   dinner: [
     { name: "150g saumon au four + 300g légumes rôtis + 80g quinoa cuit", protein: 42, carbs: 35, fat: 18, calories: 474, vegan: false, goals: ["masse","maintenance","perte"] },
@@ -160,6 +193,16 @@ const MEAL_DB = {
     { name: "200g sardines + 150g salade + 2 tranches pain complet", protein: 36, carbs: 28, fat: 16, calories: 396, vegan: false, goals: ["maintenance","masse","perte"] },
     { name: "150g blanc dinde + 200g champignons + 100g riz sauvage", protein: 44, carbs: 35, fat: 3, calories: 343, vegan: false, goals: ["seche","perte","masse"] },
     { name: "200g pois chiches rôtis + 200g légumes four + 80g quinoa + harissa", protein: 22, carbs: 62, fat: 8, calories: 408, vegan: true, goals: ["maintenance","masse","perte"] },
+    { name: "150g thon en boîte + 200g courgettes poêlées + 1 oeuf + épices (poêlée)", protein: 44, carbs: 10, fat: 10, calories: 306, vegan: false, goals: ["seche","perte"] },
+    { name: "180g poulet + 200g épinards + 100g fromage frais léger + muscade (gratin léger)", protein: 46, carbs: 10, fat: 12, calories: 332, vegan: false, goals: ["seche","maintenance","masse"] },
+    { name: "3 oeufs + 150g fenouil rôti + 80g farro cuit + citron confit", protein: 26, carbs: 48, fat: 16, calories: 440, vegan: false, goals: ["maintenance","perte"] },
+    { name: "200g cabillaud en papillote + 200g julienne légumes + 1 c.à.s huile colza", protein: 40, carbs: 12, fat: 8, calories: 280, vegan: false, goals: ["seche","perte"] },
+    { name: "200g faux-filet 5% + 150g haricots blancs + 100g tomates cerise rôties", protein: 50, carbs: 28, fat: 8, calories: 386, vegan: false, goals: ["masse","seche"] },
+    { name: "250g soupe de pois cassés + 2 tranches pain seigle + 1 c.à.s crème végétale", protein: 20, carbs: 64, fat: 6, calories: 390, vegan: true, goals: ["perte","maintenance"] },
+    { name: "150g lieu noir + 200g purée céleri-rave (sans beurre) + 100g salade", protein: 36, carbs: 22, fat: 3, calories: 259, vegan: false, goals: ["seche","perte"] },
+    { name: "200g poitrine de veau + 200g ratatouille provençale + 60g polenta", protein: 44, carbs: 32, fat: 8, calories: 378, vegan: false, goals: ["masse","maintenance"] },
+    { name: "3 oeufs brouillés + 100g tomates concassées + 60g féta + thym (shakshuka)", protein: 26, carbs: 10, fat: 20, calories: 318, vegan: false, goals: ["maintenance","seche","perte"] },
+    { name: "250g curry pois chiches + lait coco (200ml) + 80g riz basmati cuit", protein: 18, carbs: 68, fat: 16, calories: 488, vegan: true, goals: ["masse","maintenance"] },
   ],
 };
 
@@ -194,6 +237,70 @@ function getTemporalIntelligence(today, history, goals) {
   if (timeDecimal >= 18 && maxPossible > currentScore) insights.push({ type: "info", msg: `Score actuel : ${currentScore}/100. Potentiel ce soir : ${Math.min(100, maxPossible)}/100 !`, priority: 4 });
   return insights.sort((a, b) => a.priority - b.priority).slice(0, 3);
 }
+
+// ── NUTRITION TIPS (100+ Q&A per goal) ────────────────────────────────────
+const NUTRITION_TIPS = {
+  all: [
+    { q: "C'est quoi le TDEE ?", a: "Total Daily Energy Expenditure : la quantité de calories que tu brûles en une journée complète (métabolisme de base + activité physique + digestion). C'est ta référence pour savoir si tu es en surplus ou en déficit calorique." },
+    { q: "Pourquoi les protéines sont si importantes ?", a: "Les protéines sont les briques de construction des muscles. Sans apport suffisant, ton corps peut puiser dans le tissu musculaire pour récupérer. Objectif général : 1.8–2.5g par kg de poids corporel." },
+    { q: "Combien de repas par jour ?", a: "3 repas principaux bien structurés suffisent pour la plupart. L'important est d'atteindre tes objectifs caloriques et macro sur la journée, pas le nombre exact de repas." },
+    { q: "Pourquoi noter ce que je mange ?", a: "Tracker ta nutrition révèle des habitudes invisibles : déficits en protéines, excès de graisses, repas sautés. La prise de conscience est la première étape du changement." },
+    { q: "Les glucides font-ils grossir ?", a: "Non, pas en eux-mêmes. C'est le surplus calorique global qui fait stocker des graisses. Les glucides sont la principale source d'énergie pour le cerveau et les muscles." },
+    { q: "À quelle heure manger pour optimiser sa forme ?", a: "Petit-déjeuner dans les 1-2h après le réveil, déjeuner principale source d'énergie, dîner léger et idéalement 2-3h avant le coucher pour ne pas perturber le sommeil." },
+    { q: "Faut-il éviter les lipides ?", a: "Absolument pas. Les bonnes graisses (avocat, oléagineux, huile d'olive, poisson gras) sont essentielles pour les hormones, le cerveau et l'absorption des vitamines A, D, E, K." },
+    { q: "Comment calculer mes macros ?", a: "MYLIDE le fait automatiquement selon ton poids et ton objectif. La formule de base : calories = protéines×4 + glucides×4 + lipides×9. Applique les suggestions dans l'onglet 'Objectifs nutritionnels'." },
+    { q: "Le jeûne intermittent est-il efficace ?", a: "Pour certaines personnes oui, surtout pour contrôler l'apport calorique naturellement. Il n'a pas de magie propre : ce qui compte reste le bilan calorique quotidien." },
+    { q: "Manger après 20h fait-il grossir ?", a: "Non, c'est le total de calories sur 24h qui compte. Cependant, manger tard peut perturber ton sommeil si les repas sont copieux, ce qui affecte indirectement ta composition corporelle." },
+  ],
+  perte: [
+    { q: "Pourquoi boire beaucoup d'eau quand on veut perdre du poids ?", a: "Les glucides stockés retiennent l'eau (environ 3g d'eau par gramme de glycogène). En réduisant les glucides, tu perds beaucoup d'eau rapidement. Il faut compenser pour maintenir ton hydratation cellulaire." },
+    { q: "Combien de calories en moins pour perdre du poids ?", a: "Un déficit de 400–500 kcal/jour est idéal : assez pour perdre 0.5–1% de ton poids corporel par semaine, sans trop sacrifier les performances ni la masse musculaire." },
+    { q: "Pourquoi les protéines sont cruciales en perte de poids ?", a: "Les protéines ont un fort effet satiétant et un coût énergétique élevé à digérer (effet thermique ~25%). Surtout, elles protègent ta masse musculaire quand tu es en déficit calorique." },
+    { q: "Faut-il supprimer les glucides ?", a: "Pas forcément. Réduire les glucides raffinés (sucre, pain blanc) est utile, mais les glucides complexes (riz, avoine, patate douce) restent d'excellentes sources d'énergie et de fibres." },
+    { q: "Pourquoi je pèse plus après une séance ?", a: "Inflammation musculaire post-effort, eau retenue pour réparer les fibres, glycogène reconstitué. Le poids peut augmenter de 0.5–2kg après une séance intense avant de redescendre." },
+    { q: "La balance ne bouge plus, que faire ?", a: "Plateau normal après 3–4 semaines. Options : réduire légèrement les calories (50–100 kcal), augmenter l'activité, faire une semaine de maintenance puis reprendre, ou vérifier si tu retiens de l'eau (stress, sel)." },
+    { q: "Puis-je manger du sport food en perte de poids ?", a: "Les barres et whey sont des outils, pas des obligations. Si tu atteins tes besoins en protéines via la nourriture réelle, pas besoin de compléments." },
+    { q: "Pourquoi noter la junk food ?", a: "Une pizza ou un burger peut représenter 1000–1500 kcal, soit 50–75% de l'objectif journalier. L'identifier te donne un contrôle conscient sans te priver : une fois par semaine, c'est tout à fait viable." },
+    { q: "Est-ce que le cardio aide à perdre du poids ?", a: "Oui, il augmente ta dépense calorique. MYLIDE calcule automatiquement les calories brûlées selon le type et la durée de ton sport pour ajuster tes objectifs en conséquence." },
+    { q: "Quelle est la différence entre poids perdu et graisse perdue ?", a: "Les premières semaines, tu perds surtout de l'eau et du glycogène (poids rapide). La vraie perte de graisse est plus lente (0.5–1kg par semaine en régime conservateur)." },
+    { q: "Dois-je manger avant ou après le sport en perte de poids ?", a: "Un repas riche en protéines dans les 2h après la séance est important pour la récupération musculaire. Le reste dépend de tes préférences, sauf si la séance est à jeun (possible mais déconseillé si intensité élevée)." },
+    { q: "Pourquoi mon sommeil influence ma perte de poids ?", a: "Le manque de sommeil augmente la ghréline (hormone de la faim) et diminue la leptine (hormone de satiété). Résultat : tu manges plus et ton corps stocke davantage en graisses." },
+  ],
+  masse: [
+    { q: "Combien de calories en plus pour prendre de la masse ?", a: "Un surplus de 200–350 kcal/jour est idéal : suffisant pour construire du muscle sans prendre trop de gras. MYLIDE ajoute 300 kcal à ton TDEE de base." },
+    { q: "Quelle quantité de protéines pour la prise de masse ?", a: "2.0–2.2g par kg de poids corporel. Au-delà de 2.5g/kg, le surplus ne se transforme pas en muscle supplémentaire et est simplement brûlé comme énergie." },
+    { q: "Faut-il manger même si on n'a pas faim ?", a: "En prise de masse, oui. Atteindre ton surplus calorique est la priorité. Des repas fréquents (toutes les 3-4h) peuvent aider à répartir l'apport sans se sentir surchargé." },
+    { q: "Quand manger ses glucides ?", a: "Priorité avant et après la séance de sport pour maximiser l'énergie et la récupération. Les glucides pré-séance alimentent la performance, les glucides post-séance rechargent le glycogène musculaire." },
+    { q: "Le gainer est-il nécessaire ?", a: "Seulement si tu as du mal à atteindre ton apport calorique via la nourriture solide. Préfère des aliments caloriques denses : flocons d'avoine, noix, banane, beurre de cacahuète." },
+    { q: "Combien de temps pour voir des résultats ?", a: "Les premières adaptations neuromusculaires (force) arrivent en 2–3 semaines. La masse musculaire visible prend 8–12 semaines minimum avec une nutrition et un entraînement constants." },
+    { q: "Prendre de la masse sans trop de gras, c'est possible ?", a: "Oui avec une prise de masse propre (lean bulk) : surplus modéré (200–300 kcal), protéines élevées, entraînement progressif. C'est plus lent mais préserve une composition corporelle favorable." },
+    { q: "La créatine aide-t-elle ?", a: "Oui, c'est le complément le mieux étudié. 3–5g/jour améliorent la force et favorisent la rétention d'eau dans les muscles (apparence plus volumineuse). Efficace dans 70-80% des cas." },
+    { q: "Faut-il manger la nuit pour prendre de la masse ?", a: "La caséine (protéine à digestion lente) avant de dormir peut soutenir la synthèse protéique nocturne. 200g de fromage blanc ou 30g de caséine sont suffisants." },
+    { q: "Comment éviter de prendre trop de gras ?", a: "Surveille la vitesse de prise de poids : idéalement 0.25–0.5% de ton poids/semaine. Si tu prends plus vite, réduis le surplus calorique de 100–150 kcal." },
+    { q: "L'alcool bloque-t-il la prise de masse ?", a: "Oui sur plusieurs niveaux : il réduit la synthèse protéique, perturbe le sommeil (crucial pour la récupération), apporte des calories vides et diminue la testostérone. À éviter en période de prise sérieuse." },
+    { q: "Peut-on prendre de la masse sans viande ?", a: "Absolument. Sources végétales complètes : soja/tofu, seitan, lentilles, pois chiches, quinoa. Complète avec de la whey végane si besoin. Surveille simplement l'apport en lysine et leucine." },
+  ],
+  seche: [
+    { q: "Pourquoi boire encore plus d'eau pendant une sèche ?", a: "En réduisant drastiquement les glucides, ton corps stocke moins d'eau (chaque gramme de glycogène retient ~3g d'eau). Résultat : tu te déshydrates plus rapidement. Vise 3L/jour minimum pour maintenir les fonctions cellulaires, la lipolyse et les performances cognitives." },
+    { q: "C'est quoi la différence sèche vs perte de poids ?", a: "La perte de poids = perdre du poids global (graisse + eau + muscle). La sèche = réduire au maximum la masse grasse tout en préservant absolument le muscle. C'est plus exigeant en protéines et en entraînement." },
+    { q: "Pourquoi les glucides sont réduits en sèche ?", a: "Les glucides bas maintiennent l'insuline basse, ce qui facilite la lipolyse (utilisation des graisses comme carburant). Mais attention : pas zéro glucides — les légumes, légumineuses et un peu de riz restent importants." },
+    { q: "Pourquoi les protéines sont si élevées en sèche (2.5g/kg) ?", a: "Le déficit calorique important peut forcer ton corps à puiser dans les muscles. Un apport protéique très élevé crée un environnement anticatabolique : il protège le tissu musculaire que tu as mis des mois à construire." },
+    { q: "Qu'est-ce que la recomposition corporelle ?", a: "Perdre de la graisse et gagner du muscle simultanément. Possible principalement chez les débutants ou après une pause longue. Elle nécessite un léger déficit calorique, beaucoup de protéines et un entraînement de résistance sérieux." },
+    { q: "Comment gérer la faim intense pendant une sèche ?", a: "Priorise les aliments à volume élevé et calories basses : légumes verts, blanc d'œuf, fromage blanc 0%, bouillon. Les fibres (psyllium, légumineuses) ralentissent la digestion et maintiennent la satiété." },
+    { q: "Faut-il faire beaucoup de cardio pendant une sèche ?", a: "Le cardio modéré (LISS 2-3x/semaine) aide à augmenter la dépense sans catabolisme. Évite l'excès : trop de cardio + déficit calorique = récupération compromise et risque de perte musculaire." },
+    { q: "Les refeed days sont-ils utiles ?", a: "Oui. Une journée par semaine à maintenance calorique (avec plus de glucides) relance la leptine, améliore les performances à l'entraînement et réduit l'adaptation métabolique au régime prolongé." },
+    { q: "Peut-on faire une sèche longtemps ?", a: "Maximum 12–16 semaines d'affilée. Au-delà, les adaptations métaboliques (baisse du métabolisme, hormones perturbées) deviennent contre-productives. Fais une pause maintenance avant une autre phase de sèche." },
+    { q: "Comment éviter la fatigue extrême pendant une sèche ?", a: "Mange suffisamment de protéines, maintiens un apport minimal en glucides avant tes séances, dors 7-9h, et réduis le stress. La fatigue intense est souvent le signe d'un déficit trop agressif." },
+  ],
+  maintenance: [
+    { q: "C'est quoi exactement la maintenance ?", a: "Manger exactement autant de calories que tu en brûles. Ton poids reste stable, mais tu peux continuer à améliorer ta composition corporelle (recomposition lente) avec un entraînement sérieux." },
+    { q: "Comment savoir si je suis vraiment en maintenance ?", a: "Pèse-toi tous les matins à jeun pendant 2 semaines. Si le poids moyen reste stable (±0.5kg), tu es en maintenance. Si ça varie plus, ajuste tes calories en conséquence." },
+    { q: "Faut-il compter les calories en maintenance ?", a: "Sur le long terme, non. La maintenance est souvent atteinte intuitivement une fois que tu connais bien les densités caloriques des aliments. Mais traquer pendant 2–3 semaines permet de calibrer ton intuition." },
+    { q: "Quelle quantité de protéines en maintenance ?", a: "1.8–2g par kg de poids corporel. Cela permet de maintenir la masse musculaire et de soutenir la récupération si tu t'entraînes régulièrement." },
+    { q: "Peut-on profiter de la maintenance pour améliorer sa forme physique ?", a: "Oui. En maintenance avec de l'entraînement progressif, la recomposition corporelle permet de gagner du muscle et de perdre de la graisse lentement. Idéal pour la durabilité à long terme." },
+    { q: "La maintenance est-elle une étape nécessaire après une sèche ?", a: "Fortement recommandée. Après une phase restrictive, 4–8 semaines de maintenance permettent de restaurer les hormones (leptine, testostérone), le métabolisme et les niveaux d'énergie avant une nouvelle phase." },
+  ],
+};
 
 const DATA_SOURCES = [
   { id: "manual", label: "Manuel", unit: "", path: null },
@@ -396,9 +503,28 @@ function getIntelligence(history, totalPatrimoine, goals) {
   const sportSleepAvg = sportDays.length > 2 ? sportDays.reduce((a, b, _, arr) => a + b.sleep.duration / arr.length, 0) : 0;
   const noSportSleepAvg = noSportDays.length > 2 ? noSportDays.reduce((a, b, _, arr) => a + b.sleep.duration / arr.length, 0) : 0;
   if (sportSleepAvg > 0 && noSportSleepAvg > 0 && sportSleepAvg - noSportSleepAvg > 0.4) patterns.push(`Tu dors ${(sportSleepAvg - noSportSleepAvg).toFixed(1)}h de plus les jours de sport.`);
+  // Sleep → sport recovery pattern
+  const sleepSportPattern = last14.filter(d => d.sleep?.duration > 0 && d.sport?.recovery > 0);
+  if (sleepSportPattern.length >= 4) {
+    const goodSleepRecov = sleepSportPattern.filter(d => d.sleep.duration >= 7.5).reduce((a, b, _, arr) => a + b.sport.recovery / arr.length, 0);
+    const poorSleepRecov = sleepSportPattern.filter(d => d.sleep.duration < 7).reduce((a, b, _, arr) => a + b.sport.recovery / arr.length, 0);
+    if (goodSleepRecov > 0 && poorSleepRecov > 0 && goodSleepRecov - poorSleepRecov > 0.7)
+      patterns.push(`Avec ≥7h30 de sommeil, ta récupération sportive est +${(goodSleepRecov - poorSleepRecov).toFixed(1)} pts meilleure.`);
+  }
+  // Sleep → mood pattern
+  const sleepMoodPattern = last14.filter(d => d.sleep?.duration > 0 && d.mind?.mood > 0);
+  if (sleepMoodPattern.length >= 4) {
+    const goodMood = sleepMoodPattern.filter(d => d.sleep.duration >= 7.5).reduce((a, b, _, arr) => a + b.mind.mood / arr.length, 0);
+    const poorMood = sleepMoodPattern.filter(d => d.sleep.duration < 6.5).reduce((a, b, _, arr) => a + b.mind.mood / arr.length, 0);
+    if (goodMood > 0 && poorMood > 0 && goodMood - poorMood > 0.6)
+      patterns.push(`Avec ≥7h30 de sommeil, ton humeur est +${(goodMood - poorMood).toFixed(1)}/5 meilleure.`);
+  }
   const avgWater = last3.filter(d => d.nutrition?.water > 0).reduce((a, b, _, arr) => a + b.nutrition.water / arr.length, 0);
   if (avgWater < 2 && avgWater > 0) advice.push("Hydratation insuffisante ces 3 jours.");
   if (avgMood < 3 && avgMood > 0) advice.push("Moral en baisse. 5min coherence cardiaque.");
+  // Nutrition advice from protein tracking
+  const avgProt = last7.filter(d => d.nutrition?.protein > 0).reduce((a, b, _, arr) => a + b.nutrition.protein / arr.length, 0);
+  if (avgProt > 0 && avgProt < 120) advice.push(`Apport protéique moyen trop bas : ${Math.round(avgProt)}g. Vise 150g+ pour préserver le muscle.`);
   let patrimoinePrediction = null;
   const patrimoineGoal = goals?.find(g => g.sourceId === "patrimoine");
   if (patrimoineGoal && totalPatrimoine > 0) {
@@ -417,7 +543,7 @@ const defaultDay = () => ({
   sleep: { bedtime: "", wakeup: "", quality: 0, duration: 0, noScreen: false },
   sport: { type: "", duration: 0, intensity: 0, notes: "", isRest: false, stretching: false, running: { did: false, distance: 0, time: 0 }, recovery: 0, bodyFat: 0, muscleMass: 0, photoUrl: "", sessionName: "", heartRate: 0, heartRateMax: 0, scoreFor: 0, scoreAgainst: 0, footballType: "", tennisType: "", tennisScore: "", tennisOpponent: "", tennisResult: "", boxeType: "", boxeRounds: 0, boxeRoundDuration: 0 },
   nutrition: { breakfast: false, lunch: false, dinner: false, water: 0, protein: 0, calories: 0, fat: 0, carbs: 0, junk: false },
-  body: { weight: 0, weightTarget: 0, chest: 0, waist: 0, hips: 0, arms: 0, thighs: 0 },
+  body: { weight: 0, weightTarget: 0, chest: 0, waist: 0, hips: 0, arms: 0, thighs: 0, restingHR: 0, maxHR: 0 },
   work: { focus: 0, tasks: 0, tasksCompleted: 0, highlight: "", screenTime: 0 },
   money: { income: 0, expense: 0, invested: 0, note: "" },
   mind: { mood: 0, reading: 0, meditation: false, learning: "", gratitude: "" },
@@ -449,12 +575,12 @@ const Ico = {
   stats: (col,sz=22) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
   profile: (col,sz=22) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
   sleep: (col,sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>,
-  sport: (col,sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5l11 11M6.5 17.5l11-11M4 12a8 8 0 1016 0A8 8 0 004 12z"/></svg>,
+  sport: (col,sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="12" x2="16" y2="12"/><rect x="4.5" y="9" width="3.5" height="6" rx="1"/><rect x="16" y="9" width="3.5" height="6" rx="1"/><rect x="1" y="10" width="3.5" height="4" rx="0.75"/><rect x="19.5" y="10" width="3.5" height="4" rx="0.75"/></svg>,
   nutrition: (col,sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>,
   body: (col,sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>,
   work: (col,sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>,
   todo: (col,sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>,
-  mind: (col,sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/><circle cx="12" cy="12" r="10"/></svg>,
+  mind: (col,sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 2a3.5 3.5 0 0 0-3.5 3.5c0 .8.27 1.54.72 2.13A3.5 3.5 0 0 0 3 11c0 1.35.76 2.52 1.88 3.1A3.5 3.5 0 0 0 7 19.5V21h10v-1.5a3.5 3.5 0 0 0 2.12-5.4A3.5 3.5 0 0 0 21 11a3.5 3.5 0 0 0-3.22-3.37A3.5 3.5 0 0 0 14.5 2a3.5 3.5 0 0 0-2.5 1.05A3.5 3.5 0 0 0 9.5 2z"/><line x1="12" y1="7" x2="12" y2="15"/><line x1="9" y1="11" x2="15" y2="11"/></svg>,
   water: (col,sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg>,
   scale: (col,sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>,
   focus: (col,sz=18) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>,
@@ -587,27 +713,45 @@ const SplashScreen = ({ onDone }) => {
 
 // ── SETTINGS PAGE ──────────────────────────────────────────────────────────
 // ── SETTINGS SUB-PAGES ─────────────────────────────────────────────────────
-const settingsInp = { width: "100%", padding: "14px 16px", borderRadius: 14, border: `1.5px solid ${LIGHT.border}`, background: LIGHT.surfaceAlt, fontSize: 16, fontFamily: "DM Sans, sans-serif", outline: "none", boxSizing: "border-box", color: LIGHT.black };
-const settingsDarkInp = { ...settingsInp, border: `1.5px solid ${DARK.border}`, background: DARK.surfaceAlt, color: DARK.black };
+// settingsInp utilise des getters pour lire C au moment du rendu (jamais figé au chargement)
+const settingsInp = {
+  get background() { return _themeC.surfaceAlt; },
+  get border() { return `1.5px solid ${_themeC.border}`; },
+  get color() { return _themeC.black; },
+  width: "100%", padding: "14px 16px", borderRadius: 14,
+  fontSize: 16, fontFamily: "DM Sans, sans-serif",
+  outline: "none", boxSizing: "border-box",
+};
 
-const SubLayout = ({ onBack, title, onSave, saving, saveOk, children }) => (
-  <div style={{ position: "fixed", inset: 0, background: C.bg, zIndex: 210, overflowY: "auto", maxWidth: 480, margin: "0 auto", fontFamily: "DM Sans, sans-serif" }}>
-    <div style={{ padding: "18px 20px 14px", background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(20px)", display: "flex", alignItems: "center", gap: 12 }}>
-      <button onClick={onBack} style={{ background: C.surfaceAlt, border: "none", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontSize: 18, color: C.black, fontFamily: "inherit" }}>←</button>
-      <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.black, flex: 1 }}>{title}</p>
-      {onSave && <button onClick={onSave} disabled={saving} style={{ background: saveOk ? C.green : C.red, color: "#fff", border: "none", borderRadius: 12, padding: "9px 18px", cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>{saving ? "..." : saveOk ? "Sauvegardé !" : "Enregistrer"}</button>}
+const SubLayout = ({ onBack, title, onSave, saving, saveOk, children }) => {
+  const C = useC();
+  return (
+    <div style={{ position: "fixed", inset: 0, background: C.bg, zIndex: 210, overflowY: "auto", maxWidth: 480, margin: "0 auto", fontFamily: "DM Sans, sans-serif" }}>
+      <div style={{ padding: "18px 20px 14px", background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(20px)", display: "flex", alignItems: "center", gap: 12 }}>
+        <button onClick={onBack} style={{ background: C.surfaceAlt, border: "none", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontSize: 18, color: C.black, fontFamily: "inherit" }}>←</button>
+        <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.black, flex: 1 }}>{title}</p>
+        {onSave && <button onClick={onSave} disabled={saving} style={{ background: saveOk ? C.green : C.red, color: "#fff", border: "none", borderRadius: 12, padding: "9px 18px", cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>{saving ? "..." : saveOk ? "Sauvegardé !" : "Enregistrer"}</button>}
+      </div>
+      <div style={{ padding: "20px 16px" }}>{children}</div>
     </div>
-    <div style={{ padding: "20px 16px" }}>{children}</div>
-  </div>
-);
+  );
+};
 
-const FeedbackBanner = ({ msg }) => msg ? (
-  <div style={{ background: msg.type === "ok" ? `${LIGHT.green}18` : `${LIGHT.red}14`, border: `1.5px solid ${msg.type === "ok" ? LIGHT.green : LIGHT.red}30`, borderRadius: 12, padding: "12px 16px", marginBottom: 16 }}>
-    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: msg.type === "ok" ? LIGHT.green : LIGHT.red }}>{msg.type === "ok" ? "✓ " : "✗ "}{msg.text}</p>
-  </div>
-) : null;
+const FeedbackBanner = ({ msg }) => {
+  const C = useC();
+  if (!msg) return null;
+  const col = msg.type === "ok" ? C.green : C.red;
+  const bg = msg.type === "ok" ? C.green12 : C.red10;
+  const border = msg.type === "ok" ? C.green22 : C.red22;
+  return (
+    <div style={{ background: bg, border: `1.5px solid ${border}`, borderRadius: 12, padding: "12px 16px", marginBottom: 16 }}>
+      <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: col }}>{msg.type === "ok" ? "✓ " : "✗ "}{msg.text}</p>
+    </div>
+  );
+};
 
-const SubPageInfo = ({ onBack, profile, updateProfile, darkMode }) => {
+const SubPageInfo = ({ onBack, profile, updateProfile }) => {
+  const C = useC();
   const [name, setName] = useState(profile.name || "");
   const [dob, setDob] = useState(profile.dob || "");
   const [saving, setSaving] = useState(false);
@@ -615,7 +759,6 @@ const SubPageInfo = ({ onBack, profile, updateProfile, darkMode }) => {
   const pRef = useRef();
   const handlePhoto = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => updateProfile("photo", ev.target.result); r.readAsDataURL(f); };
   const save = () => { setSaving(true); updateProfile("name", name); updateProfile("dob", dob); setSaving(false); setSaveOk(true); setTimeout(() => { setSaveOk(false); onBack(); }, 1200); };
-  const inp = darkMode ? settingsDarkInp : settingsInp;
   const lbl = { fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "block" };
   return (
     <SubLayout onBack={onBack} title="Informations personnelles" onSave={save} saving={saving} saveOk={saveOk}>
@@ -625,18 +768,18 @@ const SubPageInfo = ({ onBack, profile, updateProfile, darkMode }) => {
           : <div style={{ width: 96, height: 96, borderRadius: "50%", background: `linear-gradient(135deg, #CC2936, #8B1A22)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 40, fontWeight: 900, margin: "0 auto" }}>{profile.name?.[0] || "K"}</div>}
         <p style={{ margin: "10px 0 0", fontSize: 13, fontWeight: 600, color: C.red }}>Changer la photo 📷</p>
       </div>
-      <div style={{ marginBottom: 16 }}><label style={lbl}>Prénom</label><input value={name} onChange={e => setName(e.target.value)} placeholder="Ton prénom" style={inp} /></div>
-      <div style={{ marginBottom: 16 }}><label style={lbl}>Date de naissance</label><input type="date" value={dob} onChange={e => setDob(e.target.value)} style={inp} /></div>
+      <div style={{ marginBottom: 16 }}><label style={lbl}>Prénom</label><input value={name} onChange={e => setName(e.target.value)} placeholder="Ton prénom" style={settingsInp} /></div>
+      <div style={{ marginBottom: 16 }}><label style={lbl}>Date de naissance</label><input type="date" value={dob} onChange={e => setDob(e.target.value)} style={settingsInp} /></div>
       {dob && <div style={{ background: C.surfaceAlt, borderRadius: 12, padding: "12px 16px", marginTop: 4 }}><p style={{ margin: 0, fontSize: 13, color: C.muted }}>Âge calculé : <strong style={{ color: C.black }}>{Math.floor((Date.now() - new Date(dob)) / 3.156e10)} ans</strong></p></div>}
     </SubLayout>
   );
 };
 
-const SubPageEmail = ({ onBack, currentEmail, setCurrentEmail, darkMode }) => {
+const SubPageEmail = ({ onBack, currentEmail, setCurrentEmail }) => {
+  const C = useC();
   const [newEmail, setNewEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
-  const inp = darkMode ? settingsDarkInp : settingsInp;
   const lbl = { fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "block" };
   const save = async () => {
     if (!newEmail || newEmail === currentEmail) return;
@@ -654,19 +797,19 @@ const SubPageEmail = ({ onBack, currentEmail, setCurrentEmail, darkMode }) => {
         <p style={{ margin: "0 0 2px", fontSize: 12, color: C.muted, fontWeight: 600 }}>EMAIL ACTUEL</p>
         <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.black }}>{currentEmail || "Chargement..."}</p>
       </div>
-      <div style={{ marginBottom: 16 }}><label style={lbl}>Nouvel email</label><input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="nouveau@email.com" style={inp} /></div>
+      <div style={{ marginBottom: 16 }}><label style={lbl}>Nouvel email</label><input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="nouveau@email.com" style={settingsInp} /></div>
       <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.5 }}>Un email de confirmation sera envoyé à la nouvelle adresse. L'ancienne reste active jusqu'à validation.</p>
     </SubLayout>
   );
 };
 
-const SubPagePassword = ({ onBack, darkMode }) => {
+const SubPagePassword = ({ onBack }) => {
+  const C = useC();
   const [pwd, setPwd] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
   const [saveOk, setSaveOk] = useState(false);
-  const inp = darkMode ? settingsDarkInp : settingsInp;
   const lbl = { fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "block" };
   const save = async () => {
     if (pwd.length < 6) { setMsg({ type: "err", text: "Mot de passe trop court (minimum 6 caractères)." }); return; }
@@ -680,12 +823,12 @@ const SubPagePassword = ({ onBack, darkMode }) => {
   return (
     <SubLayout onBack={onBack} title="Mot de passe" onSave={save} saving={loading} saveOk={saveOk}>
       <FeedbackBanner msg={msg} />
-      <div style={{ marginBottom: 16 }}><label style={lbl}>Nouveau mot de passe</label><input type="password" value={pwd} onChange={e => setPwd(e.target.value)} placeholder="Minimum 6 caractères" style={inp} /></div>
-      <div style={{ marginBottom: 16 }}><label style={lbl}>Confirmer le mot de passe</label><input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Répète le mot de passe" style={inp} /></div>
+      <div style={{ marginBottom: 16 }}><label style={lbl}>Nouveau mot de passe</label><input type="password" value={pwd} onChange={e => setPwd(e.target.value)} placeholder="Minimum 6 caractères" style={settingsInp} /></div>
+      <div style={{ marginBottom: 16 }}><label style={lbl}>Confirmer le mot de passe</label><input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Répète le mot de passe" style={settingsInp} /></div>
       {pwd.length > 0 && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
           {[["6+ caractères", pwd.length >= 6], ["Majuscule", /[A-Z]/.test(pwd)], ["Chiffre", /\d/.test(pwd)]].map(([l, ok]) => (
-            <span key={l} style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: ok ? `${LIGHT.green}18` : LIGHT.surfaceAlt, color: ok ? LIGHT.green : C.muted }}>{ok ? "✓ " : "○ "}{l}</span>
+            <span key={l} style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: ok ? C.green18 : C.surfaceAlt, color: ok ? C.green : C.muted }}>{ok ? "✓ " : "○ "}{l}</span>
           ))}
         </div>
       )}
@@ -693,22 +836,23 @@ const SubPagePassword = ({ onBack, darkMode }) => {
   );
 };
 
-const SubPagePhone = ({ onBack, profile, updateProfile, darkMode }) => {
+const SubPagePhone = ({ onBack, profile, updateProfile }) => {
+  const C = useC();
   const [phone, setPhone] = useState(profile.phone || "");
   const [saving, setSaving] = useState(false);
   const [saveOk, setSaveOk] = useState(false);
-  const inp = darkMode ? settingsDarkInp : settingsInp;
   const lbl = { fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "block" };
   const save = () => { setSaving(true); updateProfile("phone", phone); setSaving(false); setSaveOk(true); setTimeout(() => { setSaveOk(false); onBack(); }, 1200); };
   return (
     <SubLayout onBack={onBack} title="Numéro de téléphone" onSave={save} saving={saving} saveOk={saveOk}>
-      <div style={{ marginBottom: 16 }}><label style={lbl}>Numéro de téléphone</label><input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+33 6 12 34 56 78" style={inp} /></div>
+      <div style={{ marginBottom: 16 }}><label style={lbl}>Numéro de téléphone</label><input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+33 6 12 34 56 78" style={settingsInp} /></div>
       <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.5 }}>Utilisé uniquement pour la récupération de compte. Non partagé avec des tiers.</p>
     </SubLayout>
   );
 };
 
-const SubPageNotif = ({ onBack, darkMode }) => {
+const SubPageNotif = ({ onBack }) => {
+  const C = useC();
   const [notif, setNotif] = useState(() => { try { return JSON.parse(localStorage.getItem("notif")) || { hydration: true, sleep: true, training: true, walk: false, motivation: true, daily: true, weekly: true, silentMode: false }; } catch { return { hydration: true, sleep: true, training: true, walk: false, motivation: true, daily: true, weekly: true, silentMode: false }; } });
   const [wakeTime, setWakeTime] = useState(() => localStorage.getItem("wakeTime") || "07:00");
   const [sleepTime, setSleepTime] = useState(() => localStorage.getItem("sleepTime") || "23:00");
@@ -792,6 +936,7 @@ const SubPageNotif = ({ onBack, darkMode }) => {
 };
 
 const SubPageLanguage = ({ onBack, setLang: setAppLang }) => {
+  const C = useC();
   const [selected, setSelected] = useState(() => localStorage.getItem("lang") || "fr");
   const langs = [{ k: "fr", flag: "🇫🇷", label: "Français" }, { k: "en", flag: "🇬🇧", label: "English" }, { k: "es", flag: "🇪🇸", label: "Español" }, { k: "de", flag: "🇩🇪", label: "Deutsch" }];
   const select = k => { setSelected(k); localStorage.setItem("lang", k); if (setAppLang) setAppLang(k); setTimeout(onBack, 400); };
@@ -799,7 +944,7 @@ const SubPageLanguage = ({ onBack, setLang: setAppLang }) => {
     <SubLayout onBack={onBack} title="Langue">
       <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, overflow: "hidden" }}>
         {langs.map((l, i) => (
-          <div key={l.k} onClick={() => select(l.k)} style={{ display: "flex", alignItems: "center", padding: "16px 20px", borderBottom: i < langs.length - 1 ? `1px solid ${C.border}` : "none", cursor: "pointer", background: selected === l.k ? `${C.red}0C` : "transparent" }}>
+          <div key={l.k} onClick={() => select(l.k)} style={{ display: "flex", alignItems: "center", padding: "16px 20px", borderBottom: i < langs.length - 1 ? `1px solid ${C.border}` : "none", cursor: "pointer", background: selected === l.k ? `${C.red0c}` : "transparent" }}>
             <span style={{ fontSize: 24, marginRight: 14 }}>{l.flag}</span>
             <span style={{ flex: 1, fontSize: 16, fontWeight: 600, color: C.black }}>{l.label}</span>
             {selected === l.k && <span style={{ color: C.red, fontWeight: 800, fontSize: 18 }}>✓</span>}
@@ -811,26 +956,29 @@ const SubPageLanguage = ({ onBack, setLang: setAppLang }) => {
 };
 
 // ── LEGAL PAGES ────────────────────────────────────────────────────────────
-const SubPageLegal = ({ onBack, title, sections }) => (
-  <div style={{ position: "fixed", inset: 0, background: C.bg, zIndex: 300, overflowY: "auto", maxWidth: 480, margin: "0 auto", fontFamily: "DM Sans, sans-serif" }}>
-    <div style={{ padding: "18px 20px 14px", background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(20px)", display: "flex", alignItems: "center", gap: 12 }}>
-      <button onClick={onBack} style={{ background: C.surfaceAlt, border: "none", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontSize: 18, color: C.black, fontFamily: "inherit" }}>←</button>
-      <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.black, flex: 1 }}>{title}</p>
-    </div>
-    <div style={{ padding: "20px 20px 48px" }}>
-      <p style={{ fontSize: 11, color: C.muted, margin: "0 0 20px" }}>Dernière mise à jour : mai 2025 · Kojihsports</p>
-      {sections.map((sec, i) => (
-        <div key={i} style={{ marginBottom: 24 }}>
-          <p style={{ fontSize: 13, fontWeight: 800, color: C.black, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: 0.6 }}>{sec.heading}</p>
-          <p style={{ fontSize: 14, color: C.text, lineHeight: 1.65, margin: 0 }}>{sec.body}</p>
+const SubPageLegal = ({ onBack, title, sections }) => {
+  const C = useC();
+  return (
+    <div style={{ position: "fixed", inset: 0, background: C.bg, zIndex: 300, overflowY: "auto", maxWidth: 480, margin: "0 auto", fontFamily: "DM Sans, sans-serif" }}>
+      <div style={{ padding: "18px 20px 14px", background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(20px)", display: "flex", alignItems: "center", gap: 12 }}>
+        <button onClick={onBack} style={{ background: C.surfaceAlt, border: "none", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontSize: 18, color: C.black, fontFamily: "inherit" }}>←</button>
+        <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.black, flex: 1 }}>{title}</p>
+      </div>
+      <div style={{ padding: "20px 20px 48px" }}>
+        <p style={{ fontSize: 11, color: C.muted, margin: "0 0 20px" }}>Dernière mise à jour : mai 2025 · Kojihsports</p>
+        {sections.map((sec, i) => (
+          <div key={i} style={{ marginBottom: 24 }}>
+            <p style={{ fontSize: 13, fontWeight: 800, color: C.black, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: 0.6 }}>{sec.heading}</p>
+            <p style={{ fontSize: 14, color: C.text, lineHeight: 1.65, margin: 0 }}>{sec.body}</p>
+          </div>
+        ))}
+        <div style={{ marginTop: 32, padding: "16px", background: C.surfaceAlt, borderRadius: 14 }}>
+          <p style={{ margin: 0, fontSize: 13, color: C.muted, textAlign: "center" }}>Questions ? <span style={{ color: C.red, fontWeight: 700 }}>support@kojihsports.com</span></p>
         </div>
-      ))}
-      <div style={{ marginTop: 32, padding: "16px", background: C.surfaceAlt, borderRadius: 14 }}>
-        <p style={{ margin: 0, fontSize: 13, color: C.muted, textAlign: "center" }}>Questions ? <span style={{ color: C.red, fontWeight: 700 }}>support@kojihsports.com</span></p>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const CGU_SECTIONS = [
   { heading: "1. Présentation", body: "Mylide est une application de suivi de santé et de bien-être développée par Kojihsports. Elle permet aux utilisateurs de suivre leur sommeil, leur activité physique, leur nutrition, leur état mental et leurs finances personnelles." },
@@ -856,8 +1004,195 @@ const PRIVACY_SECTIONS = [
   { heading: "9. Modifications", body: "Kojihsports se réserve le droit de modifier la présente politique. Toute modification substantielle vous sera notifiée dans l'application. La version en vigueur est celle affichée dans les paramètres." },
 ];
 
+// ── NUTRITION TIPS BLOCK ───────────────────────────────────────────────────
+const NutritionTipsBlock = ({ tips, goalType }) => {
+  const C = useC();
+  const [openIdx, setOpenIdx] = useState(null);
+  const [showAll, setShowAll] = useState(false);
+  const displayed = showAll ? tips : tips.slice(0, 8);
+  const goalLabels = { masse: "Prise de masse", perte: "Perte de poids", maintenance: "Maintien", seche: "Séche / Recompo" };
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ padding: "0 0 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: C.black }}>💡 Plus d'infos</p>
+          <p style={{ margin: "2px 0 0", fontSize: 12, color: C.muted }}>{tips.length} questions · {goalLabels[goalType] || goalType}</p>
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {displayed.map((item, i) => {
+          const isOpen = openIdx === i;
+          return (
+            <div key={i} onClick={() => setOpenIdx(isOpen ? null : i)} style={{ background: C.surface, border: `1px solid ${isOpen ? C.red22 : C.border}`, borderRadius: 14, overflow: "hidden", cursor: "pointer", transition: "border-color 0.2s", boxShadow: isOpen ? `0 2px 12px ${C.red10}` : "none" }}>
+              <div style={{ padding: "13px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: isOpen ? C.red : C.black, flex: 1, lineHeight: 1.4 }}>{item.q}</p>
+                <span style={{ fontSize: 16, color: isOpen ? C.red : C.muted, transition: "transform 0.2s, color 0.2s", transform: isOpen ? "rotate(180deg)" : "none", flexShrink: 0 }}>⌄</span>
+              </div>
+              {isOpen && (
+                <div style={{ padding: "0 16px 14px", borderTop: `1px solid ${C.border}` }}>
+                  <p style={{ margin: "10px 0 0", fontSize: 13, color: C.text, lineHeight: 1.65 }}>{item.a}</p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {tips.length > 8 && (
+        <button onClick={() => setShowAll(v => !v)} style={{ width: "100%", marginTop: 10, padding: "12px", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 14, color: C.muted, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+          {showAll ? "Voir moins ↑" : `Voir ${tips.length - 8} questions de plus ↓`}
+        </button>
+      )}
+    </div>
+  );
+};
+
+// ── DATA EXPORT MODAL ──────────────────────────────────────────────────────
+const DataExportModal = ({ history, profile, nutritionGoals, goals, patrimoine, onClose }) => {
+  const C = useC();
+  const [exporting, setExporting] = useState(false);
+
+  const exportCSV = () => {
+    setExporting(true);
+    const rows = [["Date","Score","Sommeil (h)","Qualité sommeil","Sport type","Durée sport (min)","Intensité","Récupération","Eau (L)","Calories","Protéines (g)","Glucides (g)","Lipides (g)","Poids (kg)","Objectif poids (kg)","Focus /5","Tâches prévues","Tâches faites","Temps écran (h)","Humeur /5","Lecture (min)","Méditation","Revenus €","Dépenses €","Investissements €"]];
+    history.forEach(d => {
+      rows.push([d.date, d.score||0, d.sleep?.duration||"", d.sleep?.quality||"", d.sport?.type||"", d.sport?.duration||"", d.sport?.intensity||"", d.sport?.recovery||"", d.nutrition?.water||"", d.nutrition?.calories||"", d.nutrition?.protein||"", d.nutrition?.carbs||"", d.nutrition?.fat||"", d.body?.weight||"", d.body?.weightTarget||"", d.work?.focus||"", d.work?.tasks||"", d.work?.tasksCompleted||"", d.work?.screenTime||"", d.mind?.mood||"", d.mind?.reading||"", d.mind?.meditation?"Oui":"Non", d.money?.income||"", d.money?.expense||"", d.money?.invested||""]);
+    });
+    const csv = rows.map(r => r.map(v => `"${v}"`).join(";")).join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = `mylide-data-${new Date().toISOString().split("T")[0]}.csv`; a.click();
+    setTimeout(() => setExporting(false), 500);
+  };
+
+  const exportPDF = () => {
+    setExporting(true);
+    const totalPatrimoine = patrimoine.reduce((a, b) => a + (Number(b.amount) || 0), 0);
+    const sleepDays = history.filter(d => d.sleep?.duration > 0);
+    const sportDays = history.filter(d => d.sport?.duration > 0 && !d.sport?.isRest);
+    const weightDays = history.filter(d => d.body?.weight > 0);
+    const avgSleep = sleepDays.length ? (sleepDays.reduce((a,b)=>a+b.sleep.duration,0)/sleepDays.length).toFixed(1) : "—";
+    const avgScore = history.filter(d=>d.score>0).length ? Math.round(history.filter(d=>d.score>0).reduce((a,b)=>a+b.score,0)/history.filter(d=>d.score>0).length) : "—";
+    const firstWeight = weightDays[0]?.body?.weight; const lastWeight = weightDays[weightDays.length-1]?.body?.weight;
+    const weightEvol = firstWeight && lastWeight ? `${firstWeight} → ${lastWeight} kg (${(lastWeight-firstWeight>0?"+":"")}${(lastWeight-firstWeight).toFixed(1)} kg)` : "—";
+    const age = profile.dob ? Math.floor((Date.now()-new Date(profile.dob))/3.156e10) : null;
+    const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Rapport MYLIDE — ${profile.name}</title>
+<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1A1A1A;background:#fff;padding:40px;}
+.header{background:linear-gradient(135deg,#CC2936,#8B1A22);color:#fff;padding:32px 36px;border-radius:16px;margin-bottom:32px;}
+.header h1{font-size:28px;font-weight:900;letter-spacing:-0.5px;margin-bottom:4px;}
+.header p{font-size:14px;opacity:0.7;}
+h2{font-size:18px;font-weight:800;color:#CC2936;margin:28px 0 14px;border-bottom:2px solid #f0f0f0;padding-bottom:8px;}
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;}
+.stat{background:#F8F8F6;border-radius:12px;padding:16px;text-align:center;}
+.stat .val{font-size:24px;font-weight:900;color:#CC2936;letter-spacing:-0.5px;}
+.stat .lbl{font-size:11px;color:#6B6B6B;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;}
+table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+th{background:#F8F8F6;padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#6B6B6B;text-transform:uppercase;letter-spacing:0.5px;}
+td{padding:9px 12px;font-size:13px;border-bottom:1px solid #F0F0EE;}
+tr:last-child td{border-bottom:none;}
+.goal-bar{height:6px;background:#F0F0EE;border-radius:3px;overflow:hidden;margin-top:6px;}
+.goal-fill{height:100%;border-radius:3px;background:#CC2936;}
+.footer{margin-top:40px;padding-top:16px;border-top:1px solid #F0F0EE;font-size:11px;color:#CFCFCF;text-align:center;}
+@media print{body{padding:20px;}.header{margin-bottom:20px;}}
+</style></head><body>
+<div class="header"><h1>Rapport de santé MYLIDE</h1><p>Généré le ${new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})} · ${profile.name}${age?`, ${age} ans`:""}</p></div>
+<div class="grid">
+<div class="stat"><div class="val">${history.length}</div><div class="lbl">Jours trackés</div></div>
+<div class="stat"><div class="val">${avgScore}/100</div><div class="lbl">Score moyen</div></div>
+<div class="stat"><div class="val">${avgSleep}h</div><div class="lbl">Sommeil moyen</div></div>
+<div class="stat"><div class="val">${sportDays.length}</div><div class="lbl">Séances sport</div></div>
+<div class="stat"><div class="val">${weightEvol.split("→")[1]?.trim()||"—"}</div><div class="lbl">Poids actuel</div></div>
+<div class="stat"><div class="val">${totalPatrimoine.toLocaleString("fr-FR")} €</div><div class="lbl">Patrimoine</div></div>
+</div>
+${sleepDays.length>0?`<h2>🌙 Sommeil</h2><table><tr><th>Date</th><th>Durée</th><th>Qualité</th><th>Coucher</th><th>Réveil</th></tr>${sleepDays.slice(-30).map(d=>`<tr><td>${d.date}</td><td>${d.sleep.duration}h</td><td>${d.sleep.quality?d.sleep.quality+"/5":"—"}</td><td>${d.sleep.bedtime||"—"}</td><td>${d.sleep.wakeup||"—"}</td></tr>`).join("")}</table>`:""}
+${sportDays.length>0?`<h2>🏋️ Sport</h2><table><tr><th>Date</th><th>Type</th><th>Durée</th><th>Intensité</th><th>FC moy.</th></tr>${sportDays.slice(-30).map(d=>`<tr><td>${d.date}</td><td>${d.sport.type}</td><td>${d.sport.duration} min</td><td>${d.sport.intensity?d.sport.intensity+"/5":"—"}</td><td>${d.sport.heartRate||"—"}</td></tr>`).join("")}</table>`:""}
+${weightDays.length>0?`<h2>⚖️ Évolution du poids</h2><p style="margin-bottom:12px;font-size:14px;">Progression : <strong>${weightEvol}</strong></p><table><tr><th>Date</th><th>Poids (kg)</th><th>Objectif</th><th>Tour de taille</th></tr>${weightDays.slice(-30).map(d=>`<tr><td>${d.date}</td><td>${d.body.weight}</td><td>${d.body.weightTarget||"—"}</td><td>${d.body.waist?d.body.waist+" cm":"—"}</td></tr>`).join("")}</table>`:""}
+${goals.length>0?`<h2>🎯 Objectifs</h2><table><tr><th>Objectif</th><th>Catégorie</th><th>Progression</th></tr>${goals.map(g=>`<tr><td>${g.label}</td><td>${g.category||"—"}</td><td><div style="display:flex;align-items:center;gap:8px"><span>${g.manualProgress||0}%</span><div class="goal-bar" style="flex:1"><div class="goal-fill" style="width:${g.manualProgress||0}%;background:${g.color||"#CC2936"}"></div></div></div></td></tr>`).join("")}</table>`:""}
+<div class="footer">Rapport généré par MYLIDE · ${new Date().toLocaleDateString("fr-FR")} · Données personnelles confidentielles</div>
+</body></html>`;
+    const w = window.open("", "_blank");
+    w.document.write(html); w.document.close();
+    setTimeout(() => { w.focus(); w.print(); setExporting(false); }, 500);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 300, display: "flex", alignItems: "flex-end", backdropFilter: "blur(6px)" }}>
+      <div style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: C.surface, borderRadius: "24px 24px 0 0", padding: "28px 24px 40px" }}>
+        <div style={{ width: 36, height: 4, background: C.subtle, borderRadius: 2, margin: "0 auto 24px" }} />
+        <p style={{ fontSize: 20, fontWeight: 900, color: C.black, margin: "0 0 6px", letterSpacing: -0.3 }}>📤 Télécharger mes données</p>
+        <p style={{ fontSize: 14, color: C.muted, margin: "0 0 24px", lineHeight: 1.55 }}>Exporte toutes tes données MYLIDE. Parfait pour ton médecin, coach ou nutritionniste. Seules les sections avec données sont incluses.</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <button onClick={exportPDF} disabled={exporting} style={{ padding: "16px 20px", borderRadius: 16, border: "none", background: `linear-gradient(135deg, #CC2936, #8B1A22)`, color: "#fff", fontWeight: 800, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 6px 20px rgba(204,41,54,0.3)" }}>
+            <span style={{ fontSize: 24 }}>📄</span>
+            <div style={{ textAlign: "left" }}>
+              <div>Rapport PDF complet</div>
+              <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 500 }}>Mise en page soignée · impression / envoi médecin</div>
+            </div>
+          </button>
+          <button onClick={exportCSV} disabled={exporting} style={{ padding: "16px 20px", borderRadius: 16, border: `1.5px solid ${C.border}`, background: C.surfaceAlt, color: C.black, fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 24 }}>📊</span>
+            <div style={{ textAlign: "left" }}>
+              <div>Export Excel / CSV</div>
+              <div style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>Toutes les données brutes · compatible Excel & Google Sheets</div>
+            </div>
+          </button>
+          <button onClick={onClose} style={{ padding: "14px", borderRadius: 14, border: "none", background: "transparent", color: C.muted, fontWeight: 600, fontSize: 15, cursor: "pointer" }}>Annuler</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── DELETE ACCOUNT MODAL ────────────────────────────────────────────────────
+const DeleteAccountModal = ({ profile, onClose, onConfirmDelete }) => {
+  const C = useC();
+  const [step, setStep] = useState(0); // 0=message, 1=confirm, 2=done
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try { await onConfirmDelete(); } catch {}
+    setStep(2); setDeleting(false);
+  };
+
+  if (step === 2) return (
+    <div style={{ position: "fixed", inset: 0, background: C.bg, zIndex: 300, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, maxWidth: 480, margin: "0 auto" }}>
+      <div style={{ fontSize: 64, marginBottom: 20 }}>✅</div>
+      <p style={{ fontSize: 22, fontWeight: 900, color: C.black, textAlign: "center", marginBottom: 10 }}>Compte supprimé</p>
+      <p style={{ fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 1.6 }}>Toutes tes données ont été supprimées. Tu recevras un email de confirmation. N'abandonne jamais tes objectifs — tu peux revenir quand tu veux. 💪</p>
+    </div>
+  );
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 300, display: "flex", alignItems: "flex-end", backdropFilter: "blur(6px)" }}>
+      <div style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: C.surface, borderRadius: "24px 24px 0 0", padding: "28px 24px 48px" }}>
+        <div style={{ width: 36, height: 4, background: C.subtle, borderRadius: 2, margin: "0 auto 24px" }} />
+        {step === 0 ? (<>
+          <div style={{ textAlign: "center", marginBottom: 20 }}>
+            <div style={{ fontSize: 52, marginBottom: 12 }}>💙</div>
+            <p style={{ fontSize: 18, fontWeight: 900, color: C.black, marginBottom: 10 }}>Désolé de ne pas t'avoir satisfait</p>
+            <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.7, marginBottom: 8 }}>Courage à toi dans tout ce que tu entreprends. N'abandonne en aucun cas tes envies et tes ambitions.</p>
+            <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>Ne t'inquiète pas, la suppression est rapide. Tu peux récupérer ton compte dans les 30 jours en nous contactant à <strong>support@kojihsports.com</strong>.</p>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={onClose} style={{ flex: 1, padding: "14px", borderRadius: 14, border: `1.5px solid ${C.border}`, background: C.surfaceAlt, color: C.black, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>← Retour</button>
+            <button onClick={() => setStep(1)} style={{ flex: 1, padding: "14px", borderRadius: 14, border: "none", background: `${C.red10}`, color: C.red, fontWeight: 800, fontSize: 15, cursor: "pointer", border: `1.5px solid ${C.red22}` }}>Supprimer</button>
+          </div>
+        </>) : (<>
+          <p style={{ fontSize: 17, fontWeight: 800, color: C.black, marginBottom: 10 }}>Tu es sûr(e) ?</p>
+          <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.6, marginBottom: 20 }}>C'est au cas où ce serait une mauvaise manipulation. En confirmant, toutes tes données seront définitivement supprimées.</p>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={() => setStep(0)} style={{ flex: 1, padding: "14px", borderRadius: 14, border: `1.5px solid ${C.border}`, background: C.surfaceAlt, color: C.black, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>← Retour</button>
+            <button onClick={handleDelete} disabled={deleting} style={{ flex: 1, padding: "14px", borderRadius: 14, border: "none", background: C.red, color: "#fff", fontWeight: 800, fontSize: 15, cursor: "pointer", opacity: deleting ? 0.7 : 1 }}>{deleting ? "Suppression..." : "Confirmer"}</button>
+          </div>
+        </>)}
+      </div>
+    </div>
+  );
+};
+
 // ── SETTINGS PAGE ──────────────────────────────────────────────────────────
-const SettingsPage = ({ onClose, darkMode, setDarkMode, profile, updateProfile, isPro, setShowSubscription, nutritionGoals, setNutritionGoals, onSignOut, setLang }) => {
+const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, updateProfile, isPro, setShowSubscription, nutritionGoals, setNutritionGoals, onSignOut, setLang, setShowDataExport, setShowDeleteAccount, setShowFAQ }) => {
+  const C = useC();
   const [sub, setSub] = useState(null);
   const [userEmail, setUserEmail] = useState("");
   const [notif, setNotif] = useState(() => { try { return JSON.parse(localStorage.getItem("notif")) || { hydration: true, sleep: true, training: true, walk: false, motivation: true, daily: true, weekly: true, silentMode: false }; } catch { return { hydration: true, sleep: true, training: true, walk: false, motivation: true, daily: true, weekly: true, silentMode: false }; } });
@@ -907,12 +1242,12 @@ const SettingsPage = ({ onClose, darkMode, setDarkMode, profile, updateProfile, 
     </div>
   );
 
-  if (sub === "info") return <SubPageInfo onBack={() => setSub(null)} profile={profile} updateProfile={updateProfile} darkMode={darkMode} />;
-  if (sub === "email") return <SubPageEmail onBack={() => setSub(null)} currentEmail={userEmail} setCurrentEmail={setUserEmail} darkMode={darkMode} />;
-  if (sub === "password") return <SubPagePassword onBack={() => setSub(null)} darkMode={darkMode} />;
-  if (sub === "phone") return <SubPagePhone onBack={() => setSub(null)} profile={profile} updateProfile={updateProfile} darkMode={darkMode} />;
+  if (sub === "info") return <SubPageInfo onBack={() => setSub(null)} profile={profile} updateProfile={updateProfile} />;
+  if (sub === "email") return <SubPageEmail onBack={() => setSub(null)} currentEmail={userEmail} setCurrentEmail={setUserEmail} />;
+  if (sub === "password") return <SubPagePassword onBack={() => setSub(null)} />;
+  if (sub === "phone") return <SubPagePhone onBack={() => setSub(null)} profile={profile} updateProfile={updateProfile} />;
   if (sub === "language") return <SubPageLanguage onBack={() => setSub(null)} setLang={setLang} />;
-  if (sub === "notif") return <SubPageNotif onBack={() => setSub(null)} darkMode={darkMode} />;
+  if (sub === "notif") return <SubPageNotif onBack={() => setSub(null)} />;
   if (sub === "cgu") return <SubPageLegal onBack={() => setSub(null)} title="Conditions d'utilisation" sections={CGU_SECTIONS} />;
   if (sub === "privacy") return <SubPageLegal onBack={() => setSub(null)} title="Politique de confidentialité" sections={PRIVACY_SECTIONS} />;
 
@@ -968,16 +1303,43 @@ const SettingsPage = ({ onClose, darkMode, setDarkMode, profile, updateProfile, 
         </Sec>
 
         <Sec title={tr("sec_appearance")}>
-          <Row icon={darkMode ? "☀️" : "🌙"} label={darkMode ? tr("row_darkmode_on") : tr("row_darkmode_off")} right={<Tog value={darkMode} onChange={setDarkMode} />} last />
+          <div style={{ display: "flex", gap: 10, padding: "4px 0 8px" }}>
+            {[
+              { value: "light", icon: "☀️", label: "Clair" },
+              { value: "dark",  icon: "🌙", label: "Sombre" },
+              { value: "auto",  icon: "⚙️", label: "Auto" },
+            ].map(opt => {
+              const active = themeMode === opt.value;
+              return (
+                <button key={opt.value} onClick={() => setThemeMode(opt.value)} style={{
+                  flex: 1, padding: "14px 8px", borderRadius: 14, cursor: "pointer",
+                  border: active ? `2px solid ${C.red}` : `1.5px solid ${C.border}`,
+                  background: active ? C.redLight : C.surfaceAlt,
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 7,
+                  transition: "all 0.18s", fontFamily: "inherit",
+                }}>
+                  <span style={{ fontSize: 24 }}>{opt.icon}</span>
+                  <span style={{ fontSize: 12, fontWeight: active ? 800 : 600, color: active ? C.red : C.muted }}>
+                    {opt.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {themeMode === "auto" && (
+            <p style={{ margin: "2px 0 6px", fontSize: 12, color: C.muted }}>
+              Suit automatiquement le thème de ton appareil.
+            </p>
+          )}
         </Sec>
 
         <Sec title={tr("sec_privacy")}>
-          <Row icon="📤" label="Télécharger mes données" desc="Export au format JSON" onClick={exportData} />
-          <Row icon="🗑️" label="Supprimer mon compte" desc="Action irréversible" onClick={() => { if (window.confirm("Supprimer définitivement votre compte ? Cette action est irréversible.")) alert("Contactez support@kojihsports.com pour supprimer votre compte."); }} last />
+          <Row icon="📤" label="Télécharger mes données" desc="PDF ou Excel · médecin, coach..." onClick={() => { onClose(); setTimeout(() => setShowDataExport(true), 120); }} />
+          <Row icon="🗑️" label="Supprimer mon compte" desc="Récupérable sous 30 jours" onClick={() => { onClose(); setTimeout(() => setShowDeleteAccount(true), 120); }} last />
         </Sec>
 
         <Sec title={tr("sec_support")}>
-          <Row icon="❓" label="FAQ" onClick={() => {}} />
+          <Row icon="❓" label="FAQ" desc="100+ réponses sur MYLIDE" onClick={() => { onClose(); setTimeout(() => setShowFAQ(true), 120); }} />
           <Row icon="💬" label="Contacter l'équipe" desc="support@kojihsports.com" onClick={() => window.open("mailto:support@kojihsports.com")} />
           <Row icon="🐛" label="Signaler un bug" onClick={() => window.open("mailto:bugs@kojihsports.com")} last />
         </Sec>
@@ -1000,6 +1362,7 @@ const SettingsPage = ({ onClose, darkMode, setDarkMode, profile, updateProfile, 
 
 // ── SCORE RING ─────────────────────────────────────────────────────────────
 const ScoreRing = ({ score, delta, streak }) => {
+  const C = useC();
   const r = 36; const circ = 2 * Math.PI * r; const fill = (score / 100) * circ;
   const col = score >= 80 ? "#1A7A4A" : score >= 60 ? "#D4580A" : "#CC2936";
   return (
@@ -1018,6 +1381,7 @@ const ScoreRing = ({ score, delta, streak }) => {
 
 // ── CALENDAR HEATMAP ───────────────────────────────────────────────────────
 const CalendarHeatmap = ({ history }) => {
+  const C = useC();
   const today = new Date(); const days = [];
   for (let i = 83; i >= 0; i--) { const d = new Date(today); d.setDate(d.getDate() - i); const dateStr = d.toISOString().split("T")[0]; const entry = history.find(h => h.date === dateStr); days.push({ date: dateStr, score: entry?.score || 0 }); }
   const sc = (s) => { if (s === 0) return C.surfaceAlt; if (s >= 80) return C.green; if (s >= 60) return C.orange; if (s >= 40) return "#f59e0b"; return C.red; };
@@ -1036,6 +1400,7 @@ const CalendarHeatmap = ({ history }) => {
 
 // ── ATHLETIC RADAR ─────────────────────────────────────────────────────────
 const AthleticRadar = ({ data }) => {
+  const C = useC();
   const COLORS = { Sommeil: "#A855F7", Sport: "#CC2936", Nutrition: "#F97316", Travail: "#3B82F6", Mental: "#22C55E", Corps: "#F59E0B" };
   return (
     <div style={{ background: C.surfaceAlt, borderRadius: 16, padding: 16, position: "relative" }}>
@@ -1059,11 +1424,11 @@ const AthleticRadar = ({ data }) => {
 // ── COMPOSANTS ─────────────────────────────────────────────────────────────
 // inp uses getters so C.xxx is evaluated at render time (not at module init)
 const inp = {
-  get background() { return C.surfaceAlt; },
-  get border() { return `1px solid ${C.border}`; },
+  get background() { return _themeC.surfaceAlt; },
+  get border() { return `1px solid ${_themeC.border}`; },
   borderRadius: 12,
   padding: "13px 16px",
-  get color() { return C.text; },
+  get color() { return _themeC.text; },
   fontSize: 16,
   outline: "none",
   width: "100%",
@@ -1074,6 +1439,7 @@ const inp = {
 };
 
 const EvoChart = ({ data, dataKey, color, label, unit, height = 150 }) => {
+  const C = useC();
   if (data.length < 2) return <div style={{ background: C.surfaceAlt, borderRadius: 14, padding: 14, textAlign: "center", marginBottom: 14 }}><p style={{ fontSize: 12, color: C.muted, margin: 0 }}>Graphique disponible apres 2+ jours</p></div>;
   const getVal = d => dataKey.split(".").reduce((o, k) => o?.[k], d) ?? 0;
   const last = getVal(data[data.length - 1]); const first = getVal(data[0]); const trend = last - first;
@@ -1083,7 +1449,7 @@ const EvoChart = ({ data, dataKey, color, label, unit, height = 150 }) => {
         <p style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: 1.2, margin: 0, fontWeight: 600 }}>{label}</p>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ fontSize: 18, fontWeight: 900, color }}>{last}{unit}</span>
-          <span style={{ fontSize: 11, color: trend >= 0 ? C.green : C.red, background: trend >= 0 ? `${C.green}15` : `${C.red}15`, borderRadius: 8, padding: "3px 8px", fontWeight: 700 }}>{trend >= 0 ? "+" : ""}{Math.round(trend * 10) / 10}{unit}</span>
+          <span style={{ fontSize: 11, color: trend >= 0 ? C.green : C.red, background: trend >= 0 ? `${C.green15}` : `${C.red15}`, borderRadius: 8, padding: "3px 8px", fontWeight: 700 }}>{trend >= 0 ? "+" : ""}{Math.round(trend * 10) / 10}{unit}</span>
         </div>
       </div>
       <ResponsiveContainer width="100%" height={height}>
@@ -1101,6 +1467,7 @@ const EvoChart = ({ data, dataKey, color, label, unit, height = 150 }) => {
 };
 
 const Rating = ({ value, max = 5, onChange, color }) => {
+  const C = useC();
   const col = color || C.red;
   return (
     <div style={{ display: "flex", gap: 6 }}>
@@ -1111,36 +1478,45 @@ const Rating = ({ value, max = 5, onChange, color }) => {
   );
 };
 
-const Toggle = ({ value, onChange, label }) => (
-  <div onClick={() => onChange(!value)} style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background: value ? C.redLight : C.surfaceAlt, border: `1.5px solid ${value ? C.red : C.border}`, borderRadius: 14, padding: "12px 16px", transition: "all 0.2s", userSelect: "none" }}>
-    <div style={{ width: 42, height: 24, borderRadius: 12, background: value ? C.red : C.subtle, position: "relative", transition: "background 0.25s", flexShrink: 0, boxShadow: value ? `0 2px 8px ${C.red}44` : "none" }}>
-      <div style={{ position: "absolute", top: 3, left: value ? 21 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.25)" }} />
+const Toggle = ({ value, onChange, label }) => {
+  const C = useC();
+  return (
+    <div onClick={() => onChange(!value)} style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background: value ? C.redLight : C.surfaceAlt, border: `1.5px solid ${value ? C.red : C.border}`, borderRadius: 14, padding: "12px 16px", transition: "all 0.2s", userSelect: "none" }}>
+      <div style={{ width: 42, height: 24, borderRadius: 12, background: value ? C.red : C.subtle, position: "relative", transition: "background 0.25s", flexShrink: 0, boxShadow: value ? `0 2px 8px ${C.red44}` : "none" }}>
+        <div style={{ position: "absolute", top: 3, left: value ? 21 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.25)" }} />
+      </div>
+      <span style={{ fontSize: 14, color: value ? C.red : C.muted, fontWeight: value ? 600 : 400 }}>{label}</span>
     </div>
-    <span style={{ fontSize: 14, color: value ? C.red : C.muted, fontWeight: value ? 600 : 400 }}>{label}</span>
-  </div>
-);
+  );
+};
 
-const Field = ({ label, children }) => (
-  <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-    <label style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: 1.2, fontWeight: 600 }}>{label}</label>
-    {children}
-  </div>
-);
+const Field = ({ label, children }) => {
+  const C = useC();
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+      <label style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: 1.2, fontWeight: 600 }}>{label}</label>
+      {children}
+    </div>
+  );
+};
 
 const Card = ({ children, style = {}, accent, dark }) => {
+  const C = useC();
   const bg = accent ? `linear-gradient(135deg, ${C.red} 0%, #8B1A22 100%)` : dark ? C.bg : C.surface;
   return (
     <div style={{ background: bg, border: accent || dark ? "none" : `1px solid ${C.border}`, borderRadius: 20, padding: 20, marginBottom: 12, boxShadow: accent ? "0 12px 40px rgba(204,41,54,0.22)" : "0 2px 16px rgba(0,0,0,0.05)", ...style }}>{children}</div>
   );
 };
 
-const ST = ({ children, light }) => (
-  <p style={{ fontSize: 11, color: light ? "rgba(255,255,255,0.55)" : C.red, textTransform: "uppercase", letterSpacing: 1.8, marginBottom: 14, marginTop: 0, fontWeight: 700 }}>{children}</p>
-);
+const ST = ({ children, light }) => {
+  const C = useC();
+  return <p style={{ fontSize: 11, color: light ? "rgba(255,255,255,0.55)" : C.red, textTransform: "uppercase", letterSpacing: 1.8, marginBottom: 14, marginTop: 0, fontWeight: 700 }}>{children}</p>;
+};
 
 const MsgBox = ({ type, msg, suggestions }) => {
+  const C = useC();
   const colors = { danger: C.red, warning: C.orange, advice: C.green, success: C.green, info: C.blue };
-  const bgs = { danger: `${C.red}10`, warning: `${C.orange}10`, advice: `${C.green}10`, success: `${C.green}10`, info: `${C.blue}10` };
+  const bgs = { danger: `${C.red10}`, warning: `${C.orange10}`, advice: `${C.green10}`, success: `${C.green10}`, info: `${C.blue10}` };
   const col = colors[type] || C.muted; const bg = bgs[type] || C.surfaceAlt;
   return (
     <div style={{ background: bg, border: `1.5px solid ${col}22`, borderRadius: 14, padding: "12px 16px", marginBottom: 10 }}>
@@ -1162,6 +1538,7 @@ const MsgBox = ({ type, msg, suggestions }) => {
 };
 
 const EditGoalModal = ({ goal, onSave, onClose }) => {
+  const C = useC();
   const [edited, setEdited] = useState({ ...goal });
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={onClose}>
@@ -1233,6 +1610,7 @@ const PageTransition = ({ children, pageKey }) => {
 
 // ── ONBOARDING ─────────────────────────────────────────────────────────────
 const Onboarding = ({ onComplete }) => {
+  const C = useC();
   const [step, setStep] = useState(0);
   const [name, setName] = useState(""); const [dob, setDob] = useState(""); const [photo, setPhoto] = useState("");
   const [priorities, setPriorities] = useState([]); const [goalTarget, setGoalTarget] = useState(""); const [goalEnd, setGoalEnd] = useState("");
@@ -1339,10 +1717,9 @@ const Onboarding = ({ onComplete }) => {
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [onboarded, setOnboarded] = useState(null);
-  const { darkMode, setDarkMode } = useTheme();
-  // Sync: update module-level C BEFORE any JSX so Card/ST/EvoChart etc. get correct theme
-  Object.assign(C, darkMode ? DARK : LIGHT);
-  useEffect(() => { document.body.style.background = C.bg; }, [darkMode]);
+  const { darkMode, themeMode, setThemeMode, C } = useTheme();
+  // C = CV (variables CSS) — on synchronise _themeC pour inp/settingsInp
+  Object.assign(_themeC, C);
 
   const [nav, setNav] = useState("today");
   const [trackTab, setTrackTab] = useState("sleep");
@@ -1357,7 +1734,7 @@ export default function App() {
   const [isPro, setIsPro] = useState(false);
   const [patrimoine, setPatrimoine] = useState(defaultPatrimoine());
   const [newPoche, setNewPoche] = useState({ name: "", amount: 0, color: "#2563eb" });
-  const [statRange, setStatRange] = useState("30");
+  const [statRange, setStatRange] = useState(() => localStorage.getItem("statRange") || "7");
   const [profile, setProfile] = useState({ name: "", dob: "", photo: "" });
   const [sim, setSim] = useState({ amount: 10000, monthly: 200, rate: 10, years: 10 });
   const [newGoal, setNewGoal] = useState({ label: "", category: "", color: "#CC2936", sourceId: "manual", target: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reverse: false, manualProgress: 0 });
@@ -1368,6 +1745,11 @@ export default function App() {
   const [nutritionGoals, setNutritionGoals] = useState(() => { try { return JSON.parse(localStorage.getItem("nutritionGoals")) || { goalType: "maintenance", protTarget: 150, calTarget: 2000, fatTarget: 65, carbsTarget: 200 }; } catch { return { goalType: "maintenance", protTarget: 150, calTarget: 2000, fatTarget: 65, carbsTarget: 200 }; } });
   const [veganOnly, setVeganOnly] = useState(() => localStorage.getItem("veganOnly") === "true");
   const [editingNutrGoals, setEditingNutrGoals] = useState(false);
+  const [radarDate, setRadarDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [radarWeekOffset, setRadarWeekOffset] = useState(0);
+  const [showDataExport, setShowDataExport] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [showFAQ, setShowFAQ] = useState(false);
   const photoRef = useRef(); const sportPhotoRef = useRef();
 
   useEffect(() => {
@@ -1456,7 +1838,7 @@ export default function App() {
   const intel = getIntelligence(history, totalPatrimoine, goals);
   const temporalInsights = getTemporalIntelligence(today, history, goals);
   const age = calcAge(profile.dob);
-  const rangeH = history.slice(-parseInt(statRange));
+  const rangeH = statRange === "all" ? history : history.slice(-parseInt(statRange));
   const streak = (() => { let c = 0; for (let i = history.length - 1; i >= 0; i--) { if (history[i].score > 0) c++; else break; } return c; })();
   const sleepH = history.filter(d => d.sleep?.duration > 0);
   const sportH = history.filter(d => d.sport?.duration > 0 && !d.sport?.isRest);
@@ -1475,6 +1857,25 @@ export default function App() {
   const fatCurrent = today.nutrition.fat || 0;
   const carbsCurrent = today.nutrition.carbs || 0;
 
+  // ── BODY ↔ NUTRITION COHERENCE ────────────────────────────────────────────
+  // Infer goal type from weight vs target — used for coherence check + auto-suggest
+  const bodyGoalType = (() => {
+    const w = today.body?.weight || 0;
+    const wt = today.body?.weightTarget || 0;
+    if (!w || !wt) return null;
+    const diff = wt - w;
+    if (Math.abs(diff) < 0.5) return "maintenance";
+    return diff < 0 ? "perte" : "masse";
+  })();
+  // Alert when nutrition goal contradicts body goal
+  const nutritionGoalConflict = (() => {
+    if (!bodyGoalType || bodyGoalType === "maintenance") return null;
+    if (bodyGoalType === "perte" && nutritionGoals.goalType === "masse") return { bodyGoal: "perte", nutrGoal: "masse", msg: "Ton objectif corps est une perte de poids, mais ton objectif nutrition est une prise de masse. Ces deux objectifs sont contradictoires." };
+    if (bodyGoalType === "masse" && nutritionGoals.goalType === "perte") return { bodyGoal: "masse", nutrGoal: "perte", msg: "Ton objectif corps est une prise de masse, mais ton objectif nutrition est en déficit calorique. Tu ne pourras pas prendre de masse ainsi." };
+    if (bodyGoalType === "masse" && nutritionGoals.goalType === "seche") return { bodyGoal: "masse", nutrGoal: "seche", msg: "Ton objectif corps est une prise de masse, mais ton objectif nutrition est une sèche/recompo. Envisage plutôt une prise de masse." };
+    return null;
+  })();
+
   const simResult = useMemo(() => {
     let total = Number(sim.amount) || 0; const data = [{ year: 0, value: Math.round(total) }];
     for (let y = 1; y <= sim.years; y++) { total = total * (1 + sim.rate / 100) + sim.monthly * 12; data.push({ year: y, value: Math.round(total) }); }
@@ -1488,14 +1889,99 @@ export default function App() {
   const yesterdayHadSport = !!(yesterdayEntry?.sport?.duration >= 30 || yesterdayEntry?.sport?.intensity >= 3);
   const sleepAnalysis = calcSleepScore(today.sleep, age, recentBedtimeMins, yesterdayHadSport);
 
+  // ── RADAR SCORES — multi-factor 0-100 per category ───────────────────────
+  const radarSportScore = (() => {
+    if (!today.sport.type) return 5;
+    if (today.sport.isRest) return today.sport.stretching ? 65 : 50;
+    const dur = today.sport.duration || 0;
+    const intensity = today.sport.intensity || 0;
+    const recovery = today.sport.recovery || 0;
+    const base = Math.min(55, dur * 1.1); // 50min → 55pts
+    const iBonus = intensity >= 1 ? (intensity - 1) * 8 : 0; // up to +32
+    const rBonus = recovery >= 4 ? 10 : recovery >= 3 ? 5 : 0;
+    return Math.max(5, Math.min(100, Math.round(base + iBonus + rBonus)));
+  })();
+  const radarNutrScore = (() => {
+    const meals = (today.nutrition.breakfast ? 15 : 0) + (today.nutrition.lunch ? 15 : 0) + (today.nutrition.dinner ? 15 : 0);
+    const water = Math.min(20, Math.round(today.nutrition.water * 8)); // 2.5L → 20pts
+    const calAdh = calTarget > 0 && calCurrent > 0 ? Math.max(0, 1 - Math.abs(calCurrent - calTarget) / calTarget) : 0;
+    const protAdh = protTarget > 0 && protCurrent > 0 ? Math.min(1, protCurrent / protTarget) : 0;
+    const macros = Math.round(calAdh * 12 + protAdh * 18);
+    const junk = today.nutrition.junk ? -15 : 0;
+    return Math.max(5, Math.min(100, meals + water + macros + junk));
+  })();
+  const radarWorkScore = (() => {
+    const focus = (today.work.focus || 0) * 14; // 5/5 → 70pts
+    const taskComp = today.work.tasks > 0 ? Math.min(1, (today.work.tasksCompleted || 0) / today.work.tasks) : 0;
+    const tasks = today.work.tasks > 0 ? Math.round(taskComp * 18) : 0;
+    const screen = today.work.screenTime > 0
+      ? (today.work.screenTime <= 3 ? 12 : today.work.screenTime <= 5 ? 0 : -20)
+      : 0;
+    return Math.max(5, Math.min(100, focus + tasks + screen));
+  })();
+  const radarMindScore = (() => {
+    const mood = (today.mind.mood || 0) * 14;
+    const read = Math.min(15, Math.round((today.mind.reading || 0) / 4));
+    const med = today.mind.meditation ? 12 : 0;
+    return Math.max(5, Math.min(100, mood + read + med));
+  })();
+  const radarBodyScore = (() => {
+    if (!today.body?.weight) return 10;
+    const w = today.body.weight;
+    const wt = today.body?.weightTarget || 0;
+    const diff = wt > 0 ? Math.abs(wt - w) / w : 0; // relative gap
+    const progressScore = wt > 0 ? Math.max(20, 100 - Math.round(diff * 250)) : 60;
+    const measures = [today.body.chest, today.body.waist, today.body.hips, today.body.arms, today.body.thighs].filter(v => v > 0).length;
+    return Math.max(10, Math.min(100, progressScore + measures * 4));
+  })();
+
   const radar = [
     { s: "Sommeil", v: today.sleep.duration > 0 ? Math.max(5, sleepAnalysis.score) : 5 },
-    { s: "Sport", v: today.sport.isRest ? 60 : Math.max(5, Math.min(100, today.sport.duration * 2)) },
-    { s: "Nutrition", v: Math.max(5, (today.nutrition.breakfast ? 20 : 0) + (today.nutrition.lunch ? 20 : 0) + (today.nutrition.dinner ? 20 : 0) + Math.min(40, today.nutrition.water * 16)) },
-    { s: "Travail", v: Math.max(5, today.work.focus * 20) },
-    { s: "Mental", v: Math.max(5, today.mind.mood * 20) },
-    { s: "Corps", v: today.body?.weight > 0 ? 80 : 20 },
+    { s: "Sport",   v: radarSportScore },
+    { s: "Nutrition", v: radarNutrScore },
+    { s: "Travail", v: radarWorkScore },
+    { s: "Mental",  v: radarMindScore },
+    { s: "Corps",   v: radarBodyScore },
   ];
+
+  // ── DAY SELECTOR (home radar) ──────────────────────────────────────────────
+  const radarWeekDays = useMemo(() => {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0=sun
+    const mondayOffset = (dayOfWeek + 6) % 7;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - mondayOffset + radarWeekOffset * 7);
+    const dayLetters = ["L", "M", "M", "J", "V", "S", "D"];
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      return { dateStr: d.toISOString().split("T")[0], dayLetter: dayLetters[i], dayNum: d.getDate() };
+    });
+  }, [radarWeekOffset]);
+
+  const radarDayData = radarDate === todayDate ? today : (history.find(d => d.date === radarDate) || null);
+  const radarForDay = useMemo(() => {
+    const d = radarDayData;
+    if (!d) return [{ s:"Sommeil",v:5 },{ s:"Sport",v:5 },{ s:"Nutrition",v:5 },{ s:"Travail",v:5 },{ s:"Mental",v:5 },{ s:"Corps",v:5 }];
+    if (d === today) return radar; // use already-computed scores for today
+    const sl = d.sleep || {}, sp = d.sport || {}, n = d.nutrition || {}, w = d.work || {}, m = d.mind || {}, b = d.body || {};
+    // Sleep
+    const dur = sl.duration || 0;
+    let slS = dur >= 7 && dur <= 9 ? 65 : dur >= 6.5 ? 50 : dur >= 6 ? 35 : dur > 0 ? 18 : 5;
+    if (sl.quality >= 4) slS += 15; if (sl.noScreen) slS += 5;
+    // Sport
+    const spS = !sp.type ? 5 : sp.isRest ? (sp.stretching ? 65 : 50) : Math.max(5, Math.min(100, Math.round(
+      Math.min(55, (sp.duration||0)*1.1) + ((sp.intensity||0)>=1 ? ((sp.intensity||0)-1)*8 : 0) + ((sp.recovery||0)>=4?10:(sp.recovery||0)>=3?5:0))));
+    // Nutrition
+    const nutrS = Math.max(5, Math.min(100, (n.breakfast?15:0)+(n.lunch?15:0)+(n.dinner?15:0)+Math.min(20,Math.round((n.water||0)*8))+(n.junk?-15:0)));
+    // Work
+    const wS = Math.max(5, Math.min(100, (w.focus||0)*14 + (w.tasks>0?Math.round(Math.min(1,(w.tasksCompleted||0)/w.tasks)*18):0) + (w.screenTime>5?-20:w.screenTime>3?0:w.screenTime>0?12:0)));
+    // Mind
+    const mS = Math.max(5, Math.min(100, (m.mood||0)*14 + Math.min(15,Math.round((m.reading||0)/4)) + (m.meditation?12:0)));
+    // Body
+    const bS = b.weight > 0 ? 60 : 10;
+    return [{ s:"Sommeil",v:Math.min(100,slS) },{ s:"Sport",v:spS },{ s:"Nutrition",v:nutrS },{ s:"Travail",v:wS },{ s:"Mental",v:mS },{ s:"Corps",v:bS }];
+  }, [radarDayData, radar, today]);
 
   const navIdx = NAV_ORDER.indexOf(nav); const trackIdx = TRACK_ORDER.indexOf(trackTab);
   const swipeNav = useSwipe(
@@ -1504,12 +1990,12 @@ export default function App() {
   );
 
   const STAT_CARDS = [
-    { label: "Sommeil", value: today.sleep.duration ? `${today.sleep.duration}h` : "", icon: "sleep", color: C.purple },
-    { label: "Sport", value: today.sport.isRest ? "Repos" : today.sport.duration ? `${today.sport.duration}m` : "", icon: "sport", color: C.red },
-    { label: "Eau", value: today.nutrition.water ? `${today.nutrition.water}L` : "", icon: "water", color: C.blue },
-    { label: "Poids", value: today.body?.weight ? `${today.body.weight}kg` : "", icon: "scale", color: C.orange },
-    { label: "Focus", value: today.work.focus ? `${today.work.focus}/5` : "", icon: "focus", color: C.red },
-    { label: "Humeur", value: today.mind.mood ? `${today.mind.mood}/5` : "", icon: "mood", color: C.green },
+    { label: "Sommeil", value: today.sleep.duration ? `${today.sleep.duration}h` : "—", icon: "sleep", color: C.purple, tab: "sleep" },
+    { label: "Sport", value: today.sport.isRest ? "Repos" : today.sport.duration ? `${today.sport.duration}m` : "—", icon: "sport", color: C.red, tab: "sport" },
+    { label: "Eau", value: today.nutrition.water ? `${today.nutrition.water}L` : "—", icon: "water", color: C.blue, tab: "nutrition" },
+    { label: "Poids", value: today.body?.weight ? `${today.body.weight}kg` : "—", icon: "scale", color: C.orange, tab: "body" },
+    { label: "Focus", value: today.work.focus ? `${today.work.focus}/5` : "—", icon: "focus", color: C.red, tab: "work" },
+    { label: "Humeur", value: today.mind.mood ? `${today.mind.mood}/5` : "—", icon: "mood", color: C.green, tab: "mind" },
   ];
 
   if (showSplash) return <SplashScreen onDone={() => setShowSplash(false)} />;
@@ -1541,26 +2027,29 @@ export default function App() {
 
       {editingGoal && <EditGoalModal goal={editingGoal} onSave={saveEditedGoal} onClose={() => setEditingGoal(null)} />}
       {showSubscription && <Subscription onClose={() => setShowSubscription(false)} />}
-      {showSettings && <SettingsPage onClose={() => setShowSettings(false)} darkMode={darkMode} setDarkMode={setDarkMode} profile={profile} isPro={isPro} setShowSubscription={setShowSubscription} nutritionGoals={nutritionGoals} setNutritionGoals={setNutritionGoals} onSignOut={handleSignOut} updateProfile={updateProfile} setLang={setLang} />}
+      {showSettings && <SettingsPage onClose={() => setShowSettings(false)} darkMode={darkMode} themeMode={themeMode} setThemeMode={setThemeMode} profile={profile} isPro={isPro} setShowSubscription={setShowSubscription} nutritionGoals={nutritionGoals} setNutritionGoals={setNutritionGoals} onSignOut={handleSignOut} updateProfile={updateProfile} setLang={setLang} setShowDataExport={setShowDataExport} setShowDeleteAccount={setShowDeleteAccount} setShowFAQ={setShowFAQ} />}
+      {showDataExport && <DataExportModal history={history} profile={profile} nutritionGoals={nutritionGoals} goals={goals} patrimoine={patrimoine} onClose={() => setShowDataExport(false)} />}
+      {showDeleteAccount && <DeleteAccountModal profile={profile} onClose={() => setShowDeleteAccount(false)} onConfirmDelete={async () => { const { data: { user } } = await supabase.auth.getUser(); if (user) { await supabase.from("daily_logs").delete().eq("user_id", user.id); await supabase.from("goals").delete().eq("user_id", user.id); await supabase.from("patrimoine").delete().eq("user_id", user.id); await supabase.from("todos").delete().eq("user_id", user.id); await supabase.from("profiles").delete().eq("id", user.id); await supabase.auth.signOut(); } setShowDeleteAccount(false); }} />}
+      {showFAQ && <FAQPage onBack={() => setShowFAQ(false)} />}
 
       {/* HEADER */}
-      <div style={{ padding: "18px 20px 14px", background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(20px)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ padding: "14px 20px 12px", background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(20px)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", minHeight: 52 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div onClick={() => setNav("profile")} style={{ cursor: "pointer" }}>
+            <div onClick={() => setNav("profile")} style={{ cursor: "pointer", flexShrink: 0 }}>
               {profile.photo
-                ? <img src={profile.photo} alt="" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", border: `2px solid ${C.red}` }} />
-                : <div style={{ width: 44, height: 44, borderRadius: "50%", background: `linear-gradient(135deg, ${C.red}, #8B1A22)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 18, boxShadow: `0 4px 14px ${C.red}44` }}>{profile.name?.[0] || "K"}</div>}
+                ? <img src={profile.photo} alt="" style={{ width: 46, height: 46, borderRadius: "50%", objectFit: "cover", border: `2px solid ${C.red}`, display: "block" }} />
+                : <div style={{ width: 46, height: 46, borderRadius: "50%", background: `linear-gradient(135deg, ${C.red}, #8B1A22)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 18, boxShadow: `0 4px 14px ${C.red44}`, flexShrink: 0 }}>{profile.name?.[0] || "K"}</div>}
             </div>
-            <div>
-              <p style={{ fontSize: 10, color: C.red, letterSpacing: 2, textTransform: "uppercase", margin: 0, fontWeight: 700 }}>Mylide</p>
-              <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.black, letterSpacing: -0.3 }}>{tr("hello")} {profile.name} 👋</p>
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 2 }}>
+              <p style={{ fontSize: 10, color: C.red, letterSpacing: 2, textTransform: "uppercase", margin: 0, fontWeight: 700, lineHeight: 1 }}>Mylide</p>
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: C.black, letterSpacing: -0.3, lineHeight: 1.2 }}>{tr("hello")} {profile.name} 👋</p>
             </div>
           </div>
           <ScoreRing score={today.score} delta={intel.scoreDelta} streak={streak} />
         </div>
-        {intel.alerts.length > 0 && <div style={{ marginTop: 12 }}><MsgBox type={intel.alerts[0].type} msg={intel.alerts[0].msg} /></div>}
-        {intel.alerts.length === 0 && intel.advice.length > 0 && <div style={{ marginTop: 12 }}><MsgBox type="advice" msg={intel.advice[0]} /></div>}
+        {intel.alerts.length > 0 && <div style={{ marginTop: 10 }}><MsgBox type={intel.alerts[0].type} msg={intel.alerts[0].msg} /></div>}
+        {intel.alerts.length === 0 && intel.advice.length > 0 && <div style={{ marginTop: 10 }}><MsgBox type="advice" msg={intel.advice[0]} /></div>}
       </div>
 
       <div style={{ padding: "14px 16px", position: "relative" }} {...swipeNav}>
@@ -1569,15 +2058,48 @@ export default function App() {
           {/* TODAY */}
           {nav === "today" && (
             <div>
-              <Card dark>
-                <ST light>{tr("today_balance")}</ST>
-                <AthleticRadar data={radar} />
+              <Card dark style={{ paddingBottom: 8 }}>
+                {/* Day-of-week selector */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                  <button onClick={() => {
+                    if (radarWeekOffset <= -1 && !isPro) { setShowSubscription(true); return; }
+                    setRadarWeekOffset(o => o - 1);
+                    const firstDayOfPrevWeek = (() => {
+                      const now = new Date(); const dow = (now.getDay()+6)%7;
+                      const mon = new Date(now); mon.setDate(now.getDate()-dow+(radarWeekOffset-1)*7);
+                      return mon.toISOString().split("T")[0];
+                    })();
+                    setRadarDate(firstDayOfPrevWeek);
+                  }} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: "rgba(255,255,255,0.7)", fontSize: 16, fontWeight: 700 }}>‹</button>
+                  <div style={{ flex: 1, display: "flex", gap: 3 }}>
+                    {radarWeekDays.map(({ dateStr, dayLetter, dayNum }) => {
+                      const isSelected = radarDate === dateStr;
+                      const isFuture = dateStr > todayDate;
+                      const hasData = dateStr === todayDate ? today.score > 0 : history.some(d => d.date === dateStr && (d.score > 0 || d.sleep?.duration > 0));
+                      const isPastWeek = radarWeekOffset < 0;
+                      const isLocked = isPastWeek && !isPro;
+                      return (
+                        <button key={dateStr} onClick={() => { if (isLocked) { setShowSubscription(true); return; } if (!isFuture) setRadarDate(dateStr); }} style={{ flex: 1, padding: "5px 2px", borderRadius: 10, border: isSelected ? "2px solid rgba(255,255,255,0.9)" : "1.5px solid rgba(255,255,255,0.15)", background: isSelected ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", alignItems: "center", gap: 1, cursor: isFuture || isLocked ? "default" : "pointer", opacity: isFuture ? 0.25 : isLocked ? 0.4 : 1, transition: "all 0.15s" }}>
+                          <span style={{ fontSize: 8, fontWeight: 700, color: isSelected ? "#fff" : "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: 0.3 }}>{isLocked ? "🔒" : dayLetter}</span>
+                          <span style={{ fontSize: 13, fontWeight: 900, color: isSelected ? "#fff" : "rgba(255,255,255,0.75)", lineHeight: 1 }}>{dayNum}</span>
+                          <div style={{ width: 4, height: 4, borderRadius: "50%", background: hasData ? (isSelected ? "#fff" : "rgba(255,255,255,0.5)") : "transparent", marginTop: 1 }} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button onClick={() => { if (radarWeekOffset < 0) { setRadarWeekOffset(o => o + 1); const now = new Date(); now.setDate(now.getDate() + (radarWeekOffset+1)*7); setRadarDate(todayDate); } }} style={{ background: radarWeekOffset === 0 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: radarWeekOffset === 0 ? "default" : "pointer", flexShrink: 0, color: radarWeekOffset === 0 ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.7)", fontSize: 16, fontWeight: 700 }}>›</button>
+                </div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600, textAlign: "center", marginBottom: 2, letterSpacing: 0.3 }}>
+                  {radarDate === todayDate ? "Aujourd'hui" : new Date(radarDate + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                  {!radarDayData && radarDate !== todayDate ? " · Aucune donnée" : ""}
+                </div>
+                <AthleticRadar data={radarForDay} />
               </Card>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
                 {STAT_CARDS.map(item => (
-                  <div key={item.label} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "14px 10px", textAlign: "center", borderTop: `3px solid ${item.color}` }}>
+                  <div key={item.label} onClick={() => { setNav("track"); setTrackTab(item.tab); }} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "14px 10px", textAlign: "center", borderTop: `3px solid ${item.color}`, cursor: "pointer", transition: "transform 0.15s", WebkitTapHighlightColor: "transparent", userSelect: "none" }}>
                     <div style={{ display: "flex", justifyContent: "center", marginBottom: 6 }}>{Ico[item.icon](item.color, 20)}</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: item.color, letterSpacing: -0.3 }}>{item.value}</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: item.value === "—" ? C.muted : item.color, letterSpacing: -0.3 }}>{item.value}</div>
                     <div style={{ fontSize: 9, color: C.muted, marginTop: 2, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>{item.label}</div>
                   </div>
                 ))}
@@ -1711,13 +2233,13 @@ export default function App() {
                         const active = today.sport.type === sport;
                         const icons = { Musculation: "💪", Running: "🏃", Football: "⚽", Tennis: "🎾", Boxe: "🥊", Repos: "🛌" };
                         return (
-                          <button key={sport} onClick={() => { update("sport", "type", sport); update("sport", "isRest", sport === "Repos"); }} style={{ padding: "10px 18px", borderRadius: 40, border: active ? "none" : `1px solid ${C.border}`, background: active ? C.black : C.surface, color: active ? "#fff" : C.muted, fontWeight: 700, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 7, transition: "all 0.2s", boxShadow: active ? "0 4px 16px rgba(0,0,0,0.2)" : "none" }}>
+                          <button key={sport} onClick={() => { update("sport", "type", sport); update("sport", "isRest", sport === "Repos"); }} style={{ padding: "10px 18px", borderRadius: 40, border: active ? "none" : `1px solid ${C.border}`, background: active ? C.black : C.surface, color: active ? C.bg : C.muted, fontWeight: 700, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 7, transition: "all 0.2s", boxShadow: active ? "0 4px 16px rgba(0,0,0,0.2)" : "none" }}>
                             <span style={{ color: active ? C.red : "inherit" }}>{icons[sport]}</span> {sport}
                           </button>
                         );
                       })}
                     </div>
-                    {today.sport.type === "Repos" && (<div><MsgBox type="advice" msg={tr("sport_rest_msg")} /><Toggle value={today.sport.stretching} onChange={v => update("sport", "stretching", v)} label={tr("sport_stretching")} /></div>)}
+                    {today.sport.type === "Repos" && (<div style={{ marginTop: 8 }}><Toggle value={today.sport.stretching} onChange={v => update("sport", "stretching", v)} label="Étirement / mobilité" /></div>)}
                     {today.sport.type === "Musculation" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                         <Field label="Nom de la seance"><input type="text" value={today.sport.sessionName || ""} onChange={e => update("sport", "sessionName", e.target.value)} placeholder="Ex: PPL Push, Full Body..." style={inp} /></Field>
@@ -1726,9 +2248,13 @@ export default function App() {
                           <Field label="Intensite"><div style={{ paddingTop: 6 }}><Rating value={today.sport.intensity} onChange={v => update("sport", "intensity", v)} /></div></Field>
                         </div>
                         <Field label="PR / Notes"><input type="text" value={today.sport.notes || ""} placeholder="Ex: Bench 90kg x5" onChange={e => update("sport", "notes", e.target.value)} style={inp} /></Field>
-                        <ST>Recuperation</ST>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                          <ST style={{ margin: 0 }}>Récupération post-séance</ST>
+                          <span style={{ fontSize: 10, background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 8, padding: "2px 8px", color: C.muted, fontWeight: 600 }}>APRÈS la séance</span>
+                        </div>
+                        <p style={{ fontSize: 12, color: C.muted, margin: "0 0 8px", lineHeight: 1.5 }}>Comment tu te sens maintenant que la séance est terminée ? Muscles douloureux ? Énergie restante ?</p>
                         <Rating value={today.sport.recovery || 0} onChange={v => update("sport", "recovery", v)} color={today.sport.recovery <= 2 ? C.red : today.sport.recovery <= 3 ? C.orange : C.green} />
-                        <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>{["","Tres douloureux","Courbatures","Correct","Bien","Parfait"][today.sport.recovery] || ""}</p>
+                        <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>{["","Très douloureux","Courbatures","Correct","Bien récupéré","Parfait, plein d'énergie"][today.sport.recovery] || ""}</p>
                       </div>
                     )}
                     {today.sport.type === "Running" && (
@@ -1742,7 +2268,7 @@ export default function App() {
                           <Field label="FC max (bpm)"><input type="number" value={today.sport.heartRateMax || ""} min={0} max={220} onChange={e => update("sport", "heartRateMax", +e.target.value)} style={inp} /></Field>
                         </div>
                         {today.sport.running?.distance > 0 && today.sport.running?.time > 0 && (
-                          <div style={{ textAlign: "center", background: `${C.blue}10`, border: `1.5px solid ${C.blue}22`, borderRadius: 14, padding: 16 }}>
+                          <div style={{ textAlign: "center", background: `${C.blue10}`, border: `1.5px solid ${C.blue22}`, borderRadius: 14, padding: 16 }}>
                             <span style={{ fontSize: 30, fontWeight: 900, color: C.blue, letterSpacing: -0.5 }}>{(today.sport.running.time / today.sport.running.distance).toFixed(1)} min/km</span>
                             <p style={{ margin: "4px 0 0", fontSize: 12, color: C.muted }}>Allure moyenne</p>
                           </div>
@@ -1762,7 +2288,7 @@ export default function App() {
                             <Field label="Buts pour"><input type="number" value={today.sport.scoreFor || ""} min={0} onChange={e => update("sport", "scoreFor", +e.target.value)} style={inp} /></Field>
                             <Field label="Buts contre"><input type="number" value={today.sport.scoreAgainst || ""} min={0} onChange={e => update("sport", "scoreAgainst", +e.target.value)} style={inp} /></Field>
                             <Field label="Resultat">
-                              <div style={{ padding: "13px 10px", borderRadius: 12, background: today.sport.scoreFor > today.sport.scoreAgainst ? `${C.green}15` : today.sport.scoreFor < today.sport.scoreAgainst ? `${C.red}15` : C.surfaceAlt, textAlign: "center", fontWeight: 800, fontSize: 13, color: today.sport.scoreFor > today.sport.scoreAgainst ? C.green : today.sport.scoreFor < today.sport.scoreAgainst ? C.red : C.muted }}>
+                              <div style={{ padding: "13px 10px", borderRadius: 12, background: today.sport.scoreFor > today.sport.scoreAgainst ? `${C.green15}` : today.sport.scoreFor < today.sport.scoreAgainst ? `${C.red15}` : C.surfaceAlt, textAlign: "center", fontWeight: 800, fontSize: 13, color: today.sport.scoreFor > today.sport.scoreAgainst ? C.green : today.sport.scoreFor < today.sport.scoreAgainst ? C.red : C.muted }}>
                                 {today.sport.scoreFor > today.sport.scoreAgainst ? "Victoire" : today.sport.scoreFor < today.sport.scoreAgainst ? "Defaite" : "Nul"}
                               </div>
                             </Field>
@@ -1788,7 +2314,7 @@ export default function App() {
                             <Field label="Adversaire"><input type="text" value={today.sport.tennisOpponent || ""} placeholder="Nom" onChange={e => update("sport", "tennisOpponent", e.target.value)} style={inp} /></Field>
                             <div style={{ display: "flex", gap: 10 }}>
                               {["Victoire", "Defaite"].map(r => (
-                                <button key={r} onClick={() => update("sport", "tennisResult", r)} style={{ flex: 1, padding: 14, borderRadius: 14, border: `1.5px solid ${today.sport.tennisResult === r ? (r === "Victoire" ? C.green : C.red) : C.border}`, background: today.sport.tennisResult === r ? (r === "Victoire" ? `${C.green}12` : `${C.red}12`) : C.surface, fontWeight: 700, fontSize: 14, color: today.sport.tennisResult === r ? (r === "Victoire" ? C.green : C.red) : C.muted, cursor: "pointer" }}>
+                                <button key={r} onClick={() => update("sport", "tennisResult", r)} style={{ flex: 1, padding: 14, borderRadius: 14, border: `1.5px solid ${today.sport.tennisResult === r ? (r === "Victoire" ? C.green : C.red) : C.border}`, background: today.sport.tennisResult === r ? (r === "Victoire" ? `${C.green12}` : `${C.red12}`) : C.surface, fontWeight: 700, fontSize: 14, color: today.sport.tennisResult === r ? (r === "Victoire" ? C.green : C.red) : C.muted, cursor: "pointer" }}>
                                   {r === "Victoire" ? "🏆 " : "😤 "}{r}
                                 </button>
                               ))}
@@ -1837,17 +2363,26 @@ export default function App() {
                 const goalColors = { masse: "#CC2936", perte: C.blue, maintenance: C.green, seche: C.purple };
                 const activeGoalColor = goalColors[nutritionGoals.goalType] || C.orange;
                 const currentWeight = today.body?.weight || history.slice().reverse().find(d => d.body?.weight > 0)?.body?.weight || 0;
+                // Estimate calories burned by today's sport session
+                const sportCalBurn = (() => {
+                  if (!currentWeight || !today.sport.type || today.sport.isRest) return 0;
+                  const metMap = { Musculation: 5.5, Running: 9.0, Football: 8.0, Tennis: 7.0, Boxe: 10.0 };
+                  const met = metMap[today.sport.type] || 6.0;
+                  const dur = today.sport.duration || 0;
+                  return dur > 0 ? Math.round(met * currentWeight * (dur / 60)) : 0;
+                })();
                 const calcAutoMacros = (w, goalType) => {
                   if (!w) return null;
-                  const maintenance = Math.round(w * 32.5);
-                  const calMap = { maintenance: maintenance, masse: maintenance + 300, perte: maintenance - 400, seche: maintenance - 550 };
-                  const protMap = { maintenance: 1.9, masse: 2.0, perte: 2.25, seche: 2.5 };
+                  // TDEE base: 32.5 kcal/kg · adjusted per goal · sport burn added back for active days
+                  const baseTDEE = Math.round(w * 32.5) + sportCalBurn;
+                  const calMap = { maintenance: baseTDEE, masse: baseTDEE + 300, perte: baseTDEE - 400, seche: baseTDEE - 550 };
+                  const protMap = { maintenance: 1.9, masse: 2.1, perte: 2.3, seche: 2.5 };
                   const fatMap = { maintenance: 1.0, masse: 0.9, perte: 0.7, seche: 0.65 };
-                  const cal = calMap[goalType];
+                  const cal = Math.max(1200, calMap[goalType]);
                   const prot = Math.round(w * protMap[goalType]);
                   const fat = Math.round(w * fatMap[goalType]);
-                  const carbs = Math.round((cal - prot * 4 - fat * 9) / 4);
-                  return { calTarget: cal, protTarget: prot, fatTarget: fat, carbsTarget: Math.max(0, carbs) };
+                  const carbs = Math.max(0, Math.round((cal - prot * 4 - fat * 9) / 4));
+                  return { calTarget: cal, protTarget: prot, fatTarget: fat, carbsTarget: carbs };
                 };
                 const autoMacros = calcAutoMacros(currentWeight, nutritionGoals.goalType);
                 const MacroBar = ({ label, current, target, color }) => (
@@ -1886,6 +2421,28 @@ export default function App() {
                           <button key={key} onClick={() => { const ng = { ...nutritionGoals, goalType: key }; setNutritionGoals(ng); localStorage.setItem("nutritionGoals", JSON.stringify(ng)); }} style={{ padding: "7px 14px", borderRadius: 20, border: `2px solid ${nutritionGoals.goalType === key ? goalColors[key] : C.border}`, background: nutritionGoals.goalType === key ? `${goalColors[key]}18` : C.surfaceAlt, color: nutritionGoals.goalType === key ? goalColors[key] : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{label}</button>
                         ))}
                       </div>
+                      {/* Alerte cohérence Corps ↔ Nutrition */}
+                      {nutritionGoalConflict && (
+                        <div style={{ background: `${C.red10}`, border: `1.5px solid ${C.red22}`, borderRadius: 12, padding: "10px 14px", marginBottom: 12 }}>
+                          <p style={{ fontSize: 12, color: C.red, fontWeight: 700, margin: "0 0 4px" }}>⚠️ Incohérence détectée</p>
+                          <p style={{ fontSize: 12, color: C.muted, margin: 0, lineHeight: 1.5 }}>{nutritionGoalConflict.msg}</p>
+                          <button onClick={() => {
+                            const suggested = nutritionGoalConflict.bodyGoal === "perte" ? "perte" : "masse";
+                            const ng = { ...nutritionGoals, goalType: suggested };
+                            setNutritionGoals(ng);
+                            localStorage.setItem("nutritionGoals", JSON.stringify(ng));
+                          }} style={{ marginTop: 8, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
+                            Corriger automatiquement
+                          </button>
+                        </div>
+                      )}
+                      {/* Sport burn info */}
+                      {sportCalBurn > 0 && (
+                        <div style={{ background: `${C.red10}`, border: `1.5px solid ${C.red22}`, borderRadius: 10, padding: "8px 12px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontSize: 12, color: C.muted }}>🏋️ Dépense sportive estimée</span>
+                          <span style={{ fontSize: 13, fontWeight: 800, color: C.red }}>+{sportCalBurn} kcal</span>
+                        </div>
+                      )}
                       {/* Bandeau poids détecté + suggestion auto */}
                       {autoMacros ? (
                         <div style={{ background: `${activeGoalColor}12`, border: `1.5px solid ${activeGoalColor}30`, borderRadius: 12, padding: "10px 14px", marginBottom: 12 }}>
@@ -1950,7 +2507,7 @@ export default function App() {
                     <Card>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                         <ST style={{ margin: 0 }}>{tr("nutr_suggest")}</ST>
-                        <button onClick={() => { const v = !veganOnly; setVeganOnly(v); localStorage.setItem("veganOnly", String(v)); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 20, border: `2px solid ${veganOnly ? C.green : C.border}`, background: veganOnly ? `${C.green}18` : C.surfaceAlt, color: veganOnly ? C.green : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                        <button onClick={() => { const v = !veganOnly; setVeganOnly(v); localStorage.setItem("veganOnly", String(v)); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 20, border: `2px solid ${veganOnly ? C.green : C.border}`, background: veganOnly ? `${C.green18}` : C.surfaceAlt, color: veganOnly ? C.green : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                           🌱 Vegan{veganOnly ? " ✓" : ""}
                         </button>
                       </div>
@@ -1973,7 +2530,7 @@ export default function App() {
                                       <span style={{ fontSize: 11, color: C.green, fontWeight: 700 }}>{m.fat}g lip</span>
                                     </div>
                                   </div>
-                                  {m.vegan && <span style={{ fontSize: 10, background: `${C.green}22`, color: C.green, borderRadius: 6, padding: "2px 6px", fontWeight: 700, whiteSpace: "nowrap" }}>🌱</span>}
+                                  {m.vegan && <span style={{ fontSize: 10, background: `${C.green22}`, color: C.green, borderRadius: 6, padding: "2px 6px", fontWeight: 700, whiteSpace: "nowrap" }}>🌱</span>}
                                 </div>
                               ))}
                             </div>
@@ -1981,6 +2538,11 @@ export default function App() {
                         );
                       })}
                     </Card>
+                    {/* Bloc "Plus d'infos" — Q&A nutritionnelles */}
+                    {(() => {
+                      const allTips = [...(NUTRITION_TIPS.all || []), ...(NUTRITION_TIPS[nutritionGoals.goalType] || [])];
+                      return <NutritionTipsBlock tips={allTips} goalType={nutritionGoals.goalType} />;
+                    })()}
                   </div>
                 );
               })()}
@@ -1998,9 +2560,31 @@ export default function App() {
                       const w = today.body?.weight || 0;
                       const wt = today.body?.weightTarget || 0;
                       if (!w || !wt) return null;
-                      const diff = (wt - w).toFixed(1);
-                      const isGain = wt > w;
-                      return <p style={{ fontSize: 12, color: isGain ? C.green : C.orange, fontWeight: 700, margin: "0 0 4px" }}>{isGain ? `+${diff}kg à prendre` : `${Math.abs(diff)}kg à perdre`} · {Math.ceil(Math.abs(diff) / (w * 0.003))} semaines estimées</p>;
+                      const diff = wt - w;
+                      const absDiff = Math.abs(diff);
+                      const isGain = diff > 0;
+                      if (absDiff < 0.3) return <p style={{ fontSize: 12, color: C.green, fontWeight: 700, margin: "0 0 14px" }}>✓ Tu es à ton objectif !</p>;
+                      // Scientific rates: loss 0.5–1 %/week · gain 0.25–0.5 %/week
+                      let minW, maxW, advice;
+                      if (isGain) {
+                        minW = Math.ceil(absDiff / (w * 0.005));
+                        maxW = Math.ceil(absDiff / (w * 0.0025));
+                        advice = "0.25–0.5 % poids/sem · prise musculaire contrôlée";
+                      } else {
+                        minW = Math.ceil(absDiff / (w * 0.01));
+                        maxW = Math.ceil(absDiff / (w * 0.005));
+                        advice = "0.5–1 % poids/sem · préservation musculaire";
+                      }
+                      const col = isGain ? C.green : C.orange;
+                      return (
+                        <div style={{ marginBottom: 14, background: `${col}12`, border: `1.5px solid ${col}30`, borderRadius: 14, padding: "12px 16px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                            <span style={{ fontSize: 14, fontWeight: 800, color: col }}>{isGain ? `+${diff.toFixed(1)}kg` : `${diff.toFixed(1)}kg`} {isGain ? "à prendre" : "à perdre"}</span>
+                            <span style={{ fontSize: 20, fontWeight: 900, color: col, letterSpacing: -0.5 }}>{minW}–{maxW} sem.</span>
+                          </div>
+                          <p style={{ margin: 0, fontSize: 11, color: C.muted, lineHeight: 1.5 }}>📊 {advice}</p>
+                        </div>
+                      );
                     })()}
                     <ST>{tr("body_measures")}</ST>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -2010,6 +2594,30 @@ export default function App() {
                       <Field label={tr("body_arms")}><input type="number" value={today.body?.arms || ""} min={0} onChange={e => update("body", "arms", +e.target.value)} style={inp} /></Field>
                       <Field label={tr("body_thighs")}><input type="number" value={today.body?.thighs || ""} min={0} onChange={e => update("body", "thighs", +e.target.value)} style={inp} /></Field>
                     </div>
+                  </Card>
+                  <Card>
+                    <ST>Fréquence cardiaque</ST>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <Field label="FC repos (bpm)"><input type="number" value={today.body?.restingHR || ""} min={30} max={200} onChange={e => update("body", "restingHR", +e.target.value)} style={inp} placeholder="Ex: 55" /></Field>
+                      <Field label="FC max (bpm)"><input type="number" value={today.body?.maxHR || ""} min={100} max={220} onChange={e => update("body", "maxHR", +e.target.value)} style={inp} placeholder="Ex: 185" /></Field>
+                    </div>
+                    {(today.body?.restingHR > 0 || today.sport?.heartRate > 0) && (
+                      <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        {today.body?.restingHR > 0 && (
+                          <div style={{ flex: 1, minWidth: 100, background: `${C.blue10}`, border: `1.5px solid ${C.blue22}`, borderRadius: 12, padding: "10px 14px", textAlign: "center" }}>
+                            <div style={{ fontSize: 22, fontWeight: 900, color: C.blue }}>{today.body.restingHR}</div>
+                            <div style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>FC repos</div>
+                          </div>
+                        )}
+                        {today.sport?.heartRate > 0 && (
+                          <div style={{ flex: 1, minWidth: 100, background: `${C.red10}`, border: `1.5px solid ${C.red22}`, borderRadius: 12, padding: "10px 14px", textAlign: "center" }}>
+                            <div style={{ fontSize: 22, fontWeight: 900, color: C.red }}>{today.sport.heartRate}</div>
+                            <div style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>FC sport moy.</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <p style={{ fontSize: 11, color: C.muted, margin: "10px 0 0", lineHeight: 1.5 }}>💡 Apple Watch : les données seront synchronisées automatiquement dans une future mise à jour.</p>
                   </Card>
                 </div>
               )}
@@ -2042,7 +2650,7 @@ export default function App() {
                     <ST>{tr("work_screen")}</ST>
                     <Field label={tr("work_screen_hours")}><input type="number" value={today.work.screenTime} min={0} max={24} step={0.5} onChange={e => update("work", "screenTime", +e.target.value)} style={inp} /></Field>
                     {today.work.screenTime > 0 && (
-                      <div style={{ marginTop: 12, padding: 14, background: today.work.screenTime <= 3 ? `${C.green}10` : `${C.red}10`, border: `1.5px solid ${today.work.screenTime <= 3 ? C.green : C.red}22`, borderRadius: 12, fontSize: 13, color: today.work.screenTime <= 3 ? C.green : C.red, fontWeight: 600 }}>
+                      <div style={{ marginTop: 12, padding: 14, background: today.work.screenTime <= 3 ? `${C.green10}` : `${C.red10}`, border: `1.5px solid ${today.work.screenTime <= 3 ? C.green22 : C.red22}`, borderRadius: 12, fontSize: 13, color: today.work.screenTime <= 3 ? C.green : C.red, fontWeight: 600 }}>
                         {today.work.screenTime <= 3 ? "Excellent : focus preserve" : today.work.screenTime <= 5 ? "Limite" : "Trop eleve : melantonine perturbee"}
                       </div>
                     )}
@@ -2098,7 +2706,7 @@ export default function App() {
                 </div>
               )}
 
-              <button onClick={saveDay} style={{ width: "100%", padding: "16px", borderRadius: 16, border: "none", cursor: "pointer", background: saved ? `linear-gradient(135deg, ${C.green}, #128a3a)` : `linear-gradient(135deg, #CC2936, #8B1A22)`, color: "#fff", fontSize: 16, fontWeight: 800, transition: "all 0.35s", marginTop: 6, boxShadow: saved ? `0 8px 28px ${C.green}44` : "0 8px 28px rgba(204,41,54,0.4)", letterSpacing: 0.2 }}>
+              <button onClick={saveDay} style={{ width: "100%", padding: "16px", borderRadius: 16, border: "none", cursor: "pointer", background: saved ? `linear-gradient(135deg, ${C.green}, #128a3a)` : `linear-gradient(135deg, #CC2936, #8B1A22)`, color: "#fff", fontSize: 16, fontWeight: 800, transition: "all 0.35s", marginTop: 6, boxShadow: saved ? `0 8px 28px ${C.green44}` : "0 8px 28px rgba(204,41,54,0.4)", letterSpacing: 0.2 }}>
                 {saved ? tr("saved") : tr("save_day")}
               </button>
               </div>
@@ -2139,10 +2747,10 @@ export default function App() {
                         <span style={{ fontSize: 13, color: C.muted }}>€</span>
                       </div>
                     </div>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => setRenamingPoche(p.id)} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 10px", cursor: "pointer" }}>{Ico.edit(C.muted, 14)}</button>
-                      <input type="color" value={p.color} onChange={e => updatePoche(p.id, "color", e.target.value)} style={{ width: 34, height: 34, borderRadius: 10, border: "none", cursor: "pointer" }} />
-                      <button onClick={() => deletePoche(p.id)} style={{ background: `${C.red}12`, border: `1px solid ${C.red}22`, borderRadius: 10, padding: "8px 10px", cursor: "pointer" }}>{Ico.trash(C.red, 14)}</button>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <button onClick={() => setRenamingPoche(p.id)} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>{Ico.edit(C.muted, 14)}</button>
+                      <input type="color" value={p.color} onChange={e => updatePoche(p.id, "color", e.target.value)} style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${C.border}`, cursor: "pointer", padding: 2, flexShrink: 0 }} />
+                      <button onClick={() => deletePoche(p.id)} style={{ background: `${C.red12}`, border: `1px solid ${C.red22}`, borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>{Ico.trash(C.red, 14)}</button>
                     </div>
                   </div>
                 ))}
@@ -2174,7 +2782,7 @@ export default function App() {
                   <Field label="Rendement/an (%)"><input type="number" value={sim.rate} step={0.5} onChange={e => setSim(s => ({ ...s, rate: +e.target.value }))} style={inp} /></Field>
                   <Field label="Duree (ans)"><input type="number" value={sim.years} min={1} max={50} onChange={e => setSim(s => ({ ...s, years: +e.target.value }))} style={inp} /></Field>
                 </div>
-                <div style={{ textAlign: "center", padding: 20, background: `${C.green}10`, border: `1.5px solid ${C.green}22`, borderRadius: 16, marginBottom: 16 }}>
+                <div style={{ textAlign: "center", padding: 20, background: `${C.green10}`, border: `1.5px solid ${C.green22}`, borderRadius: 16, marginBottom: 16 }}>
                   <p style={{ fontSize: 11, color: C.muted, margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}>Dans {sim.years} ans</p>
                   <p style={{ fontSize: 38, fontWeight: 900, color: C.green, margin: 0, letterSpacing: -0.5 }}>{simResult[simResult.length-1]?.value.toLocaleString("fr-FR")} €</p>
                 </div>
@@ -2245,7 +2853,7 @@ export default function App() {
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                         <span style={{ fontSize: 22, fontWeight: 900, color: g.computedProgress >= 100 ? C.green : g.color, letterSpacing: -0.5 }}>{g.computedProgress}%</span>
                         <button onClick={() => setEditingGoal(g)} style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 10px", cursor: "pointer" }}>{Ico.edit(C.muted, 14)}</button>
-                        <button onClick={() => deleteGoal(g.id)} style={{ background: `${C.red}10`, border: `1px solid ${C.red}22`, borderRadius: 10, padding: "8px 10px", cursor: "pointer" }}>{Ico.trash(C.red, 14)}</button>
+                        <button onClick={() => deleteGoal(g.id)} style={{ background: `${C.red10}`, border: `1px solid ${C.red22}`, borderRadius: 10, padding: "8px 10px", cursor: "pointer" }}>{Ico.trash(C.red, 14)}</button>
                       </div>
                     </div>
                     <div style={{ height: 8, background: C.surfaceAlt, borderRadius: 4, overflow: "hidden" }}>
@@ -2265,19 +2873,30 @@ export default function App() {
           {nav === "stats" && (
             <div>
               <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-                {[["7","7j"],["30","30j"],["90","3 mois"],["365","1 an"]].map(([v, l]) => (
-                  <button key={v} onClick={() => { if (!isPro && v !== "7") { setShowSubscription(true); return; } setStatRange(v); }} style={{ flex: 1, padding: "10px 4px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: statRange === v ? C.black : C.surface, color: statRange === v ? "#fff" : C.muted, opacity: !isPro && v !== "7" ? 0.5 : 1, border: statRange === v ? "none" : `1px solid ${C.border}` }}>{l}{!isPro && v !== "7" ? " 🔒" : ""}</button>
+                {[["7","7j",false],["30","30j",true],["90","3 mois",true],["365","1 an",true],["all","Tout",true]].map(([v, l, proOnly]) => (
+                  <button key={v} onClick={() => { if (proOnly && !isPro) { setShowSubscription(true); return; } setStatRange(v); localStorage.setItem("statRange", v); }} style={{ flex: 1, padding: "10px 3px", borderRadius: 12, cursor: "pointer", fontSize: 11, fontWeight: 700, background: statRange === v ? C.black : C.surface, color: statRange === v ? "#fff" : C.muted, opacity: proOnly && !isPro ? 0.5 : 1, border: statRange === v ? "none" : `1px solid ${C.border}` }}>{l}{proOnly && !isPro ? " 🔒" : ""}</button>
                 ))}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-                {[
-                  { label: "Jours trackes", value: history.length, color: C.red },
-                  { label: "Score moyen", value: `${intel.scoreAvg}/100`, color: C.orange },
-                  { label: "Nuits > 7h30", value: rangeH.filter(d => d.sleep?.duration >= 7.5).length, color: C.purple },
-                  { label: "Seances sport", value: rangeH.filter(d => d.sport?.duration >= 30).length, color: C.red },
-                  { label: "Streak actuel", value: `${streak}j 🔥`, color: C.orange },
-                  { label: "Objectifs actifs", value: goals.length, color: C.green },
-                ].map(item => (
+                {(() => {
+                  // Weight evolution: first vs last recorded weight in range
+                  const weightDays = rangeH.filter(d => d.body?.weight > 0);
+                  const weightFirst = weightDays[0]?.body?.weight;
+                  const weightLast = weightDays[weightDays.length - 1]?.body?.weight;
+                  const weightDeltaNum = weightFirst && weightLast ? weightLast - weightFirst : null;
+                  const weightDelta = weightDeltaNum !== null ? weightDeltaNum.toFixed(1) : null;
+                  const sportSessions = rangeH.filter(d => d.sport?.duration >= 30).length;
+                  const avgSleepRange = rangeH.filter(d => d.sleep?.duration > 0);
+                  const avgSleepVal = avgSleepRange.length ? (avgSleepRange.reduce((a, b) => a + b.sleep.duration, 0) / avgSleepRange.length).toFixed(1) : null;
+                  return [
+                    { label: "Jours trackes", value: history.length, color: C.red },
+                    { label: "Score moyen", value: `${intel.scoreAvg}/100`, color: C.orange },
+                    { label: "Sommeil moyen", value: avgSleepVal ? `${avgSleepVal}h` : "—", color: C.purple },
+                    { label: "Seances sport", value: sportSessions, color: C.red },
+                    { label: "Streak actuel", value: `${streak}j 🔥`, color: C.orange },
+                    { label: "Évolution poids", value: weightDeltaNum !== null ? (weightDeltaNum > 0 ? `+${weightDelta}kg` : `${weightDelta}kg`) : "—", color: weightDeltaNum > 0 ? C.green : weightDeltaNum < 0 ? C.orange : C.muted },
+                  ];
+                })().map(item => (
                   <div key={item.label} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 14px", textAlign: "center", borderTop: `3px solid ${item.color}` }}>
                     <div style={{ fontSize: 22, fontWeight: 900, color: item.color, letterSpacing: -0.5 }}>{item.value}</div>
                     <div style={{ fontSize: 10, color: C.muted, marginTop: 4, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>{item.label}</div>
@@ -2297,7 +2916,9 @@ export default function App() {
               <EvoChart data={rangeH} dataKey="score" color={C.red} label="Score global" unit="" height={170} />
               <EvoChart data={sleepH.slice(-parseInt(statRange))} dataKey="sleep.duration" color={C.purple} label="Sommeil" unit="h" />
               <EvoChart data={sportH.slice(-parseInt(statRange))} dataKey="sport.duration" color={C.red} label="Sport" unit="min" />
+              <EvoChart data={history.filter(d => d.body?.weight > 0).slice(-parseInt(statRange))} dataKey="body.weight" color={C.orange} label="Poids" unit="kg" />
               <EvoChart data={moodH.slice(-parseInt(statRange))} dataKey="mind.mood" color={C.purple} label="Humeur" unit="/5" />
+              <EvoChart data={history.filter(d => d.nutrition?.protein > 0).slice(-parseInt(statRange))} dataKey="nutrition.protein" color={C.purple} label="Protéines" unit="g" />
               <EvoChart data={screenH.slice(-parseInt(statRange))} dataKey="work.screenTime" color={C.orange} label="Temps d'ecran" unit="h" />
               <Card>
                 <ST>Progression objectifs</ST>
@@ -2378,16 +2999,18 @@ export default function App() {
                   <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 20 }}>→</span>
                 </div>
                 <ST>Parametres</ST>
-                <div onClick={() => setDarkMode(d => !d)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "15px 18px", background: C.surfaceAlt, borderRadius: 16, marginBottom: 12, cursor: "pointer", border: `1px solid ${C.border}` }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ fontSize: 22 }}>{darkMode ? "☀️" : "🌙"}</span>
-                    <span style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{darkMode ? "Mode clair" : "Mode sombre"}</span>
-                  </div>
-                  <div style={{ width: 46, height: 26, borderRadius: 13, background: darkMode ? C.red : C.subtle, position: "relative", transition: "background 0.25s" }}>
-                    <div style={{ position: "absolute", top: 3, left: darkMode ? 23 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.25)" }} />
-                  </div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                  {[{ value: "light", icon: "☀️", label: "Clair" }, { value: "dark", icon: "🌙", label: "Sombre" }, { value: "auto", icon: "⚙️", label: "Auto" }].map(opt => {
+                    const active = themeMode === opt.value;
+                    return (
+                      <button key={opt.value} onClick={() => setThemeMode(opt.value)} style={{ flex: 1, padding: "12px 6px", borderRadius: 12, cursor: "pointer", border: active ? `2px solid ${C.red}` : `1.5px solid ${C.border}`, background: active ? C.redLight : C.surfaceAlt, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, fontFamily: "inherit" }}>
+                        <span style={{ fontSize: 20 }}>{opt.icon}</span>
+                        <span style={{ fontSize: 11, fontWeight: active ? 800 : 600, color: active ? C.red : C.muted }}>{opt.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-                <button onClick={() => { localStorage.removeItem("kojihlife_v9"); setOnboarded(false); }} style={{ width: "100%", padding: "14px", background: `${C.red}10`, border: `1.5px solid ${C.red}22`, borderRadius: 14, cursor: "pointer", fontSize: 14, color: C.red, fontWeight: 700 }}>
+                <button onClick={() => { localStorage.removeItem("kojihlife_v9"); setOnboarded(false); }} style={{ width: "100%", padding: "14px", background: `${C.red10}`, border: `1.5px solid ${C.red22}`, borderRadius: 14, cursor: "pointer", fontSize: 14, color: C.red, fontWeight: 700 }}>
                   Refaire l'onboarding
                 </button>
               </Card>
@@ -2398,7 +3021,7 @@ export default function App() {
       </div>
 
       {/* BOTTOM NAV */}
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: darkMode ? "rgba(12,12,12,0.96)" : "rgba(255,255,255,0.96)", backdropFilter: "blur(20px)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20, paddingBottom: "env(safe-area-inset-bottom)" }}>
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: C.navBg, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20, paddingBottom: "env(safe-area-inset-bottom)", boxShadow: "0 -1px 0 rgba(0,0,0,0.04)" }}>
         {NAV.map(n => {
           const active = nav === n.id;
           return (
