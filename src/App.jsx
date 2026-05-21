@@ -2070,7 +2070,7 @@ export default function App() {
                       return mon.toISOString().split("T")[0];
                     })();
                     setRadarDate(firstDayOfPrevWeek);
-                  }} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: "rgba(255,255,255,0.7)", fontSize: 16, fontWeight: 700 }}>‹</button>
+                  }} style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: C.text, fontSize: 16, fontWeight: 700 }}>‹</button>
                   <div style={{ flex: 1, display: "flex", gap: 3 }}>
                     {radarWeekDays.map(({ dateStr, dayLetter, dayNum }) => {
                       const isSelected = radarDate === dateStr;
@@ -2079,17 +2079,17 @@ export default function App() {
                       const isPastWeek = radarWeekOffset < 0;
                       const isLocked = isPastWeek && !isPro;
                       return (
-                        <button key={dateStr} onClick={() => { if (isLocked) { setShowSubscription(true); return; } if (!isFuture) setRadarDate(dateStr); }} style={{ flex: 1, padding: "5px 2px", borderRadius: 10, border: isSelected ? "2px solid rgba(255,255,255,0.9)" : "1.5px solid rgba(255,255,255,0.15)", background: isSelected ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", alignItems: "center", gap: 1, cursor: isFuture || isLocked ? "default" : "pointer", opacity: isFuture ? 0.25 : isLocked ? 0.4 : 1, transition: "all 0.15s" }}>
-                          <span style={{ fontSize: 8, fontWeight: 700, color: isSelected ? "#fff" : "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: 0.3 }}>{isLocked ? "🔒" : dayLetter}</span>
-                          <span style={{ fontSize: 13, fontWeight: 900, color: isSelected ? "#fff" : "rgba(255,255,255,0.75)", lineHeight: 1 }}>{dayNum}</span>
-                          <div style={{ width: 4, height: 4, borderRadius: "50%", background: hasData ? (isSelected ? "#fff" : "rgba(255,255,255,0.5)") : "transparent", marginTop: 1 }} />
+                        <button key={dateStr} onClick={() => { if (isLocked) { setShowSubscription(true); return; } if (!isFuture) setRadarDate(dateStr); }} style={{ flex: 1, padding: "5px 2px", borderRadius: 10, border: isSelected ? `2px solid ${C.red}` : `1.5px solid ${C.border}`, background: isSelected ? C.red + "18" : C.surfaceAlt, display: "flex", flexDirection: "column", alignItems: "center", gap: 1, cursor: isFuture || isLocked ? "default" : "pointer", opacity: isFuture ? 0.3 : isLocked ? 0.4 : 1, transition: "all 0.15s" }}>
+                          <span style={{ fontSize: 8, fontWeight: 700, color: isSelected ? C.red : C.muted, textTransform: "uppercase", letterSpacing: 0.3 }}>{isLocked ? "🔒" : dayLetter}</span>
+                          <span style={{ fontSize: 13, fontWeight: 900, color: isSelected ? C.red : C.text, lineHeight: 1 }}>{dayNum}</span>
+                          <div style={{ width: 4, height: 4, borderRadius: "50%", background: hasData ? (isSelected ? C.red : C.muted) : "transparent", marginTop: 1 }} />
                         </button>
                       );
                     })}
                   </div>
-                  <button onClick={() => { if (radarWeekOffset < 0) { setRadarWeekOffset(o => o + 1); const now = new Date(); now.setDate(now.getDate() + (radarWeekOffset+1)*7); setRadarDate(todayDate); } }} style={{ background: radarWeekOffset === 0 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: radarWeekOffset === 0 ? "default" : "pointer", flexShrink: 0, color: radarWeekOffset === 0 ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.7)", fontSize: 16, fontWeight: 700 }}>›</button>
+                  <button onClick={() => { if (radarWeekOffset < 0) { setRadarWeekOffset(o => o + 1); const now = new Date(); now.setDate(now.getDate() + (radarWeekOffset+1)*7); setRadarDate(todayDate); } }} style={{ background: radarWeekOffset === 0 ? C.surfaceAlt : C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: radarWeekOffset === 0 ? "default" : "pointer", flexShrink: 0, color: radarWeekOffset === 0 ? C.border : C.text, fontSize: 16, fontWeight: 700 }}>›</button>
                 </div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600, textAlign: "center", marginBottom: 2, letterSpacing: 0.3 }}>
+                <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, textAlign: "center", marginBottom: 2, letterSpacing: 0.3 }}>
                   {radarDate === todayDate ? "Aujourd'hui" : new Date(radarDate + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
                   {!radarDayData && radarDate !== todayDate ? " · Aucune donnée" : ""}
                 </div>
@@ -2472,7 +2472,7 @@ export default function App() {
                             { key: "fatTarget", label: "Lipides (g)", max: 300 },
                           ].map(({ key, label, max }) => (
                             <Field key={key} label={label}>
-                              <input type="number" value={nutritionGoals[key]} min={0} max={max} onChange={e => { const ng = { ...nutritionGoals, [key]: +e.target.value }; setNutritionGoals(ng); localStorage.setItem("nutritionGoals", JSON.stringify(ng)); }} style={inp} />
+                              <input type="number" value={nutritionGoals[key] || ""} min={0} max={max} onChange={e => { const ng = { ...nutritionGoals, [key]: +e.target.value }; setNutritionGoals(ng); localStorage.setItem("nutritionGoals", JSON.stringify(ng)); }} style={inp} />
                             </Field>
                           ))}
                         </div>
@@ -2495,11 +2495,11 @@ export default function App() {
                       </div>
                       <ST>{tr("nutr_macros")}</ST>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                        <Field label="Eau (L)"><input type="number" value={today.nutrition.water} min={0} max={5} step={0.25} onChange={e => update("nutrition", "water", +e.target.value)} style={inp} /></Field>
-                        <Field label="Calories (kcal)"><input type="number" value={today.nutrition.calories} min={0} max={6000} onChange={e => update("nutrition", "calories", +e.target.value)} style={inp} /></Field>
-                        <Field label="Protéines (g)"><input type="number" value={today.nutrition.protein} min={0} max={400} onChange={e => update("nutrition", "protein", +e.target.value)} style={inp} /></Field>
-                        <Field label="Glucides (g)"><input type="number" value={today.nutrition.carbs} min={0} max={600} onChange={e => update("nutrition", "carbs", +e.target.value)} style={inp} /></Field>
-                        <Field label="Lipides (g)"><input type="number" value={today.nutrition.fat} min={0} max={300} onChange={e => update("nutrition", "fat", +e.target.value)} style={inp} /></Field>
+                        <Field label="Eau (L)"><input type="number" value={today.nutrition.water || ""} min={0} max={5} step={0.25} onChange={e => update("nutrition", "water", +e.target.value)} style={inp} /></Field>
+                        <Field label="Calories (kcal)"><input type="number" value={today.nutrition.calories || ""} min={0} max={6000} onChange={e => update("nutrition", "calories", +e.target.value)} style={inp} /></Field>
+                        <Field label="Protéines (g)"><input type="number" value={today.nutrition.protein || ""} min={0} max={400} onChange={e => update("nutrition", "protein", +e.target.value)} style={inp} /></Field>
+                        <Field label="Glucides (g)"><input type="number" value={today.nutrition.carbs || ""} min={0} max={600} onChange={e => update("nutrition", "carbs", +e.target.value)} style={inp} /></Field>
+                        <Field label="Lipides (g)"><input type="number" value={today.nutrition.fat || ""} min={0} max={300} onChange={e => update("nutrition", "fat", +e.target.value)} style={inp} /></Field>
                       </div>
                     </Card>
 
@@ -2631,8 +2631,8 @@ export default function App() {
                     <div style={{ height: 18 }} />
                     <ST>{tr("work_tasks")}</ST>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-                      <Field label={tr("work_tasks_planned")}><input type="number" value={today.work.tasks} min={0} max={20} onChange={e => update("work", "tasks", +e.target.value)} style={inp} /></Field>
-                      <Field label={tr("work_tasks_done")}><input type="number" value={today.work.tasksCompleted} min={0} max={20} onChange={e => update("work", "tasksCompleted", +e.target.value)} style={inp} /></Field>
+                      <Field label={tr("work_tasks_planned")}><input type="number" value={today.work.tasks || ""} min={0} max={20} onChange={e => update("work", "tasks", +e.target.value)} style={inp} /></Field>
+                      <Field label={tr("work_tasks_done")}><input type="number" value={today.work.tasksCompleted || ""} min={0} max={20} onChange={e => update("work", "tasksCompleted", +e.target.value)} style={inp} /></Field>
                     </div>
                     {today.work.tasks > 0 && (
                       <div style={{ marginBottom: 14 }}>
@@ -2648,7 +2648,7 @@ export default function App() {
                   </Card>
                   <Card>
                     <ST>{tr("work_screen")}</ST>
-                    <Field label={tr("work_screen_hours")}><input type="number" value={today.work.screenTime} min={0} max={24} step={0.5} onChange={e => update("work", "screenTime", +e.target.value)} style={inp} /></Field>
+                    <Field label={tr("work_screen_hours")}><input type="number" value={today.work.screenTime || ""} min={0} max={24} step={0.5} onChange={e => update("work", "screenTime", +e.target.value)} style={inp} /></Field>
                     {today.work.screenTime > 0 && (
                       <div style={{ marginTop: 12, padding: 14, background: today.work.screenTime <= 3 ? `${C.green10}` : `${C.red10}`, border: `1.5px solid ${today.work.screenTime <= 3 ? C.green22 : C.red22}`, borderRadius: 12, fontSize: 13, color: today.work.screenTime <= 3 ? C.green : C.red, fontWeight: 600 }}>
                         {today.work.screenTime <= 3 ? "Excellent : focus preserve" : today.work.screenTime <= 5 ? "Limite" : "Trop eleve : melantonine perturbee"}
@@ -2768,10 +2768,10 @@ export default function App() {
               <Card>
                 <ST>Flux du jour</ST>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                  <Field label="Revenus (€)"><input type="number" value={today.money.income} min={0} onChange={e => update("money", "income", +e.target.value)} style={inp} /></Field>
-                  <Field label="Depenses (€)"><input type="number" value={today.money.expense} min={0} onChange={e => update("money", "expense", +e.target.value)} style={inp} /></Field>
+                  <Field label="Revenus (€)"><input type="number" value={today.money.income || ""} min={0} onChange={e => update("money", "income", +e.target.value)} style={inp} /></Field>
+                  <Field label="Depenses (€)"><input type="number" value={today.money.expense || ""} min={0} onChange={e => update("money", "expense", +e.target.value)} style={inp} /></Field>
                 </div>
-                <Field label="Investi (€)"><input type="number" value={today.money.invested} min={0} onChange={e => update("money", "invested", +e.target.value)} style={{ ...inp, marginBottom: 12 }} /></Field>
+                <Field label="Investi (€)"><input type="number" value={today.money.invested || ""} min={0} onChange={e => update("money", "invested", +e.target.value)} style={{ ...inp, marginBottom: 12 }} /></Field>
                 <Field label="Note"><input type="text" placeholder="Ex: DCA ETF World..." value={today.money.note} onChange={e => update("money", "note", e.target.value)} style={inp} /></Field>
               </Card>
               <Card>
