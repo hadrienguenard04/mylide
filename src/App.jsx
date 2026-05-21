@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "./supabase";
 import FAQPage from "./FAQ.jsx";
+import LegalPage from "./Legal.jsx";
+import { isAtLeast } from "./planConfig.js";
 
 const VAPID_PUBLIC_KEY = "BHfX8lG2QQGuaE8AW9qOykb2GZaxtzONoy7k3feJBGzf-Dyrx4h2qUk4xt9FQyo8H1Cr1EuemZLucqdd0iEt7M4";
 
@@ -1191,7 +1193,7 @@ const DeleteAccountModal = ({ profile, onClose, onConfirmDelete }) => {
 };
 
 // ── SETTINGS PAGE ──────────────────────────────────────────────────────────
-const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, updateProfile, isPro, setShowSubscription, nutritionGoals, setNutritionGoals, onSignOut, setLang, setShowDataExport, setShowDeleteAccount, setShowFAQ }) => {
+const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, updateProfile, isPro, userPlan, setShowSubscription, nutritionGoals, setNutritionGoals, onSignOut, setLang, setShowDataExport, setShowDeleteAccount, setShowFAQ, setShowLegal }) => {
   const C = useC();
   const [sub, setSub] = useState(null);
   const [userEmail, setUserEmail] = useState("");
@@ -1251,13 +1253,23 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
   if (sub === "cgu") return <SubPageLegal onBack={() => setSub(null)} title="Conditions d'utilisation" sections={CGU_SECTIONS} />;
   if (sub === "privacy") return <SubPageLegal onBack={() => setSub(null)} title="Politique de confidentialité" sections={PRIVACY_SECTIONS} />;
 
+  const planLabels = { free: "Gratuit", starter: "Starter", pro: "Pro", premium: "Premium" };
+  const planDesc = { free: "1 mois gratuit · à partir de 3,99€/mois", starter: "Plan Starter actif · 3,99€/mois", pro: "Plan Pro actif · 6,99€/mois", premium: "Plan Premium actif · 12,99€/mois" };
+
   const SubscriptionBlock = () => (
     <Sec title={tr("sec_subscription")}>
       <div onClick={() => { onClose(); setTimeout(() => setShowSubscription(true), 120); }} style={{ background: "linear-gradient(135deg, #CC2936, #8B1A22)", borderRadius: 14, padding: "16px 18px", cursor: "pointer", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 8px 24px rgba(204,41,54,0.25)" }}>
-        <div><p style={{ color: "#fff", fontWeight: 900, fontSize: 16, margin: "0 0 2px" }}>{isPro ? "⭐ Membre Pro actif" : "Passer à Pro"}</p><p style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, margin: 0 }}>{isPro ? "Renouvellement dans 23 jours" : "1 mois gratuit · 3,59€/mois"}</p></div>
+        <div>
+          <p style={{ color: "#fff", fontWeight: 900, fontSize: 16, margin: "0 0 2px" }}>
+            {isPro ? `⭐ Membre ${planLabels[userPlan] || "Pro"} actif` : "Passer Premium"}
+          </p>
+          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, margin: 0 }}>
+            {planDesc[userPlan] || planDesc.free}
+          </p>
+        </div>
         <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 22 }}>›</span>
       </div>
-      <Row icon="🔄" label="Restaurer les achats" onClick={() => {}} last />
+      {isPro && <Row icon="⚙️" label="Gérer mon abonnement" desc="Modifier · Résilier" onClick={() => { onClose(); setTimeout(() => setShowSubscription(true), 120); }} last />}
     </Sec>
   );
 
@@ -1340,15 +1352,14 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
 
         <Sec title={tr("sec_support")}>
           <Row icon="❓" label="FAQ" desc="100+ réponses sur MYLIDE" onClick={() => { onClose(); setTimeout(() => setShowFAQ(true), 120); }} />
-          <Row icon="💬" label="Contacter l'équipe" desc="support@kojihsports.com" onClick={() => window.open("mailto:support@kojihsports.com")} />
-          <Row icon="🐛" label="Signaler un bug" onClick={() => window.open("mailto:bugs@kojihsports.com")} last />
+          <Row icon="⚖️" label="Mentions légales & CGU" desc="RGPD · Confidentialité · Santé" onClick={() => { onClose(); setTimeout(() => setShowLegal && setShowLegal(true), 120); }} />
+          <Row icon="💬" label="Contacter l'équipe" desc="contact@mylide.app" onClick={() => window.open("mailto:contact@mylide.app")} />
+          <Row icon="🐛" label="Signaler un bug" onClick={() => window.open("mailto:bugs@mylide.app")} last />
         </Sec>
 
         <Sec title={tr("sec_about")}>
-          <Row icon="📱" label="Version de l'app" desc="Mylide 1.0.0 · Kojihsports" />
-          <Row icon="📄" label="Conditions d'utilisation" onClick={() => setSub("cgu")} />
-          <Row icon="🔐" label="Politique de confidentialité" onClick={() => setSub("privacy")} />
-          <Row icon="📸" label="Réseaux sociaux" desc="@kojihsports" onClick={() => {}} last />
+          <Row icon="📱" label="Version de l'app" desc="Mylide 1.0.0" />
+          <Row icon="🏥" label="Avertissement santé" desc="MYLIDE n'est pas une app médicale" onClick={() => { onClose(); setTimeout(() => setShowLegal && setShowLegal(true), 120); }} last />
         </Sec>
 
         {/* Abonnement EN BAS si Pro — réduit la visibilité de la résiliation */}
@@ -1732,6 +1743,10 @@ export default function App() {
   const [editingGoal, setEditingGoal] = useState(null);
   const [showSubscription, setShowSubscription] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  const [userPlan, setUserPlan] = useState("free");
+  const [subscriptionData, setSubscriptionData] = useState({});
+  const [showLegal, setShowLegal] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const [patrimoine, setPatrimoine] = useState(defaultPatrimoine());
   const [newPoche, setNewPoche] = useState({ name: "", amount: 0, color: "#2563eb" });
   const [statRange, setStatRange] = useState(() => localStorage.getItem("statRange") || "7");
@@ -1756,8 +1771,24 @@ export default function App() {
     const loadData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setOnboarded(false); return; }
+      setCurrentUser(user);
       const { data: profileData } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      if (profileData) { setProfile({ name: profileData.name || "", dob: profileData.dob || "", photo: profileData.photo || "" }); setIsPro(profileData.is_pro || false); setOnboarded(true); }
+      if (profileData) {
+        setProfile({ name: profileData.name || "", dob: profileData.dob || "", photo: profileData.photo || "" });
+        const plan = profileData.plan || "free";
+        setUserPlan(plan);
+        setIsPro(isAtLeast(plan, "pro"));
+        setSubscriptionData({
+          subscription_status: profileData.subscription_status,
+          subscription_period_end: profileData.subscription_period_end,
+          trial_end: profileData.trial_end,
+          stripe_subscription_id: profileData.stripe_subscription_id,
+        });
+        setOnboarded(true);
+        // Détecter retour Stripe
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("payment") === "success") setShowSubscription(true);
+      }
       else { setOnboarded(false); return; }
       const { data: logs } = await supabase.from("daily_logs").select("*").eq("user_id", user.id).order("date");
       if (logs) { const hist = logs.map(l => ({ ...l.data, date: l.date, score: l.score })); setHistory(hist); const todayEntry = hist.find(d => d.date === new Date().toISOString().split("T")[0]); if (todayEntry) { if (todayEntry.sleep?.bedtime && todayEntry.sleep?.wakeup && !todayEntry.sleep?.duration) todayEntry.sleep.duration = calcDuration(todayEntry.sleep.bedtime, todayEntry.sleep.wakeup); setToday(todayEntry); } }
@@ -2026,8 +2057,9 @@ export default function App() {
       `}</style>
 
       {editingGoal && <EditGoalModal goal={editingGoal} onSave={saveEditedGoal} onClose={() => setEditingGoal(null)} />}
-      {showSubscription && <Subscription onClose={() => setShowSubscription(false)} />}
-      {showSettings && <SettingsPage onClose={() => setShowSettings(false)} darkMode={darkMode} themeMode={themeMode} setThemeMode={setThemeMode} profile={profile} isPro={isPro} setShowSubscription={setShowSubscription} nutritionGoals={nutritionGoals} setNutritionGoals={setNutritionGoals} onSignOut={handleSignOut} updateProfile={updateProfile} setLang={setLang} setShowDataExport={setShowDataExport} setShowDeleteAccount={setShowDeleteAccount} setShowFAQ={setShowFAQ} />}
+      {showSubscription && <Subscription onClose={() => setShowSubscription(false)} userPlan={userPlan} userId={currentUser?.id} userEmail={currentUser?.email} subscriptionData={subscriptionData} />}
+      {showSettings && <SettingsPage onClose={() => setShowSettings(false)} darkMode={darkMode} themeMode={themeMode} setThemeMode={setThemeMode} profile={profile} isPro={isPro} userPlan={userPlan} setShowSubscription={setShowSubscription} nutritionGoals={nutritionGoals} setNutritionGoals={setNutritionGoals} onSignOut={handleSignOut} updateProfile={updateProfile} setLang={setLang} setShowDataExport={setShowDataExport} setShowDeleteAccount={setShowDeleteAccount} setShowFAQ={setShowFAQ} setShowLegal={setShowLegal} />}
+      {showLegal && <LegalPage onBack={() => setShowLegal(false)} />}
       {showDataExport && <DataExportModal history={history} profile={profile} nutritionGoals={nutritionGoals} goals={goals} patrimoine={patrimoine} onClose={() => setShowDataExport(false)} />}
       {showDeleteAccount && <DeleteAccountModal profile={profile} onClose={() => setShowDeleteAccount(false)} onConfirmDelete={async () => { const { data: { user } } = await supabase.auth.getUser(); if (user) { await supabase.from("daily_logs").delete().eq("user_id", user.id); await supabase.from("goals").delete().eq("user_id", user.id); await supabase.from("patrimoine").delete().eq("user_id", user.id); await supabase.from("todos").delete().eq("user_id", user.id); await supabase.from("profiles").delete().eq("id", user.id); await supabase.auth.signOut(); } setShowDeleteAccount(false); }} />}
       {showFAQ && <FAQPage onBack={() => setShowFAQ(false)} />}

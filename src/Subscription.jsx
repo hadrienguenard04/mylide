@@ -1,102 +1,579 @@
-import { useState } from "react";
-import { loadStripe } from "@stripe/stripe-js";
-import { supabase } from "./supabase";
+import { useState, useEffect } from "react";
+import { useC } from "./theme.jsx";
+import { PLANS, FREE_FEATURES, getPlanName } from "./planConfig.js";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+// ─── ICONS ────────────────────────────────────────────────────────────────────
+function CheckIcon({ color, size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+      <circle cx="10" cy="10" r="10" fill={color + "20"} />
+      <path d="M6.5 10.5l2.5 2.5 4.5-5" stroke={color} strokeWidth="1.8"
+        strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
-const C = {
-  red: "#CC2936", bg: "#f2f2f2", surface: "#ffffff",
-  border: "#e0e0e0", muted: "#888888", text: "#1a1a1a",
-  surfaceAlt: "#ebebeb", green: "#16a34a"
-};
+function ArrowLeft({ size = 20, color }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+  );
+}
 
-export default function Subscription({ onClose }) {
-  const [loading, setLoading] = useState(false);
-
-  const features = {
-    free: [
-      "✅ Tracker quotidien (sommeil, sport, nutrition)",
-      "✅ 3 objectifs maximum",
-      "✅ Statistiques 7 derniers jours",
-      "✅ 2 poches patrimoine",
-      "❌ Intelligence temporelle",
-      "❌ Statistiques illimitées",
-      "❌ Objectifs illimités",
-      "❌ Export des données",
-    ],
-    pro: [
-      "✅ Tout ce qui est gratuit",
-      "✅ Intelligence temporelle avancée",
-      "✅ Statistiques illimitées",
-      "✅ Objectifs illimités",
-      "✅ Poches patrimoine illimitées",
-      "✅ Export PDF / Excel",
-      "✅ Synchronisation multi-appareils",
-      "✅ Support prioritaire",
-    ]
-  };
-
-  const handleSubscribe = async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { alert("Connecte-toi d'abord !"); return; }
-      
-      // Pour l'instant on redirige vers une page Stripe hébergée
-      // On intégrera le vrai checkout quand le backend sera prêt
-      alert("Fonctionnalité bientôt disponible ! Ton compte Stripe est en cours de validation.");
-    } catch (e) {
-      console.error(e);
-    }
-    setLoading(false);
-  };
+// ─── PLAN CARD ────────────────────────────────────────────────────────────────
+function PlanCard({ plan, onSubscribe, loading, currentPlan }) {
+  const C = useC();
+  const isRec = plan.recommended;
+  const isCurrent = currentPlan === plan.id;
+  const isLoading = loading === plan.id;
+  const col = plan.color;
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 400, display: "flex", alignItems: "flex-end", justifyContent: "center", fontFamily: "Inter, sans-serif" }}>
-      <div style={{ width: "100%", maxWidth: 480, background: C.bg, borderRadius: "20px 20px 0 0", maxHeight: "90vh", overflowY: "auto" }}>
-        
-        {/* Header */}
-        <div style={{ background: `linear-gradient(135deg, #CC2936, #a01e28)`, padding: "24px 20px 20px", borderRadius: "20px 20px 0 0" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <h2 style={{ color: "#fff", fontSize: 22, fontWeight: 900, margin: 0 }}>KojihTrack Pro</h2>
-            <button onClick={onClose} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 20, padding: "6px 12px", color: "#fff", cursor: "pointer", fontSize: 13 }}>✕ Fermer</button>
+    <div style={{
+      position: "relative",
+      background: isRec ? `linear-gradient(145deg, ${col}0a 0%, ${C.surface} 100%)` : C.surface,
+      borderRadius: 22,
+      padding: isRec ? "32px 22px 22px" : "22px",
+      border: isRec ? `2px solid ${col}` : `1.5px solid ${C.border}`,
+      boxShadow: isRec
+        ? `0 12px 48px ${col}20, 0 0 0 1px ${col}10`
+        : "0 2px 12px rgba(0,0,0,0.05)",
+      transition: "box-shadow 0.2s",
+    }}>
+
+      {/* Badge RECOMMANDE */}
+      {isRec && (
+        <div style={{
+          position: "absolute", top: -13, left: "50%",
+          transform: "translateX(-50%)",
+          background: `linear-gradient(135deg, ${col} 0%, #8B1A22 100%)`,
+          color: "#fff", borderRadius: 30,
+          padding: "5px 18px",
+          fontSize: 10, fontWeight: 900,
+          letterSpacing: 1.2, textTransform: "uppercase",
+          whiteSpace: "nowrap",
+          boxShadow: `0 4px 14px ${col}45`,
+        }}>
+          ✦ RECOMMANDE
+        </div>
+      )}
+
+      {/* Badge ACTIF */}
+      {isCurrent && (
+        <div style={{
+          position: "absolute", top: 14, right: 14,
+          background: "#10B981", color: "#fff",
+          borderRadius: 8, padding: "3px 10px",
+          fontSize: 10, fontWeight: 800, letterSpacing: 0.5,
+        }}>ACTIF</div>
+      )}
+
+      {/* Nom + tagline */}
+      <div style={{ marginBottom: 14 }}>
+        <h3 style={{ margin: 0, fontSize: 22, fontWeight: 900, letterSpacing: -0.5, color: isRec ? col : C.text }}>
+          {plan.name}
+        </h3>
+        <p style={{ margin: "3px 0 0", fontSize: 13, color: C.muted, fontWeight: 500 }}>
+          {plan.tagline}
+        </p>
+      </div>
+
+      {/* Prix */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
+          <span style={{ fontSize: 14, color: C.muted, fontWeight: 600, textDecoration: "line-through" }}>
+            {plan.price}€
+          </span>
+          <span style={{ fontSize: 30, fontWeight: 900, letterSpacing: -1, color: isRec ? col : C.text }}>
+            0€
+          </span>
+          <span style={{ fontSize: 13, color: C.muted }}>/1er mois</span>
+        </div>
+        <p style={{ margin: 0, fontSize: 12, color: C.muted }}>
+          puis <strong style={{ color: C.text }}>{plan.price}€/mois</strong>
+          {" · "}Résiliable à tout moment
+        </p>
+      </div>
+
+      {/* Features */}
+      <div style={{ marginBottom: 20 }}>
+        {plan.features.map((f, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 9, marginBottom: 8 }}>
+            <div style={{ flexShrink: 0, marginTop: 1 }}>
+              <CheckIcon color={isRec ? col : "#10B981"} size={16} />
+            </div>
+            <span style={{ fontSize: 13, color: C.text, lineHeight: 1.45 }}>{f}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-            <span style={{ fontSize: 42, fontWeight: 900, color: "#fff" }}>3,59€</span>
-            <span style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>/mois</span>
+        ))}
+      </div>
+
+      {/* CTA */}
+      {isCurrent ? (
+        <div style={{
+          textAlign: "center", padding: "12px",
+          background: "#10B98118", borderRadius: 12,
+          color: "#10B981", fontWeight: 700, fontSize: 14,
+        }}>
+          Plan actuel
+        </div>
+      ) : (
+        <button
+          onClick={() => onSubscribe(plan)}
+          disabled={!!loading}
+          style={{
+            width: "100%", padding: "15px",
+            borderRadius: 14, fontWeight: 800, fontSize: 15,
+            cursor: loading ? "wait" : "pointer",
+            border: isRec ? "none" : `1.5px solid ${C.border}`,
+            background: isRec
+              ? `linear-gradient(135deg, ${col} 0%, #8B1A22 100%)`
+              : C.surfaceAlt,
+            color: isRec ? "#fff" : C.text,
+            boxShadow: isRec ? `0 6px 18px ${col}35` : "none",
+            opacity: loading && !isLoading ? 0.55 : 1,
+            transition: "all 0.2s",
+          }}
+        >
+          {isLoading ? "Redirection..." : "Commencer l'essai gratuit ->"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── SUCCESS SCREEN ───────────────────────────────────────────────────────────
+function SuccessScreen({ plan, onClose }) {
+  const C = useC();
+  const [visible, setVisible] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setVisible(true), 100); return () => clearTimeout(t); }, []);
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 300, background: C.bg,
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      padding: "32px 24px", fontFamily: "'DM Sans', sans-serif",
+      transition: "opacity 0.5s",
+      opacity: visible ? 1 : 0,
+    }}>
+      <div style={{ fontSize: 68, marginBottom: 20, lineHeight: 1 }}>🎉</div>
+      <h1 style={{
+        fontSize: 26, fontWeight: 900, color: C.text,
+        textAlign: "center", margin: "0 0 12px", letterSpacing: -0.5,
+      }}>
+        Bienvenue dans MYLIDE {getPlanName(plan)} !
+      </h1>
+      <p style={{ color: C.muted, textAlign: "center", maxWidth: 300, lineHeight: 1.6, margin: "0 0 28px", fontSize: 14 }}>
+        Ton abonnement est actif. Toutes les fonctionnalités sont maintenant debloquees.
+      </p>
+      <div style={{
+        background: "#CC293610", border: "1px solid #CC293625",
+        borderRadius: 16, padding: "16px 20px", marginBottom: 24,
+        width: "100%", maxWidth: 340,
+      }}>
+        <p style={{ margin: 0, fontSize: 13, color: C.text, textAlign: "center", lineHeight: 1.65 }}>
+          Merci de soutenir MYLIDE. Ton abonnement permet de continuer
+          a ameliorer l'application pour toute la communaute.
+        </p>
+      </div>
+      <div style={{
+        background: C.surface, border: `1px solid ${C.border}`,
+        borderRadius: 16, padding: "16px 20px", marginBottom: 28,
+        width: "100%", maxWidth: 340,
+      }}>
+        {["Toutes les statistiques avancees","Insights et predictions intelligents","Export PDF + Excel","Radar historique illimite"].map((f, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: i < 3 ? 8 : 0 }}>
+            <span style={{ color: "#10B981", fontSize: 15, fontWeight: 700 }}>✓</span>
+            <span style={{ fontSize: 13, color: C.text }}>{f}</span>
           </div>
-          <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 10, padding: "8px 12px", marginTop: 10 }}>
-            <p style={{ color: "#fff", fontSize: 13, margin: 0, fontWeight: 600 }}>🎁 1 mois gratuit — carte requise, annulation facile</p>
+        ))}
+      </div>
+      <button onClick={onClose} style={{
+        background: "linear-gradient(135deg, #CC2936, #8B1A22)",
+        color: "#fff", border: "none", borderRadius: 14,
+        padding: "15px 40px", fontWeight: 800, fontSize: 16,
+        cursor: "pointer", boxShadow: "0 6px 20px rgba(204,41,54,0.35)",
+      }}>
+        Commencer a explorer ->
+      </button>
+    </div>
+  );
+}
+
+// ─── MANAGE SUBSCRIPTION ─────────────────────────────────────────────────────
+function ManageSubscription({ subscriptionData, currentPlan, onManage }) {
+  const C = useC();
+  const [loading, setLoading] = useState(false);
+  const planColors = { starter: "#3B82F6", pro: "#CC2936", premium: "#F59E0B" };
+  const planPrices = { starter: "3,99", pro: "6,99", premium: "12,99" };
+  const col = planColors[currentPlan] || "#CC2936";
+  const isTrialing = subscriptionData?.subscription_status === "trialing";
+  const periodEnd = subscriptionData?.subscription_period_end
+    ? new Date(subscriptionData.subscription_period_end).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+    : null;
+
+  return (
+    <div style={{ paddingBottom: 40 }}>
+      <div style={{
+        background: `linear-gradient(145deg, ${col}12, ${col}05)`,
+        border: `2px solid ${col}35`, borderRadius: 22, padding: 22, marginBottom: 14,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+          <div style={{
+            width: 50, height: 50, borderRadius: 14,
+            background: `linear-gradient(135deg, ${col}, ${col}aa)`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#fff", fontWeight: 900, fontSize: 20,
+          }}>
+            {currentPlan === "starter" ? "S" : currentPlan === "pro" ? "P" : "★"}
+          </div>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <p style={{ margin: 0, fontWeight: 900, fontSize: 20, color: C.text }}>
+                Plan {getPlanName(currentPlan)}
+              </p>
+              {isTrialing && (
+                <span style={{ background: "#10B981", color: "#fff", borderRadius: 8, padding: "2px 9px", fontSize: 10, fontWeight: 800 }}>
+                  ESSAI
+                </span>
+              )}
+            </div>
+            <p style={{ margin: 0, fontSize: 13, color: C.muted }}>{planPrices[currentPlan]}€/mois apres l'essai</p>
           </div>
         </div>
-
-        <div style={{ padding: 20 }}>
-          {/* Comparaison */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-            {/* Gratuit */}
-            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 14 }}>
-              <p style={{ fontSize: 12, fontWeight: 800, color: C.muted, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 12px" }}>Gratuit</p>
-              {features.free.map((f, i) => (
-                <p key={i} style={{ fontSize: 11, color: f.startsWith("❌") ? C.muted : C.text, margin: "0 0 6px", lineHeight: 1.4 }}>{f}</p>
-              ))}
-            </div>
-            {/* Pro */}
-            <div style={{ background: "rgba(204,41,54,0.06)", border: `2px solid #CC2936`, borderRadius: 14, padding: 14 }}>
-              <p style={{ fontSize: 12, fontWeight: 800, color: "#CC2936", textTransform: "uppercase", letterSpacing: 1, margin: "0 0 12px" }}>Pro ⭐</p>
-              {features.pro.map((f, i) => (
-                <p key={i} style={{ fontSize: 11, color: C.text, margin: "0 0 6px", lineHeight: 1.4 }}>{f}</p>
-              ))}
-            </div>
+        {periodEnd && (
+          <div style={{ background: C.bg, borderRadius: 12, padding: "11px 14px" }}>
+            <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>
+              {isTrialing ? "Essai gratuit jusqu'au" : "Prochain paiement le"}{" "}
+              <strong style={{ color: C.text }}>{periodEnd}</strong>
+            </p>
           </div>
+        )}
+      </div>
 
-          {/* Bouton */}
-          <button onClick={handleSubscribe} disabled={loading} style={{ width: "100%", padding: "16px", background: `linear-gradient(135deg, #CC2936, #a01e28)`, color: "#fff", border: "none", borderRadius: 14, fontWeight: 800, fontSize: 16, cursor: "pointer", boxShadow: "0 8px 24px rgba(204,41,54,0.35)", marginBottom: 12 }}>
-            {loading ? "Chargement..." : "🚀 Commencer l'essai gratuit"}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, marginBottom: 14 }}>
+        <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 700, color: C.text }}>Ce que tu as debloques</p>
+        {[
+          "Toutes les statistiques avancees",
+          "Insights intelligents & predictions",
+          "Export donnees PDF + Excel",
+          "Radar historique illimite",
+          ...(currentPlan === "premium" ? ["IA avancee & analyse en profondeur","Acces prioritaire aux nouveautes"] : []),
+        ].map((f, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
+            <span style={{ color: col, fontWeight: 700, fontSize: 14 }}>✓</span>
+            <span style={{ fontSize: 13, color: C.text }}>{f}</span>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={async () => { setLoading(true); await onManage(); setLoading(false); }}
+        disabled={loading}
+        style={{
+          width: "100%", padding: "14px", borderRadius: 14,
+          background: C.surfaceAlt, border: `1.5px solid ${C.border}`,
+          color: C.text, fontWeight: 700, fontSize: 15,
+          cursor: "pointer", marginBottom: 10,
+        }}
+      >
+        {loading ? "Chargement..." : "Gerer mon abonnement (Stripe)"}
+      </button>
+
+      <p style={{ textAlign: "center", fontSize: 11, color: C.muted, lineHeight: 1.7, margin: 0 }}>
+        La resiliation est simple et accessible en 1 clic depuis "Gerer mon abonnement".
+        Aucun piege, aucun ecran cache.
+      </p>
+    </div>
+  );
+}
+
+// ─── FREE PLAN BLOCK ──────────────────────────────────────────────────────────
+function FreePlanBlock() {
+  const C = useC();
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ border: `1.5px solid ${C.border}`, borderRadius: 16, padding: "15px 18px", marginBottom: 12, background: C.surface }}>
+      <button onClick={() => setOpen(v => !v)} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+        <div>
+          <span style={{ fontSize: 15, fontWeight: 700, color: C.text }}>Plan Gratuit</span>
+          <span style={{ marginLeft: 8, fontSize: 11, background: C.surfaceAlt, color: C.muted, borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>
+            TOUJOURS DISPONIBLE
+          </span>
+        </div>
+        <span style={{ fontSize: 18, color: C.muted, display: "inline-block", transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>
+          &#8964;
+        </span>
+      </button>
+      {open && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+          {FREE_FEATURES.map((f, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
+              <span style={{ color: C.muted, fontSize: 14 }}>&#9675;</span>
+              <span style={{ fontSize: 13, color: C.muted }}>{f}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PREMIUM LOCK OVERLAY (exporté pour usage dans App) ──────────────────────
+export function PremiumLock({ plan = "pro", onUpgrade, small = false, children }) {
+  const C = useC();
+  const planColors = { starter: "#3B82F6", pro: "#CC2936", premium: "#F59E0B" };
+  const col = planColors[plan] || "#CC2936";
+
+  if (!children) {
+    return (
+      <button onClick={onUpgrade} style={{
+        display: "inline-flex", alignItems: "center", gap: small ? 4 : 5,
+        background: col + "15", border: `1px solid ${col}30`,
+        borderRadius: 8, padding: small ? "3px 8px" : "5px 12px",
+        cursor: "pointer", color: col, fontWeight: 700,
+        fontSize: small ? 10 : 12, letterSpacing: 0.3,
+      }}>
+        🔒 {getPlanName(plan).toUpperCase()}
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ position: "relative", userSelect: "none" }}>
+      <div style={{ filter: "blur(4px)", pointerEvents: "none", opacity: 0.5 }}>{children}</div>
+      <div style={{
+        position: "absolute", inset: 0,
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", gap: 8,
+      }}>
+        <div style={{
+          background: C.bg, border: `1.5px solid ${col}`,
+          borderRadius: 14, padding: "12px 18px",
+          textAlign: "center", boxShadow: `0 4px 20px ${col}20`,
+        }}>
+          <div style={{ fontSize: 20, marginBottom: 4 }}>🔒</div>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: C.text }}>
+            Fonctionnalite {getPlanName(plan)}
+          </p>
+          <button onClick={onUpgrade} style={{
+            marginTop: 8, background: `linear-gradient(135deg, ${col}, ${col}bb)`,
+            color: "#fff", border: "none", borderRadius: 10,
+            padding: "7px 16px", fontWeight: 700, fontSize: 12, cursor: "pointer",
+          }}>
+            Debloquer ->
           </button>
-
-          <p style={{ fontSize: 11, color: C.muted, textAlign: "center", margin: "0 0 8px" }}>Carte bancaire requise. Annulation possible à tout moment.</p>
-          <p style={{ fontSize: 11, color: C.muted, textAlign: "center", margin: 0 }}>Après l'essai, 3,59€/mois. Un email de confirmation sera envoyé.</p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+export default function Subscription({ onClose, userPlan = "free", userId, userEmail, subscriptionData = {} }) {
+  const C = useC();
+  const [loading, setLoading] = useState(null);
+  const [error, setError] = useState(null);
+
+  const [paymentResult] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return { status: p.get("payment"), plan: p.get("plan") };
+  });
+  const [showSuccess, setShowSuccess] = useState(paymentResult.status === "success");
+
+  useEffect(() => {
+    if (paymentResult.status) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("payment");
+      url.searchParams.delete("plan");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
+
+  const isSubscribed = userPlan && userPlan !== "free" && subscriptionData?.subscription_status !== "cancelled";
+
+  const handleSubscribe = async (plan) => {
+    const envKey = `VITE_STRIPE_PRICE_${plan.id.toUpperCase()}`;
+    const priceId = import.meta.env[envKey];
+
+    if (!priceId || priceId.includes("TO_CONFIGURE") || priceId.includes("placeholder")) {
+      setError("Paiement en cours de configuration. Reviens tres bientot !");
+      return;
+    }
+    setLoading(plan.id);
+    setError(null);
+    try {
+      const r = await fetch("/api/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId, userId, userEmail, plan: plan.id }),
+      });
+      const { url, error: apiErr } = await r.json();
+      if (apiErr) throw new Error(apiErr);
+      if (url) window.location.href = url;
+    } catch (e) {
+      setError(e.message || "Erreur lors du paiement. Reessaie.");
+      setLoading(null);
+    }
+  };
+
+  const handleManage = async () => {
+    try {
+      const r = await fetch("/api/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      const { url, error: e } = await r.json();
+      if (e) throw new Error(e);
+      if (url) window.location.href = url;
+    } catch {
+      setError("Impossible d'acceder au portail. Reessaie.");
+    }
+  };
+
+  if (showSuccess) {
+    return <SuccessScreen plan={paymentResult.plan} onClose={() => { setShowSuccess(false); onClose(); }} />;
+  }
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 200, background: C.bg,
+      overflowY: "auto", WebkitOverflowScrolling: "touch",
+      fontFamily: "'DM Sans', sans-serif",
+    }}>
+      {/* HEADER */}
+      <div style={{
+        position: "sticky", top: 0, zIndex: 10,
+        background: C.bg + "ee",
+        backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+        borderBottom: `1px solid ${C.border}`,
+        paddingTop: "env(safe-area-inset-top, 0px)",
+      }}>
+        <div style={{ maxWidth: 480, margin: "0 auto", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <button onClick={onClose} style={{
+            width: 40, height: 40, borderRadius: 12,
+            background: C.surfaceAlt, border: `1px solid ${C.border}`,
+            display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+          }}>
+            <ArrowLeft size={20} color={C.text} />
+          </button>
+          <span style={{ fontWeight: 700, fontSize: 16, color: C.text }}>
+            {isSubscribed ? "Mon abonnement" : "Passer Premium"}
+          </span>
+          <div style={{ width: 40 }} />
+        </div>
+      </div>
+
+      {/* CONTENT */}
+      <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 16px 80px" }}>
+        {isSubscribed ? (
+          <>
+            <div style={{ textAlign: "center", padding: "28px 0 24px" }}>
+              <div style={{
+                width: 72, height: 72, borderRadius: 22,
+                background: "linear-gradient(135deg, #CC2936, #8B1A22)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 36, margin: "0 auto 16px",
+                boxShadow: "0 8px 28px rgba(204,41,54,0.3)",
+              }}>&#11088;</div>
+              <h1 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 900, color: C.text, letterSpacing: -0.5 }}>
+                Membre {getPlanName(userPlan)}
+              </h1>
+              <p style={{ margin: 0, fontSize: 14, color: C.muted }}>
+                Tu beneficies de toutes les fonctionnalites premium.
+              </p>
+            </div>
+            <ManageSubscription subscriptionData={subscriptionData} currentPlan={userPlan} onManage={handleManage} />
+          </>
+        ) : (
+          <>
+            {/* HERO */}
+            <div style={{ textAlign: "center", padding: "28px 0 24px" }}>
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: "#CC293618", border: "1px solid #CC293628",
+                borderRadius: 20, padding: "5px 14px",
+                fontSize: 11, fontWeight: 700, color: "#CC2936",
+                letterSpacing: 0.5, marginBottom: 18, textTransform: "uppercase",
+              }}>
+                Tout MYLIDE debloques
+              </div>
+              <h1 style={{ margin: "0 0 12px", fontSize: 28, fontWeight: 900, color: C.text, lineHeight: 1.2, letterSpacing: -0.8 }}>
+                Votre meilleur outil<br />de suivi de vie
+              </h1>
+              <p style={{ margin: 0, fontSize: 14, color: C.muted, lineHeight: 1.6 }}>
+                Analyses avancees · Predictions intelligentes<br />
+                Insights personnalises · Exports complets
+              </p>
+            </div>
+
+            {/* TRIAL BADGE */}
+            <div style={{
+              background: "linear-gradient(135deg, #10B981, #059669)",
+              borderRadius: 16, padding: "14px 18px", marginBottom: 22,
+              display: "flex", alignItems: "center", gap: 14,
+              boxShadow: "0 6px 20px rgba(16,185,129,0.25)",
+            }}>
+              <span style={{ fontSize: 24, flexShrink: 0 }}>🎁</span>
+              <div>
+                <p style={{ margin: 0, fontWeight: 800, color: "#fff", fontSize: 14 }}>
+                  1 mois gratuit sur tous les plans
+                </p>
+                <p style={{ margin: "2px 0 0", color: "rgba(255,255,255,0.82)", fontSize: 12 }}>
+                  Carte requise · Aucun debit pendant 30 jours · Resiliable a tout moment
+                </p>
+              </div>
+            </div>
+
+            {/* PLANS */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+              {PLANS.map(plan => (
+                <PlanCard key={plan.id} plan={plan} onSubscribe={handleSubscribe} loading={loading} currentPlan={userPlan} />
+              ))}
+            </div>
+
+            {/* FREE PLAN */}
+            <FreePlanBlock />
+
+            {/* ERROR */}
+            {error && (
+              <div style={{ background: "#FFF1F2", border: "1px solid #CC293630", borderRadius: 12, padding: "12px 16px", marginBottom: 14 }}>
+                <p style={{ margin: 0, color: "#CC2936", fontSize: 13, fontWeight: 600 }}>⚠️ {error}</p>
+              </div>
+            )}
+
+            {/* SOCIAL PROOF */}
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 18px", marginBottom: 14, display: "flex", gap: 14, alignItems: "flex-start" }}>
+              <span style={{ fontSize: 26, flexShrink: 0 }}>💬</span>
+              <div>
+                <p style={{ margin: "0 0 4px", fontSize: 13, fontStyle: "italic", color: C.text, lineHeight: 1.5 }}>
+                  "MYLIDE a change ma facon de voir mes habitudes. Les insights sont vraiment personnalises."
+                </p>
+                <p style={{ margin: 0, fontSize: 11, color: C.muted, fontWeight: 600 }}>
+                  Alex R., membre Pro depuis 3 mois
+                </p>
+              </div>
+            </div>
+
+            {/* LEGAL */}
+            <div style={{ textAlign: "center", padding: "16px 0 0" }}>
+              <p style={{ margin: 0, fontSize: 11, color: C.muted, lineHeight: 1.8 }}>
+                En souscrivant, tu acceptes les Conditions d'utilisation et la Politique de confidentialite.
+                <br />
+                L'abonnement se renouvelle automatiquement apres l'essai.
+                <br />
+                Resiliation possible a tout moment depuis les parametres.
+                <br /><br />
+                MYLIDE est une application de bien-etre personnel.
+                Elle ne remplace pas un professionnel de sante.
+              </p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
