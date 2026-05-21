@@ -846,6 +846,104 @@ const SubPagePassword = ({ onBack }) => {
   );
 };
 
+const SubPageBody = ({ onBack, nutritionGoals, setNutritionGoals }) => {
+  const C = useC();
+  const [sex, setSex] = useState(nutritionGoals.sex || "");
+  const [height, setHeight] = useState(nutritionGoals.height || "");
+  const [activityLevel, setActivityLevel] = useState(nutritionGoals.activityLevel || "");
+  const [goalType, setGoalType] = useState(nutritionGoals.goalType || "maintenance");
+  const [saveOk, setSaveOk] = useState(false);
+  const lbl = { fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "block" };
+
+  const save = () => {
+    const ng = {
+      ...nutritionGoals,
+      sex: sex || null,
+      height: Number(height) || null,
+      activityLevel: activityLevel || null,
+      goalType,
+    };
+    setNutritionGoals(ng);
+    localStorage.setItem("nutritionGoals", JSON.stringify(ng));
+    setSaveOk(true);
+    setTimeout(() => { setSaveOk(false); onBack(); }, 1200);
+  };
+
+  return (
+    <SubLayout onBack={onBack} title="Profil physique" onSave={save} saveOk={saveOk}>
+      {/* Sexe biologique */}
+      <div style={{ marginBottom: 22 }}>
+        <label style={lbl}>Sexe biologique</label>
+        <p style={{ fontSize: 12, color: C.muted, margin: "0 0 10px", lineHeight: 1.5 }}>
+          Utilisé pour calibrer le BMR (Mifflin-St Jeor) et les besoins en lipides.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {[{ val: "male", label: "Homme", icon: "👨" }, { val: "female", label: "Femme", icon: "👩" }].map(({ val, label, icon }) => (
+            <button key={val} onClick={() => setSex(val)} style={{ padding: "16px 12px", borderRadius: 14, border: `2px solid ${sex === val ? "#CC2936" : C.border}`, background: sex === val ? "rgba(204,41,54,0.08)" : C.surfaceAlt, color: sex === val ? "#CC2936" : C.muted, fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontFamily: "inherit" }}>
+              <span style={{ fontSize: 22 }}>{icon}</span> {label}
+            </button>
+          ))}
+        </div>
+        {!sex && <p style={{ fontSize: 11, color: C.orange, margin: "8px 0 0", fontWeight: 600 }}>Non renseigné — les calculs utilisent les valeurs homme par défaut</p>}
+      </div>
+
+      {/* Taille */}
+      <div style={{ marginBottom: 22 }}>
+        <label style={lbl}>Taille (cm)</label>
+        <p style={{ fontSize: 12, color: C.muted, margin: "0 0 10px", lineHeight: 1.5 }}>
+          La taille influence directement le BMR et les objectifs de composition corporelle.
+        </p>
+        <input type="number" value={height} min={100} max={250} onChange={e => setHeight(e.target.value)} placeholder="Ex : 175" style={settingsInp} />
+        {height > 0 && (
+          <div style={{ background: C.surfaceAlt, borderRadius: 12, padding: "10px 14px", marginTop: 8 }}>
+            <p style={{ margin: 0, fontSize: 13, color: C.muted }}>
+              Taille enregistrée : <strong style={{ color: C.black }}>{height} cm</strong>
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Objectif nutritionnel */}
+      <div style={{ marginBottom: 22 }}>
+        <label style={lbl}>Objectif principal</label>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {Object.entries(GOAL_CONFIG).map(([key, cfg]) => (
+            <button key={key} onClick={() => setGoalType(key)} style={{ padding: "14px 16px", borderRadius: 14, border: `2px solid ${goalType === key ? cfg.color : C.border}`, background: goalType === key ? `${cfg.color}10` : C.surfaceAlt, cursor: "pointer", textAlign: "left", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 14 }}>
+              <span style={{ fontSize: 22 }}>{cfg.emoji}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: goalType === key ? cfg.color : C.text }}>{cfg.label}</div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 2, lineHeight: 1.4 }}>{cfg.tagline}</div>
+              </div>
+              {goalType === key && <div style={{ width: 22, height: 22, borderRadius: "50%", background: cfg.color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, flexShrink: 0 }}>✓</div>}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Niveau d'activité */}
+      <div style={{ marginBottom: 22 }}>
+        <label style={lbl}>Niveau d'activite</label>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {Object.entries(ACTIVITY_LEVELS).map(([key, cfg]) => (
+            <button key={key} onClick={() => setActivityLevel(key)} style={{ padding: "12px 16px", borderRadius: 14, border: `2px solid ${activityLevel === key ? "#CC2936" : C.border}`, background: activityLevel === key ? "rgba(204,41,54,0.08)" : C.surfaceAlt, cursor: "pointer", textAlign: "left", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: activityLevel === key ? "#CC2936" : C.text }}>{cfg.label}</div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{cfg.desc}</div>
+              </div>
+              {activityLevel === key && <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#CC2936", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, flexShrink: 0 }}>✓</div>}
+            </button>
+          ))}
+          {!activityLevel && (
+            <div style={{ padding: "10px 14px", borderRadius: 12, background: C.surfaceAlt, border: `1px solid ${C.border}` }}>
+              <p style={{ margin: 0, fontSize: 12, color: C.muted }}>Non renseigné — niveau auto-détecté depuis tes séances récentes</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </SubLayout>
+  );
+};
+
 const SubPagePhone = ({ onBack, profile, updateProfile }) => {
   const C = useC();
   const [phone, setPhone] = useState(profile.phone || "");
@@ -1253,6 +1351,7 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
   );
 
   if (sub === "info") return <SubPageInfo onBack={() => setSub(null)} profile={profile} updateProfile={updateProfile} />;
+  if (sub === "body") return <SubPageBody onBack={() => setSub(null)} nutritionGoals={nutritionGoals} setNutritionGoals={setNutritionGoals} />;
   if (sub === "email") return <SubPageEmail onBack={() => setSub(null)} currentEmail={userEmail} setCurrentEmail={setUserEmail} />;
   if (sub === "password") return <SubPagePassword onBack={() => setSub(null)} />;
   if (sub === "phone") return <SubPagePhone onBack={() => setSub(null)} profile={profile} updateProfile={updateProfile} />;
@@ -1305,6 +1404,34 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
           <Row icon="📱" label={tr("row_phone")} desc={profile.phone || tr("row_phone_add")} onClick={() => setSub("phone")} />
           <Row icon="🌍" label={tr("row_lang")} desc={currentLang} onClick={() => setSub("language")} />
           <Row icon="🚪" label={tr("row_logout")} desc={tr("row_logout_desc")} onClick={onSignOut} last />
+        </Sec>
+
+        <Sec title="Profil physique">
+          <Row
+            icon="⚧️"
+            label="Sexe biologique"
+            desc={nutritionGoals.sex === "male" ? "Homme" : nutritionGoals.sex === "female" ? "Femme" : "Non renseigné"}
+            onClick={() => setSub("body")}
+          />
+          <Row
+            icon="📏"
+            label="Taille"
+            desc={nutritionGoals.height ? `${nutritionGoals.height} cm` : "Non renseignée"}
+            onClick={() => setSub("body")}
+          />
+          <Row
+            icon={GOAL_CONFIG[nutritionGoals.goalType]?.emoji || "🎯"}
+            label="Objectif nutritionnel"
+            desc={GOAL_CONFIG[nutritionGoals.goalType]?.label || "Maintien"}
+            onClick={() => setSub("body")}
+          />
+          <Row
+            icon="🏃"
+            label="Niveau d'activite"
+            desc={ACTIVITY_LEVELS[nutritionGoals.activityLevel]?.label || "Auto-détecté"}
+            onClick={() => setSub("body")}
+            last
+          />
         </Sec>
 
         <Sec title={tr("sec_devices")}>
