@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "./supabase";
+import mylidelogo from "./assets/logo.png";
 
 const C = {
   red: "#CC2936", bg: "#f2f2f2", surface: "#ffffff",
@@ -56,8 +57,8 @@ export default function Auth() {
         
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ width: 64, height: 64, background: `linear-gradient(135deg, ${C.red}, #a01e28)`, borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 28, boxShadow: "0 8px 24px rgba(204,41,54,0.3)" }}>🎯</div>
-          <h1 style={{ fontSize: 24, fontWeight: 900, color: C.text, margin: "0 0 4px" }}>KojihTrack</h1>
+          <img src={mylidelogo} alt="MYLIDE" style={{ width: 72, height: 72, borderRadius: 20, objectFit: "cover", margin: "0 auto 16px", display: "block", boxShadow: "0 8px 24px rgba(204,41,54,0.3)" }} />
+          <h1 style={{ fontSize: 24, fontWeight: 900, color: C.text, margin: "0 0 4px" }}>MYLIDE</h1>
           <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>Ton tracker de vie intelligent</p>
         </div>
 

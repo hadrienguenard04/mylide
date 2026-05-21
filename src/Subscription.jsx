@@ -24,7 +24,7 @@ function ArrowLeft({ size = 20, color }) {
 }
 
 // ─── PLAN CARD ────────────────────────────────────────────────────────────────
-function PlanCard({ plan, onSubscribe, loading, currentPlan }) {
+function PlanCard({ plan, onSubscribe, loading, currentPlan, compact = false }) {
   const C = useC();
   const isRec = plan.recommended;
   const isCurrent = currentPlan === plan.id;
@@ -34,35 +34,35 @@ function PlanCard({ plan, onSubscribe, loading, currentPlan }) {
   return (
     <div style={{
       position: "relative",
-      background: isRec ? `linear-gradient(145deg, ${col}0a 0%, ${C.surface} 100%)` : C.surface,
-      borderRadius: 22,
-      padding: isRec ? "32px 22px 22px" : "22px",
+      background: isRec ? `linear-gradient(145deg, ${col}12 0%, ${C.surface} 100%)` : C.surface,
+      borderRadius: compact ? 16 : 22,
+      padding: compact ? (isRec ? "22px 10px 12px" : "14px 10px 12px") : (isRec ? "32px 22px 22px" : "22px"),
       border: isRec ? `2px solid ${col}` : `1.5px solid ${C.border}`,
       boxShadow: isRec
-        ? `0 12px 48px ${col}20, 0 0 0 1px ${col}10`
-        : "0 2px 12px rgba(0,0,0,0.05)",
+        ? `0 8px 28px ${col}20`
+        : "0 2px 8px rgba(0,0,0,0.04)",
       transition: "box-shadow 0.2s",
     }}>
 
       {/* Badge RECOMMANDE */}
       {isRec && (
         <div style={{
-          position: "absolute", top: -13, left: "50%",
+          position: "absolute", top: -11, left: "50%",
           transform: "translateX(-50%)",
           background: `linear-gradient(135deg, ${col} 0%, #8B1A22 100%)`,
           color: "#fff", borderRadius: 30,
-          padding: "5px 18px",
-          fontSize: 10, fontWeight: 900,
-          letterSpacing: 1.2, textTransform: "uppercase",
+          padding: compact ? "3px 8px" : "5px 18px",
+          fontSize: compact ? 8 : 10, fontWeight: 900,
+          letterSpacing: 0.8, textTransform: "uppercase",
           whiteSpace: "nowrap",
           boxShadow: `0 4px 14px ${col}45`,
         }}>
-          ✦ RECOMMANDE
+          ✦ TOP
         </div>
       )}
 
       {/* Badge ACTIF */}
-      {isCurrent && (
+      {isCurrent && !compact && (
         <div style={{
           position: "absolute", top: 14, right: 14,
           background: "#10B981", color: "#fff",
@@ -71,73 +71,83 @@ function PlanCard({ plan, onSubscribe, loading, currentPlan }) {
         }}>ACTIF</div>
       )}
 
-      {/* Nom + tagline */}
-      <div style={{ marginBottom: 14 }}>
-        <h3 style={{ margin: 0, fontSize: 22, fontWeight: 900, letterSpacing: -0.5, color: isRec ? col : C.text }}>
+      {/* Nom */}
+      <div style={{ marginBottom: compact ? 6 : 14 }}>
+        <h3 style={{ margin: 0, fontSize: compact ? 15 : 22, fontWeight: 900, letterSpacing: -0.5, color: isRec ? col : C.text }}>
           {plan.name}
         </h3>
-        <p style={{ margin: "3px 0 0", fontSize: 13, color: C.muted, fontWeight: 500 }}>
-          {plan.tagline}
-        </p>
+        {!compact && (
+          <p style={{ margin: "3px 0 0", fontSize: 13, color: C.muted, fontWeight: 500 }}>
+            {plan.tagline}
+          </p>
+        )}
       </div>
 
       {/* Prix */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
-          <span style={{ fontSize: 14, color: C.muted, fontWeight: 600, textDecoration: "line-through" }}>
-            {plan.price}€
-          </span>
-          <span style={{ fontSize: 30, fontWeight: 900, letterSpacing: -1, color: isRec ? col : C.text }}>
-            0€
-          </span>
-          <span style={{ fontSize: 13, color: C.muted }}>/1er mois</span>
-        </div>
-        <p style={{ margin: 0, fontSize: 12, color: C.muted }}>
-          puis <strong style={{ color: C.text }}>{plan.price}€/mois</strong>
-          {" · "}Résiliable à tout moment
-        </p>
+      <div style={{ marginBottom: compact ? 10 : 16 }}>
+        {compact ? (
+          <>
+            <div style={{ fontSize: 11, color: C.muted, textDecoration: "line-through", marginBottom: 1 }}>{plan.price}€/mois</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: isRec ? col : C.text, lineHeight: 1 }}>0€</div>
+            <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>1er mois gratuit</div>
+          </>
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
+              <span style={{ fontSize: 14, color: C.muted, fontWeight: 600, textDecoration: "line-through" }}>{plan.price}€</span>
+              <span style={{ fontSize: 30, fontWeight: 900, letterSpacing: -1, color: isRec ? col : C.text }}>0€</span>
+              <span style={{ fontSize: 13, color: C.muted }}>/1er mois</span>
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: C.muted }}>
+              puis <strong style={{ color: C.text }}>{plan.price}€/mois</strong>{" · "}Résiliable à tout moment
+            </p>
+          </>
+        )}
       </div>
 
       {/* Features */}
-      <div style={{ marginBottom: 20 }}>
-        {plan.features.map((f, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 9, marginBottom: 8 }}>
+      <div style={{ marginBottom: compact ? 10 : 20 }}>
+        {(compact ? plan.features.slice(0, 3) : plan.features).map((f, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: compact ? 5 : 9, marginBottom: compact ? 5 : 8 }}>
             <div style={{ flexShrink: 0, marginTop: 1 }}>
-              <CheckIcon color={isRec ? col : "#10B981"} size={16} />
+              <CheckIcon color={isRec ? col : "#10B981"} size={compact ? 12 : 16} />
             </div>
-            <span style={{ fontSize: 13, color: C.text, lineHeight: 1.45 }}>{f}</span>
+            <span style={{ fontSize: compact ? 10 : 13, color: C.text, lineHeight: 1.4 }}>{f}</span>
           </div>
         ))}
+        {compact && plan.features.length > 3 && (
+          <p style={{ margin: "4px 0 0", fontSize: 10, color: C.muted }}>+{plan.features.length - 3} autres...</p>
+        )}
       </div>
 
       {/* CTA */}
       {isCurrent ? (
         <div style={{
-          textAlign: "center", padding: "12px",
-          background: "#10B98118", borderRadius: 12,
-          color: "#10B981", fontWeight: 700, fontSize: 14,
+          textAlign: "center", padding: compact ? "8px 4px" : "12px",
+          background: "#10B98118", borderRadius: 10,
+          color: "#10B981", fontWeight: 700, fontSize: compact ? 11 : 14,
         }}>
-          Plan actuel
+          Actuel
         </div>
       ) : (
         <button
           onClick={() => onSubscribe(plan)}
           disabled={!!loading}
           style={{
-            width: "100%", padding: "15px",
-            borderRadius: 14, fontWeight: 800, fontSize: 15,
+            width: "100%", padding: compact ? "10px 4px" : "15px",
+            borderRadius: compact ? 10 : 14, fontWeight: 800, fontSize: compact ? 11 : 15,
             cursor: loading ? "wait" : "pointer",
             border: isRec ? "none" : `1.5px solid ${C.border}`,
             background: isRec
               ? `linear-gradient(135deg, ${col} 0%, #8B1A22 100%)`
               : C.surfaceAlt,
             color: isRec ? "#fff" : C.text,
-            boxShadow: isRec ? `0 6px 18px ${col}35` : "none",
+            boxShadow: isRec ? `0 4px 14px ${col}35` : "none",
             opacity: loading && !isLoading ? 0.55 : 1,
             transition: "all 0.2s",
           }}
         >
-          {isLoading ? "Redirection..." : "Commencer l'essai gratuit ->"}
+          {isLoading ? "..." : "Essai gratuit"}
         </button>
       )}
     </div>
@@ -530,9 +540,9 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
             </div>
 
             {/* PLANS */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16, alignItems: "start" }}>
               {PLANS.map(plan => (
-                <PlanCard key={plan.id} plan={plan} onSubscribe={handleSubscribe} loading={loading} currentPlan={userPlan} />
+                <PlanCard key={plan.id} plan={plan} onSubscribe={handleSubscribe} loading={loading} currentPlan={userPlan} compact />
               ))}
             </div>
 
