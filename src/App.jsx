@@ -1346,7 +1346,7 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
         </Sec>
 
         <Sec title={tr("sec_privacy")}>
-          <Row icon="📤" label="Télécharger mes données" desc="PDF ou Excel · médecin, coach..." onClick={() => { onClose(); setTimeout(() => setShowDataExport(true), 120); }} />
+          <Row icon="📤" label="Télécharger mes données" desc={isAtLeast(userPlan, "starter") ? "PDF ou Excel · médecin, coach..." : "🔒 Starter+ · PDF ou Excel"} onClick={() => { if (!isAtLeast(userPlan, "starter")) { onClose(); setTimeout(() => setShowSubscription(true), 120); return; } onClose(); setTimeout(() => setShowDataExport(true), 120); }} />
           <Row icon="🗑️" label="Supprimer mon compte" desc="Récupérable sous 30 jours" onClick={() => { onClose(); setTimeout(() => setShowDeleteAccount(true), 120); }} last />
         </Sec>
 
@@ -1850,7 +1850,7 @@ export default function App() {
   const saveEditedGoal = (edited) => { const g = goals.map(g => g.id === edited.id ? edited : g); setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
   const addGoal = () => {
     if (!newGoal.label.trim()) return;
-    if (!isPro && goals.length >= 3) { setShowSubscription(true); return; }
+    if (!isAtLeast(userPlan, "starter") && goals.length >= 3) { setShowSubscription(true); return; }
     const g = [...goals, { ...newGoal, id: Date.now(), manualProgress: 0 }];
     setGoals(g); saveAll(history, todos, g, patrimoine, profile);
     setNewGoal({ label: "", category: "", color: C.red, sourceId: "manual", target: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reverse: false, manualProgress: 0 });
@@ -1858,7 +1858,7 @@ export default function App() {
   const deleteGoal = id => { const g = goals.filter(g => g.id !== id); setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
   const moveGoal = (idx, dir) => { const g = [...goals]; const ni = idx + dir; if (ni < 0 || ni >= g.length) return; [g[idx], g[ni]] = [g[ni], g[idx]]; setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
   const updatePoche = (id, f, v) => { const p = patrimoine.map(p => p.id === id ? { ...p, [f]: v } : p); setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
-  const addPoche = () => { if (!newPoche.name.trim()) return; if (!isPro && patrimoine.length >= 2) { setShowSubscription(true); return; } const p = [...patrimoine, { ...newPoche, id: Date.now(), amount: Number(newPoche.amount) }]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); setNewPoche({ name: "", amount: 0, color: "#2563eb" }); };
+  const addPoche = () => { if (!newPoche.name.trim()) return; const pocheLimit = isAtLeast(userPlan, "pro") ? 999 : isAtLeast(userPlan, "starter") ? 5 : 2; if (patrimoine.length >= pocheLimit) { setShowSubscription(true); return; } const p = [...patrimoine, { ...newPoche, id: Date.now(), amount: Number(newPoche.amount) }]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); setNewPoche({ name: "", amount: 0, color: "#2563eb" }); };
   const deletePoche = id => { const p = patrimoine.filter(p => p.id !== id); setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
   const movePoche = (idx, dir) => { const p = [...patrimoine]; const ni = idx + dir; if (ni < 0 || ni >= p.length) return; [p[idx], p[ni]] = [p[ni], p[idx]]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
   const updateProfile = (f, v) => { const pr = { ...profile, [f]: v }; setProfile(pr); saveAll(history, todos, goals, patrimoine, pr); };
@@ -2094,7 +2094,8 @@ export default function App() {
                 {/* Day-of-week selector */}
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
                   <button onClick={() => {
-                    if (radarWeekOffset <= -1 && !isPro) { setShowSubscription(true); return; }
+                    if (radarWeekOffset < 0 && !isAtLeast(userPlan, "starter")) { setShowSubscription(true); return; }
+                    if (radarWeekOffset <= -3 && !isAtLeast(userPlan, "pro")) { setShowSubscription(true); return; }
                     setRadarWeekOffset(o => o - 1);
                     const firstDayOfPrevWeek = (() => {
                       const now = new Date(); const dow = (now.getDay()+6)%7;
@@ -2109,7 +2110,7 @@ export default function App() {
                       const isFuture = dateStr > todayDate;
                       const hasData = dateStr === todayDate ? today.score > 0 : history.some(d => d.date === dateStr && (d.score > 0 || d.sleep?.duration > 0));
                       const isPastWeek = radarWeekOffset < 0;
-                      const isLocked = isPastWeek && !isPro;
+                      const isLocked = (radarWeekOffset < 0 && !isAtLeast(userPlan, "starter")) || (radarWeekOffset < -3 && !isAtLeast(userPlan, "pro"));
                       return (
                         <button key={dateStr} onClick={() => { if (isLocked) { setShowSubscription(true); return; } if (!isFuture) setRadarDate(dateStr); }} style={{ flex: 1, padding: "5px 2px", borderRadius: 10, border: isSelected ? `2px solid ${C.red}` : `1.5px solid ${C.border}`, background: isSelected ? C.red + "18" : C.surfaceAlt, display: "flex", flexDirection: "column", alignItems: "center", gap: 1, cursor: isFuture || isLocked ? "default" : "pointer", opacity: isFuture ? 0.3 : isLocked ? 0.4 : 1, transition: "all 0.15s" }}>
                           <span style={{ fontSize: 8, fontWeight: 700, color: isSelected ? C.red : C.muted, textTransform: "uppercase", letterSpacing: 0.3 }}>{isLocked ? "🔒" : dayLetter}</span>
@@ -2570,11 +2571,17 @@ export default function App() {
                         );
                       })}
                     </Card>
-                    {/* Bloc "Plus d'infos" — Q&A nutritionnelles */}
-                    {(() => {
+                    {/* Bloc "Plus d'infos" — Q&A nutritionnelles (Pro+) */}
+                    {isPro ? (() => {
                       const allTips = [...(NUTRITION_TIPS.all || []), ...(NUTRITION_TIPS[nutritionGoals.goalType] || [])];
                       return <NutritionTipsBlock tips={allTips} goalType={nutritionGoals.goalType} />;
-                    })()}
+                    })() : (
+                      <div onClick={() => setShowSubscription(true)} style={{ border: `1.5px dashed ${C.border}`, borderRadius: 16, padding: "18px", textAlign: "center", cursor: "pointer", marginTop: 8 }}>
+                        <div style={{ fontSize: 22, marginBottom: 6 }}>🔒</div>
+                        <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: 14, color: C.text }}>Guide nutrition Pro</p>
+                        <p style={{ margin: 0, fontSize: 12, color: C.muted }}>100+ conseils personnalisés · Disponible en Pro</p>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -2905,8 +2912,8 @@ export default function App() {
           {nav === "stats" && (
             <div>
               <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-                {[["7","7j",false],["30","30j",true],["90","3 mois",true],["365","1 an",true],["all","Tout",true]].map(([v, l, proOnly]) => (
-                  <button key={v} onClick={() => { if (proOnly && !isPro) { setShowSubscription(true); return; } setStatRange(v); localStorage.setItem("statRange", v); }} style={{ flex: 1, padding: "10px 3px", borderRadius: 12, cursor: "pointer", fontSize: 11, fontWeight: 700, background: statRange === v ? C.black : C.surface, color: statRange === v ? "#fff" : C.muted, opacity: proOnly && !isPro ? 0.5 : 1, border: statRange === v ? "none" : `1px solid ${C.border}` }}>{l}{proOnly && !isPro ? " 🔒" : ""}</button>
+                {[["7","7j",null],["30","30j","starter"],["90","3 mois","pro"],["365","1 an","pro"],["all","Tout","pro"]].map(([v, l, minPlan]) => (
+                  <button key={v} onClick={() => { if (minPlan && !isAtLeast(userPlan, minPlan)) { setShowSubscription(true); return; } setStatRange(v); localStorage.setItem("statRange", v); }} style={{ flex: 1, padding: "10px 3px", borderRadius: 12, cursor: "pointer", fontSize: 11, fontWeight: 700, background: statRange === v ? C.black : C.surface, color: statRange === v ? "#fff" : C.muted, opacity: minPlan && !isAtLeast(userPlan, minPlan) ? 0.5 : 1, border: statRange === v ? "none" : `1px solid ${C.border}` }}>{l}{minPlan && !isAtLeast(userPlan, minPlan) ? " 🔒" : ""}</button>
                 ))}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>

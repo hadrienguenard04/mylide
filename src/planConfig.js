@@ -14,12 +14,10 @@ export const PLANS = [
     features: [
       "Statistiques sur 30 jours",
       "Radar historique (4 semaines)",
-      "Export PDF complet",
+      "Export PDF de tes données",
       "Objectifs illimités",
       "5 poches patrimoniales",
-      "Suggestions de repas intelligentes",
       "Mensurations corporelles",
-      "Corrélations simples",
     ],
   },
   {
@@ -31,30 +29,26 @@ export const PLANS = [
     recommended: true,
     features: [
       "Statistiques 1 an + historique complet",
-      "Insights intelligents avancés",
-      "Prédictions (patrimoine, poids, forme)",
-      "Export Excel / CSV complet",
-      "Corrélations avancées entre domaines",
-      "Guide nutrition 100+ Q&A",
-      "Daily State Engine complet",
-      "Poches patrimoniales illimitées",
       "Radar historique illimité",
+      "Poches patrimoniales illimitées",
+      "Guide nutrition avancé (100+ conseils)",
+      "Corrélations entre domaines de vie",
+      "Export Excel / CSV complet",
     ],
   },
   {
     id: "premium",
     name: "Premium",
-    tagline: "Tout MYLIDE, sans limite",
+    tagline: "Pour les plus engagés",
     price: 12.99,
     color: "#F59E0B",
     recommended: false,
     features: [
       "Tout ce qui est inclus dans Pro",
-      "IA avancée & analyse en profondeur",
-      "Accès prioritaire aux nouvelles fonctionnalités",
-      "Fonctionnalités expérimentales",
-      "Support prioritaire",
-      "Modules exclusifs à venir",
+      "Support prioritaire par email",
+      "Accès anticipé aux nouvelles fonctionnalités",
+      "Participation aux bêtas exclusives",
+      "Influence sur la roadmap MYLIDE",
     ],
   },
 ];
@@ -67,41 +61,34 @@ export const FREE_FEATURES = [
   "Statistiques sur 7 jours",
   "3 objectifs maximum",
   "2 poches patrimoniales",
-  "Intelligence temporelle de base",
-  "Thème clair / sombre",
   "FAQ complète (123 questions)",
+  "Thème clair / sombre",
 ];
 
 // ─── FEATURE → PLAN MAP ───────────────────────────────────────────────────────
-// Chaque feature nécessite le plan indiqué (ou supérieur)
 export const FEATURE_PLAN_MAP = {
   // ── STARTER ──
   stats_30d:           "starter",
-  stats_90d:           "starter",
-  radar_history:       "starter",
+  radar_history_4w:    "starter",
   export_pdf:          "starter",
   goals_unlimited:     "starter",
-  meal_suggestions:    "starter",
-  body_mensuration:    "starter",
   patrimoine_5:        "starter",
-  correlations_basic:  "starter",
+  body_mensuration:    "starter",
 
   // ── PRO ──
+  stats_90d:           "pro",
   stats_1y:            "pro",
   stats_all:           "pro",
-  insights_advanced:   "pro",
-  predictions:         "pro",
-  export_csv:          "pro",
-  correlations_adv:    "pro",
-  nutrition_tips:      "pro",
-  daily_state_engine:  "pro",
-  patrimoine_unlimited:"pro",
   radar_unlimited:     "pro",
+  patrimoine_unlimited:"pro",
+  nutrition_tips:      "pro",
+  export_csv:          "pro",
+  correlations:        "pro",
 
   // ── PREMIUM ──
-  ai_deep:             "premium",
-  experimental:        "premium",
   priority_support:    "premium",
+  beta_access:         "premium",
+  roadmap_vote:        "premium",
 };
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
