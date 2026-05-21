@@ -2017,7 +2017,7 @@ const Onboarding = ({ onComplete }) => {
       <div style={{ width: "100%", maxWidth: 420 }}>
         {step === 0 && (
           <div style={{ textAlign: "center" }}>
-            <div style={{ width: 96, height: 96, background: "linear-gradient(135deg, #CC2936, #8B1A22)", borderRadius: 28, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 28px", boxShadow: "0 16px 48px rgba(204,41,54,0.4)", fontSize: 48 }}>🎯</div>
+            <div style={{ width: 100, height: 100, borderRadius: 28, margin: "0 auto 28px", boxShadow: "0 16px 48px rgba(204,41,54,0.4)", overflow: "hidden", flexShrink: 0 }}><img src={kojihLogo} alt="Mylide" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} /></div>
             <h1 style={{ fontSize: 32, fontWeight: 900, color: C.black, margin: "0 0 10px", lineHeight: 1.1, letterSpacing: -0.5 }}>Bienvenue sur<br /><span style={{ color: C.red }}>Mylide</span></h1>
             <p style={{ fontSize: 16, color: C.muted, lineHeight: 1.7, margin: "0 0 40px" }}>Ton tracker de vie intelligent.<br />Configure en 3 minutes.</p>
             <button onClick={() => setStep(1)} style={btnPrimary}>Commencer →</button>
