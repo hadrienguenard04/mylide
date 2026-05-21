@@ -214,9 +214,11 @@ function SuccessScreen({ plan, onClose }) {
 }
 
 // ─── MANAGE SUBSCRIPTION ─────────────────────────────────────────────────────
-function ManageSubscription({ subscriptionData, currentPlan, onManage }) {
+function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel }) {
   const C = useC();
   const [loading, setLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const planColors = { starter: "#3B82F6", pro: "#CC2936", premium: "#F59E0B" };
   const planPrices = { starter: "3,99", pro: "6,99", premium: "12,99" };
   const col = planColors[currentPlan] || "#CC2936";
@@ -293,10 +295,28 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage }) {
         {loading ? "Chargement..." : "Gerer mon abonnement (Stripe)"}
       </button>
 
-      <p style={{ textAlign: "center", fontSize: 11, color: C.muted, lineHeight: 1.7, margin: 0 }}>
-        La resiliation est simple et accessible en 1 clic depuis "Gerer mon abonnement".
-        Aucun piege, aucun ecran cache.
-      </p>
+      {!showConfirm ? (
+        <button onClick={() => setShowConfirm(true)} style={{ width: "100%", padding: "12px", background: "none", border: `1.5px solid #CC293630`, borderRadius: 12, color: "#CC2936", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          Résilier mon abonnement
+        </button>
+      ) : (
+        <div style={{ background: "#FFF1F2", border: "1px solid #CC293630", borderRadius: 14, padding: "16px" }}>
+          <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "#CC2936", textAlign: "center" }}>
+            Confirmer la résiliation ?
+          </p>
+          <p style={{ margin: "0 0 14px", fontSize: 12, color: "#CC2936", textAlign: "center", lineHeight: 1.5 }}>
+            Tu repasseras en plan Gratuit immédiatement. Cette action est irréversible.
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => setShowConfirm(false)} style={{ flex: 1, padding: "11px", background: "none", border: `1.5px solid #CC293640`, borderRadius: 10, color: "#CC2936", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              Annuler
+            </button>
+            <button onClick={async () => { setCancelLoading(true); await onCancel(); setCancelLoading(false); setShowConfirm(false); }} disabled={cancelLoading} style={{ flex: 1, padding: "11px", background: "#CC2936", border: "none", borderRadius: 10, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+              {cancelLoading ? "..." : "Oui, résilier"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -445,6 +465,21 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
     }
   };
 
+  const handleCancel = async () => {
+    try {
+      const r = await fetch("/api/cancel-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      const { success, error: e } = await r.json();
+      if (e) throw new Error(e);
+      if (success) { onClose(); window.location.reload(); }
+    } catch (e) {
+      setError(e.message || "Erreur lors de la résiliation. Reessaie.");
+    }
+  };
+
   if (showSuccess) {
     return <SuccessScreen plan={paymentResult.plan} onClose={() => { setShowSuccess(false); onClose(); }} />;
   }
@@ -497,7 +532,7 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
                 Tu beneficies de toutes les fonctionnalites premium.
               </p>
             </div>
-            <ManageSubscription subscriptionData={subscriptionData} currentPlan={userPlan} onManage={handleManage} />
+            <ManageSubscription subscriptionData={subscriptionData} currentPlan={userPlan} onManage={handleManage} onCancel={handleCancel} />
           </>
         ) : (
           <>

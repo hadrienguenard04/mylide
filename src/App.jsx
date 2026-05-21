@@ -1765,6 +1765,7 @@ export default function App() {
   const [showDataExport, setShowDataExport] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [showFAQ, setShowFAQ] = useState(false);
+  const [showProPopup, setShowProPopup] = useState(false);
   const photoRef = useRef(); const sportPhotoRef = useRef();
 
   useEffect(() => {
@@ -1791,7 +1792,13 @@ export default function App() {
       }
       else { setOnboarded(false); return; }
       const { data: logs } = await supabase.from("daily_logs").select("*").eq("user_id", user.id).order("date");
-      if (logs) { const hist = logs.map(l => ({ ...l.data, date: l.date, score: l.score })); setHistory(hist); const todayEntry = hist.find(d => d.date === new Date().toISOString().split("T")[0]); if (todayEntry) { if (todayEntry.sleep?.bedtime && todayEntry.sleep?.wakeup && !todayEntry.sleep?.duration) todayEntry.sleep.duration = calcDuration(todayEntry.sleep.bedtime, todayEntry.sleep.wakeup); setToday(todayEntry); } }
+      if (logs) { const hist = logs.map(l => ({ ...l.data, date: l.date, score: l.score })); setHistory(hist); const todayEntry = hist.find(d => d.date === new Date().toISOString().split("T")[0]); if (todayEntry) { if (todayEntry.sleep?.bedtime && todayEntry.sleep?.wakeup && !todayEntry.sleep?.duration) todayEntry.sleep.duration = calcDuration(todayEntry.sleep.bedtime, todayEntry.sleep.wakeup); setToday(todayEntry); }
+        // Popup 7 jours : montrer une seule fois après 7 jours d'utilisation aux utilisateurs free
+        if (hist.length >= 7 && !localStorage.getItem("proPopupSeen")) {
+          const plan = profileData?.plan || "free";
+          if (plan === "free") { setTimeout(() => setShowProPopup(true), 2000); }
+        }
+      }
       const { data: goalsData } = await supabase.from("goals").select("*").eq("user_id", user.id);
       if (goalsData?.length) setGoals(goalsData.map(g => g.data));
       const { data: patrimoineData } = await supabase.from("patrimoine").select("*").eq("user_id", user.id).single();
@@ -2063,6 +2070,34 @@ export default function App() {
       {showDataExport && <DataExportModal history={history} profile={profile} nutritionGoals={nutritionGoals} goals={goals} patrimoine={patrimoine} onClose={() => setShowDataExport(false)} />}
       {showDeleteAccount && <DeleteAccountModal profile={profile} onClose={() => setShowDeleteAccount(false)} onConfirmDelete={async () => { const { data: { user } } = await supabase.auth.getUser(); if (user) { await supabase.from("daily_logs").delete().eq("user_id", user.id); await supabase.from("goals").delete().eq("user_id", user.id); await supabase.from("patrimoine").delete().eq("user_id", user.id); await supabase.from("todos").delete().eq("user_id", user.id); await supabase.from("profiles").delete().eq("id", user.id); await supabase.auth.signOut(); } setShowDeleteAccount(false); }} />}
       {showFAQ && <FAQPage onBack={() => setShowFAQ(false)} />}
+
+      {/* POPUP 7 JOURS — argument 0€ premier mois */}
+      {showProPopup && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 0 20px" }} onClick={() => { setShowProPopup(false); localStorage.setItem("proPopupSeen", "1"); }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: C.surface, borderRadius: 28, padding: "28px 24px", maxWidth: 420, width: "100%", boxShadow: "0 -8px 40px rgba(0,0,0,0.18)" }}>
+            <div style={{ fontSize: 44, textAlign: "center", marginBottom: 12 }}>🔥</div>
+            <h2 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 900, color: C.text, textAlign: "center", letterSpacing: -0.5 }}>
+              Tu utilises MYLIDE depuis 7 jours !
+            </h2>
+            <p style={{ margin: "0 0 20px", fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 1.6 }}>
+              Débloque les statistiques avancées, l'historique complet et bien plus — <strong style={{ color: C.text }}>gratuitement pendant 1 mois</strong>.
+            </p>
+            <div style={{ background: "linear-gradient(135deg, #10B981, #059669)", borderRadius: 16, padding: "14px 18px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 28 }}>🎁</span>
+              <div>
+                <p style={{ margin: 0, fontWeight: 800, color: "#fff", fontSize: 15 }}>1 mois offert · 0€ aujourd'hui</p>
+                <p style={{ margin: "2px 0 0", color: "rgba(255,255,255,0.85)", fontSize: 12 }}>Puis à partir de 3,99€/mois · Résiliable à tout moment</p>
+              </div>
+            </div>
+            <button onClick={() => { setShowProPopup(false); localStorage.setItem("proPopupSeen", "1"); setShowSubscription(true); }} style={{ width: "100%", padding: "15px", background: "linear-gradient(135deg, #CC2936, #8B1A22)", color: "#fff", border: "none", borderRadius: 14, fontWeight: 800, fontSize: 16, cursor: "pointer", boxShadow: "0 6px 20px rgba(204,41,54,0.3)", marginBottom: 10 }}>
+              Voir les offres →
+            </button>
+            <button onClick={() => { setShowProPopup(false); localStorage.setItem("proPopupSeen", "1"); }} style={{ width: "100%", padding: "12px", background: "none", border: "none", color: C.muted, fontSize: 13, cursor: "pointer" }}>
+              Plus tard
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* HEADER */}
       <div style={{ padding: "14px 20px 12px", background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(20px)" }}>
