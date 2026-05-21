@@ -740,12 +740,12 @@ const SubLayout = ({ onBack, title, onSave, saving, saveOk, children }) => {
   const C = useC();
   return (
     <div style={{ position: "fixed", inset: 0, background: C.bg, zIndex: 210, overflowY: "auto", maxWidth: 480, margin: "0 auto", fontFamily: "DM Sans, sans-serif" }}>
-      <div style={{ padding: "18px 20px 14px", background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(20px)", display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ padding: "calc(var(--sat) + 16px) 20px 14px", background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", display: "flex", alignItems: "center", gap: 12 }}>
         <button onClick={onBack} style={{ background: C.surfaceAlt, border: "none", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontSize: 18, color: C.black, fontFamily: "inherit" }}>←</button>
         <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.black, flex: 1 }}>{title}</p>
         {onSave && <button onClick={onSave} disabled={saving} style={{ background: saveOk ? C.green : C.red, color: "#fff", border: "none", borderRadius: 12, padding: "9px 18px", cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>{saving ? "..." : saveOk ? "Sauvegardé !" : "Enregistrer"}</button>}
       </div>
-      <div style={{ padding: "20px 16px" }}>{children}</div>
+      <div style={{ padding: "20px 18px 40px" }}>{children}</div>
     </div>
   );
 };
@@ -1553,8 +1553,8 @@ const AthleticRadar = ({ data }) => {
   const COLORS = { Sommeil: "#A855F7", Sport: "#CC2936", Nutrition: "#F97316", Travail: "#3B82F6", Mental: "#22C55E", Corps: "#F59E0B" };
   return (
     <div style={{ background: C.surfaceAlt, borderRadius: 16, padding: 16, position: "relative" }}>
-      <ResponsiveContainer width="100%" height={220}>
-        <RadarChart data={data} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
+      <ResponsiveContainer width="100%" height={195}>
+        <RadarChart data={data} margin={{ top: 8, right: 26, bottom: 8, left: 26 }}>
           <PolarGrid stroke={C.border} />
           <PolarAngleAxis dataKey="s" tick={({ x, y, payload }) => {
             const col = COLORS[payload.value] || C.muted;
@@ -1653,7 +1653,7 @@ const Card = ({ children, style = {}, accent, dark }) => {
   const C = useC();
   const bg = accent ? `linear-gradient(135deg, ${C.red} 0%, #8B1A22 100%)` : dark ? C.bg : C.surface;
   return (
-    <div style={{ background: bg, border: accent || dark ? "none" : `1px solid ${C.border}`, borderRadius: 20, padding: 20, marginBottom: 12, boxShadow: accent ? "0 12px 40px rgba(204,41,54,0.22)" : "0 2px 16px rgba(0,0,0,0.05)", ...style }}>{children}</div>
+    <div style={{ background: bg, border: accent || dark ? "none" : `1px solid ${C.border}`, borderRadius: 22, padding: "20px 20px", marginBottom: 14, boxShadow: accent ? "0 12px 40px rgba(204,41,54,0.22)" : "0 2px 16px rgba(0,0,0,0.05)", ...style }}>{children}</div>
   );
 };
 
@@ -2695,13 +2695,21 @@ export default function App() {
   if (!onboarded) return <Onboarding onComplete={handleOnboardingComplete} />;
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, color: C.text, maxWidth: 480, margin: "0 auto", paddingBottom: 90, position: "relative", touchAction: "pan-y" }}>
+    <div style={{ minHeight: "100dvh", background: C.bg, color: C.text, maxWidth: 480, margin: "0 auto", paddingBottom: "calc(72px + var(--sab))", position: "relative", touchAction: "pan-y" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
-        * { font-family: 'DM Sans', sans-serif !important; box-sizing: border-box; }
+        * { font-family: 'DM Sans', sans-serif !important; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         input, select, textarea { font-family: 'DM Sans', sans-serif !important; font-size: 16px !important; }
         ::-webkit-scrollbar { display: none; }
-        * { -webkit-tap-highlight-color: transparent; }
+        * { scrollbar-width: none; }
+        img { display: block; max-width: 100%; }
+        button { -webkit-appearance: none; }
+        :root {
+          --sat: env(safe-area-inset-top, 0px);
+          --sab: env(safe-area-inset-bottom, 0px);
+          --sal: env(safe-area-inset-left, 0px);
+          --sar: env(safe-area-inset-right, 0px);
+        }
         ${darkMode ? `
           input, select, textarea {
             background: ${C.surfaceAlt} !important;
@@ -2754,7 +2762,7 @@ export default function App() {
       )}
 
       {/* HEADER */}
-      <div style={{ padding: "14px 20px 12px", background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(20px)" }}>
+      <div style={{ padding: "calc(var(--sat) + 12px) 20px 12px", background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", minHeight: 52 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div onClick={() => setNav("profile")} style={{ cursor: "pointer", flexShrink: 0 }}>
@@ -2773,7 +2781,7 @@ export default function App() {
         {intel.alerts.length === 0 && intel.advice.length > 0 && <div style={{ marginTop: 10 }}><MsgBox type="advice" msg={intel.advice[0]} /></div>}
       </div>
 
-      <div style={{ padding: "14px 16px", position: "relative" }} {...swipeNav}>
+      <div style={{ padding: "16px 18px", position: "relative" }} {...swipeNav}>
         <PageTransition pageKey={nav + trackTab}>
 
           {/* TODAY */}
@@ -3903,11 +3911,11 @@ export default function App() {
       </div>
 
       {/* BOTTOM NAV */}
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: C.navBg, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20, paddingBottom: "env(safe-area-inset-bottom)", boxShadow: "0 -1px 0 rgba(0,0,0,0.04)" }}>
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: C.navBg, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20, paddingBottom: "var(--sab)", boxShadow: "0 -4px 24px rgba(0,0,0,0.07)" }}>
         {NAV.map(n => {
           const active = nav === n.id;
           return (
-            <button key={n.id} onClick={() => setNav(n.id)} style={{ flex: 1, padding: "10px 4px 10px", border: "none", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <button key={n.id} onClick={() => setNav(n.id)} style={{ flex: 1, padding: "11px 4px 9px", border: "none", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
               <div style={{ width: 40, height: 40, borderRadius: 14, background: active ? (darkMode ? "#1E1E1E" : "#F0F0EE") : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
                 {Ico[n.icon](active ? C.red : C.muted, 20)}
               </div>
