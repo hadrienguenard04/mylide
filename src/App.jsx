@@ -565,11 +565,8 @@ const defaultPatrimoine = () => ([
   { id: 2, name: "Livret A", amount: 0, color: "#16a34a" },
 ]);
 
-const POCHE_COLORS = [
-  "#2563eb","#16a34a","#CC2936","#D4580A",
-  "#6B35C8","#0891b2","#f59e0b","#e11d48",
-  "#0d9488","#4f46e5","#9333ea","#64748b",
-];
+const POCHE_COLORS = ["#2563eb","#16a34a","#CC2936","#D4580A","#6B35C8","#0891b2","#f59e0b","#e11d48","#0d9488","#4f46e5","#9333ea","#64748b"];
+const randomPocheColor = () => POCHE_COLORS[Math.floor(Math.random() * POCHE_COLORS.length)];
 
 const PRIORITIES = [
   { id: "sport", label: "Sport & Recuperation", icon: "💪", color: "#CC2936" },
@@ -3594,67 +3591,41 @@ export default function App() {
                 {patrimoine.map((p, idx) => {
                   const isEditing = renamingPoche === p.id;
                   return (
-                    <div key={p.id} style={{ marginBottom: 10, background: C.surfaceAlt, borderRadius: 16, borderLeft: `4px solid ${p.color}`, overflow: "hidden" }}>
-                      {/* Ligne principale */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px" }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                          <button onClick={() => movePoche(idx, -1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", color: C.muted }}>{Ico.up(C.muted, 14)}</button>
-                          <button onClick={() => movePoche(idx, 1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", color: C.muted }}>{Ico.down(C.muted, 14)}</button>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          {isEditing
-                            ? <input autoFocus value={p.name} onChange={e => updatePoche(p.id, "name", e.target.value)} onKeyDown={e => e.key === "Enter" && setRenamingPoche(null)} style={{ ...inp, padding: "4px 8px", fontSize: 14, fontWeight: 700, width: "100%" }} />
-                            : <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.black, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</p>
-                          }
-                          <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginTop: 4 }}>
-                            <input
-                              type="number"
-                              value={p.amount === 0 ? "" : p.amount}
-                              placeholder="0"
-                              onChange={e => updatePoche(p.id, "amount", e.target.value === "" ? 0 : +e.target.value)}
-                              onFocus={e => e.target.select()}
-                              style={{ background: "transparent", border: "none", outline: "none", fontSize: 22, fontWeight: 900, color: p.color, width: 140, fontFamily: "inherit" }}
-                            />
-                            <span style={{ fontSize: 13, color: C.muted }}>€</span>
-                          </div>
-                        </div>
-                        <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
-                          <button
-                            onClick={() => setRenamingPoche(isEditing ? null : p.id)}
-                            style={{ background: isEditing ? p.color : C.surface, border: `1px solid ${isEditing ? p.color : C.border}`, borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: isEditing ? "#fff" : C.muted, fontSize: 14, fontWeight: 800, transition: "all 200ms ease" }}
-                          >{isEditing ? "✓" : Ico.edit(C.muted, 14)}</button>
-                          <button onClick={() => deletePoche(p.id)} style={{ background: `${C.red12}`, border: `1px solid ${C.red22}`, borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>{Ico.trash(C.red, 14)}</button>
+                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, padding: "14px 16px", background: C.surfaceAlt, borderRadius: 16, borderLeft: `4px solid ${p.color}` }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <button onClick={() => movePoche(idx, -1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", color: C.muted }}>{Ico.up(C.muted, 14)}</button>
+                        <button onClick={() => movePoche(idx, 1)} style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", color: C.muted }}>{Ico.down(C.muted, 14)}</button>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {isEditing
+                          ? <input autoFocus value={p.name} onChange={e => updatePoche(p.id, "name", e.target.value)} onKeyDown={e => e.key === "Enter" && setRenamingPoche(null)} style={{ ...inp, padding: "4px 8px", fontSize: 14, fontWeight: 700, width: "100%" }} />
+                          : <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.black, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</p>
+                        }
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginTop: 4 }}>
+                          <input
+                            type="number"
+                            value={p.amount === 0 ? "" : p.amount}
+                            placeholder="0"
+                            onChange={e => updatePoche(p.id, "amount", e.target.value === "" ? 0 : +e.target.value)}
+                            onFocus={e => e.target.select()}
+                            style={{ background: "transparent", border: "none", outline: "none", fontSize: 22, fontWeight: 900, color: p.color, width: 140, fontFamily: "inherit" }}
+                          />
+                          <span style={{ fontSize: 13, color: C.muted }}>€</span>
                         </div>
                       </div>
-
-                      {/* Palette couleur — visible uniquement en mode édition */}
-                      {isEditing && (
-                        <div style={{ padding: "0 16px 14px 52px", borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 0.8, margin: "0 0 8px" }}>Couleur</p>
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            {POCHE_COLORS.map(col => (
-                              <div
-                                key={col}
-                                onClick={() => updatePoche(p.id, "color", col)}
-                                style={{
-                                  width: 28, height: 28, borderRadius: "50%",
-                                  background: col, cursor: "pointer", flexShrink: 0,
-                                  boxShadow: p.color === col
-                                    ? `0 0 0 3px ${C.surface}, 0 0 0 5px ${col}`
-                                    : "0 2px 6px rgba(0,0,0,0.15)",
-                                  transform: p.color === col ? "scale(1.15)" : "scale(1)",
-                                  transition: "all 200ms cubic-bezier(0.4, 0, 0.2, 1)",
-                                }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                        {/* Rond coloré cliquable → color picker natif */}
+                        <label style={{ position: "relative", width: 28, height: 28, borderRadius: "50%", background: p.color, cursor: "pointer", display: "block", flexShrink: 0, boxShadow: `0 0 0 2px ${C.surface}, 0 0 0 4px ${p.color}40` }}>
+                          <input type="color" value={p.color} onChange={e => updatePoche(p.id, "color", e.target.value)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", border: "none", padding: 0 }} />
+                        </label>
+                        <button onClick={() => setRenamingPoche(isEditing ? null : p.id)} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>{Ico.edit(C.muted, 14)}</button>
+                        <button onClick={() => deletePoche(p.id)} style={{ background: `${C.red12}`, border: `1px solid ${C.red22}`, borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>{Ico.trash(C.red, 14)}</button>
+                      </div>
                     </div>
                   );
                 })}
 
-                {/* Formulaire ajout nouvelle poche */}
+                {/* Formulaire ajout — nom + montant, couleur auto */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <input value={newPoche.name} onChange={e => setNewPoche(p => ({ ...p, name: e.target.value }))} placeholder="Nom" style={inp} />
@@ -3667,31 +3638,7 @@ export default function App() {
                       style={inp}
                     />
                   </div>
-                  {/* Palette couleur pour la nouvelle poche */}
-                  <div>
-                    <p style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 0.8, margin: "0 0 8px" }}>Couleur</p>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {POCHE_COLORS.map(col => (
-                        <div
-                          key={col}
-                          onClick={() => setNewPoche(p => ({ ...p, color: col }))}
-                          style={{
-                            width: 26, height: 26, borderRadius: "50%",
-                            background: col, cursor: "pointer", flexShrink: 0,
-                            boxShadow: newPoche.color === col
-                              ? `0 0 0 3px ${C.surface}, 0 0 0 5px ${col}`
-                              : "0 2px 6px rgba(0,0,0,0.12)",
-                            transform: newPoche.color === col ? "scale(1.18)" : "scale(1)",
-                            transition: "all 200ms cubic-bezier(0.4, 0, 0.2, 1)",
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <button onClick={addPoche} style={{ width: "100%", padding: "13px", background: C.black, color: "#fff", border: "none", borderRadius: 14, fontWeight: 700, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                    <span style={{ fontSize: 18, width: 20, height: 20, borderRadius: "50%", background: newPoche.color, display: "inline-block", flexShrink: 0, verticalAlign: "middle" }} />
-                    + Ajouter une poche
-                  </button>
+                  <button onClick={addPoche} style={{ width: "100%", padding: "13px", background: C.black, color: "#fff", border: "none", borderRadius: 14, fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Ajouter une poche</button>
                 </div>
               </Card>
               <Card>
