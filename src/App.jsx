@@ -1779,10 +1779,16 @@ export default function App() {
   const loadDoneRef = useRef(false);
   const todayRef = useRef(null);
   const historyRef = useRef(null);
+  const todosRef = useRef([]);
+  const goalsRef = useRef([]);
+  const patrimoineRef = useRef({});
+  const profileRef = useRef({});
+  const currentUserIdRef = useRef(null);
 
   useEffect(() => {
     const loadData = async (user) => {
-      if (!user) { setOnboarded(false); return; }
+      if (!user) { setOnboarded(false); currentUserIdRef.current = null; return; }
+      currentUserIdRef.current = user.id;
       setCurrentUser(user);
       const { data: profileData } = await supabase.from("profiles").select("*").eq("id", user.id).single();
       if (profileData) {
@@ -1802,8 +1808,29 @@ export default function App() {
         if (params.get("payment") === "success") setShowSubscription(true);
       }
       else { setOnboarded(false); return; }
-      const { data: logs } = await supabase.from("daily_logs").select("*").eq("user_id", user.id).order("date");
-      if (logs) { const hist = logs.map(l => ({ ...l.data, date: l.date, score: l.score })); setHistory(hist); const todayEntry = hist.find(d => d.date === new Date().toISOString().split("T")[0]); if (todayEntry) { if (todayEntry.sleep?.bedtime && todayEntry.sleep?.wakeup && !todayEntry.sleep?.duration) todayEntry.sleep.duration = calcDuration(todayEntry.sleep.bedtime, todayEntry.sleep.wakeup); setToday(todayEntry); }
+      // Tri : date ASC, puis updated_at DESC (si la colonne existe) pour que
+      // la ligne la plus récente par date soit la dernière → écrase les doublons dans le Map.
+      // Le tri secondaire par id desc garantit le même comportement si updated_at absent.
+      const { data: logs } = await supabase.from("daily_logs").select("*").eq("user_id", user.id).order("date").order("id", { ascending: false });
+      if (logs) {
+        // Dédupliquer : pour chaque date, la PREMIÈRE occurrence est la plus récente
+        // (grâce au tri id DESC). On prend donc uniquement la première par date.
+        const seen = new Set();
+        const uniqueLogs = logs.filter(l => { if (seen.has(l.date)) return false; seen.add(l.date); return true; });
+        const hist = uniqueLogs.map(l => ({ ...l.data, date: l.date, score: l.score })).sort((a, b) => a.date.localeCompare(b.date));
+
+        setHistory(hist);
+        const todayStr = new Date().toISOString().split("T")[0];
+        const todayEntry = hist.find(d => d.date === todayStr);
+        if (todayEntry) {
+          if (todayEntry.sleep?.bedtime && todayEntry.sleep?.wakeup && !todayEntry.sleep?.duration)
+            todayEntry.sleep.duration = calcDuration(todayEntry.sleep.bedtime, todayEntry.sleep.wakeup);
+          setToday(todayEntry);
+          console.log("[loadData] ✓ today from DB:", todayStr, "sport:", todayEntry.sport?.type || "—", "weight:", todayEntry.body?.weight || "—");
+        } else {
+          console.log("[loadData] no entry for today in DB →", todayStr);
+        }
+
         // Popup 7 jours : montrer une seule fois après 7 jours d'utilisation aux utilisateurs free
         if (hist.length >= 7 && !localStorage.getItem("proPopupSeen")) {
           const plan = profileData?.plan || "free";
@@ -1821,20 +1848,45 @@ export default function App() {
     };
 
     // onAuthStateChange gère tout : INITIAL_SESSION (charge depuis localStorage,
-    // sans réseau), SIGNED_IN (retour OAuth / renouvellement token), SIGNED_OUT.
-    // On n'appelle plus getSession() séparément pour éviter la double exécution.
+    // sans réseau), SIGNED_IN (retour OAuth), SIGNED_OUT.
+    // TOKEN_REFRESHED est ignoré : c'est un renouvellement silencieux du JWT,
+    // aucune donnée utilisateur ne change → on ne recharge PAS et on ne remet
+    // PAS loadDoneRef à false (ce qui bloquerait l'auto-save et écraserait today).
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "INITIAL_SESSION") {
         // Premier check au démarrage — session null ou restaurée depuis localStorage
         loadDoneRef.current = false;
         loadData(session?.user ?? null);
-      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+      } else if (event === "SIGNED_IN") {
+        // Retour OAuth uniquement. Si c'est le même utilisateur déjà chargé
+        // (ex : focus de l'onglet Chrome), on ne recharge PAS pour ne pas
+        // écraser les données non encore sauvegardées.
+        if (currentUserIdRef.current && currentUserIdRef.current === session.user?.id) return;
         loadDoneRef.current = false;
         loadData(session.user);
       } else if (event === "SIGNED_OUT") {
+        loadDoneRef.current = false;
         setOnboarded(false);
       }
+      // TOKEN_REFRESHED → no-op intentionnel
     });
+
+    // Force-save avant fermeture / rechargement de page
+    // Annule le debounce de 2 s et sauvegarde immédiatement les données en cours
+    const handleBeforeUnload = () => {
+      if (!loadDoneRef.current) return;
+      clearTimeout(autoSaveRef.current);
+      const t = todayRef.current;
+      const h = historyRef.current;
+      if (!t || !h) return;
+      const updated = { ...t, score: calcScore(t) };
+      const newH = [...h.filter(d => d.date !== t.date), updated].sort((a, b) => a.date.localeCompare(b.date));
+      historyRef.current = newH;
+      // saveAll est async mais on l'appelle quand même — le navigateur laisse
+      // quelques ms aux promesses fetch() en cours avant de fermer la page.
+      saveAll(newH, todosRef.current ?? [], goalsRef.current ?? [], patrimoineRef.current ?? {}, profileRef.current ?? {});
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
     // Demande permission notifs au premier lancement
     if (!localStorage.getItem("notifAsked") && "Notification" in window) {
@@ -1847,14 +1899,21 @@ export default function App() {
       }, 3000);
     }
 
-    return () => { authSub?.unsubscribe(); };
+    return () => { authSub?.unsubscribe(); window.removeEventListener("beforeunload", handleBeforeUnload); };
   }, []);
 
-  // Pré-remplir les mesures corpo depuis le dernier enregistrement connu
+  // Pré-remplir les mesures corpo depuis le dernier enregistrement connu.
+  // SÉCURITÉ : on ne préremplit QUE si today n'est pas encore dans l'historique
+  // (= première visite du jour). Si today est déjà dans history (données sauvegardées),
+  // on ne touche PAS — évite d'écraser le poids changé par l'utilisateur lors d'un
+  // setHistory déclenché par l'auto-save.
   useEffect(() => {
     if (!history.length) return;
     const todayStr = new Date().toISOString().split("T")[0];
+    // Si aujourd'hui est déjà dans history avec des données corpo → on ne préremplit pas
+    const todayInHistory = history.find(d => d.date === todayStr);
     const bodyFields = ["weight", "weightTarget", "chest", "waist", "hips", "arms", "thighs", "restingHR", "maxHR"];
+    if (todayInHistory && bodyFields.some(f => (todayInHistory.body?.[f] || 0) > 0)) return;
     const lastBody = [...history].reverse().find(d => d.date !== todayStr && d.body && bodyFields.some(f => d.body[f] > 0));
     if (!lastBody?.body) return;
     setToday(prev => {
@@ -1874,6 +1933,10 @@ export default function App() {
   // ── Auto-save refs (toujours à jour sans déclencher l'effet auto-save) ────
   useEffect(() => { todayRef.current = today; }, [today]);
   useEffect(() => { historyRef.current = history; }, [history]);
+  useEffect(() => { todosRef.current = todos; }, [todos]);
+  useEffect(() => { goalsRef.current = goals; }, [goals]);
+  useEffect(() => { patrimoineRef.current = patrimoine; }, [patrimoine]);
+  useEffect(() => { profileRef.current = profile; }, [profile]);
 
   // ── Auto-save : 2 secondes après la dernière modification de today ────────
   useEffect(() => {
@@ -1887,20 +1950,59 @@ export default function App() {
       const newH = [...h.filter(d => d.date !== t.date), updated].sort((a, b) => a.date.localeCompare(b.date));
       historyRef.current = newH;
       setHistory(newH);
-      saveAll(newH, todos, goals, patrimoine, profile);
+      // Utiliser les refs pour avoir les valeurs les plus récentes
+      saveAll(newH, todosRef.current, goalsRef.current, patrimoineRef.current, profileRef.current);
     }, 2000);
     return () => clearTimeout(autoSaveRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [today]);
 
   const saveAll = useCallback(async (h, t, g, p, pr) => {
-    const { data: { session } } = await supabase.auth.getSession(); const user = session?.user; if (!user) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) { console.warn("[saveAll] No session — skipping save"); return; }
+
+    // Profil
     await supabase.from("profiles").upsert({ id: user.id, name: pr.name, dob: pr.dob, photo: pr.photo });
-    const todayStr = new Date().toISOString().split("T")[0]; const todayData = h.find(d => d.date === todayStr);
-    if (todayData) await supabase.from("daily_logs").upsert({ user_id: user.id, date: todayStr, data: todayData, score: todayData.score || 0 });
+
+    // Journal du jour : SELECT l'ID existant → upsert par PK (comme profiles).
+    // Ne nécessite aucune contrainte UNIQUE, fonctionne avec n'importe quel schéma.
+    const todayStr = new Date().toISOString().split("T")[0];
+    const todayData = h.find(d => d.date === todayStr);
+    if (todayData) {
+      // 1) Chercher la ligne la plus récente pour (user_id, date)
+      const { data: existing } = await supabase
+        .from("daily_logs")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("date", todayStr)
+        .order("id", { ascending: false })
+        .limit(1);
+      const rowId = existing?.[0]?.id;
+      const payload = { user_id: user.id, date: todayStr, data: todayData, score: todayData.score || 0 };
+
+      // 2a) Ligne existante → upsert avec l'id réel (garanti de mettre à jour)
+      // 2b) Pas de ligne → insert (premier save du jour)
+      const { error: saveErr } = rowId
+        ? await supabase.from("daily_logs").upsert({ ...payload, id: rowId })
+        : await supabase.from("daily_logs").insert(payload);
+
+      if (saveErr) {
+        console.error("[saveAll] ERREUR save daily_logs:", saveErr);
+        alert("❌ Erreur de sauvegarde : " + saveErr.message);
+      } else {
+        console.log("[saveAll] ✓", rowId ? "UPDATE" : "INSERT", todayStr, "poids:", todayData.body?.weight, "sport:", todayData.sport?.type || "—");
+      }
+    }
+
+    // Objectifs
     await supabase.from("goals").delete().eq("user_id", user.id);
     if (g.length) await supabase.from("goals").insert(g.map(goal => ({ user_id: user.id, data: goal })));
+
+    // Patrimoine
     await supabase.from("patrimoine").upsert({ user_id: user.id, data: p });
+
+    // Todos
     await supabase.from("todos").delete().eq("user_id", user.id);
     if (t.length) await supabase.from("todos").insert(t.map(todo => ({ user_id: user.id, data: todo })));
   }, []);
@@ -1916,9 +2018,13 @@ export default function App() {
   const updateNested = (section, sub, field, val) => { setToday(prev => { const updated = { ...prev, [section]: { ...prev[section], [sub]: { ...prev[section][sub], [field]: val } } }; updated.score = calcScore(updated); return updated; }); setSaved(false); };
 
   const saveDay = () => {
+    // Annuler l'auto-save en cours pour éviter une double écriture concurrente
+    clearTimeout(autoSaveRef.current);
     const updated = { ...today, score: calcScore(today) };
     const newHistory = [...history.filter(d => d.date !== today.date), updated].sort((a, b) => a.date.localeCompare(b.date));
-    setHistory(newHistory); saveAll(newHistory, todos, goals, patrimoine, profile);
+    historyRef.current = newHistory;
+    setHistory(newHistory);
+    saveAll(newHistory, todosRef.current, goalsRef.current, patrimoineRef.current, profileRef.current);
     setSaved(true); setTimeout(() => setSaved(false), 2500);
   };
 
