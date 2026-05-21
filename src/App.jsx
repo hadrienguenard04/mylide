@@ -6,7 +6,7 @@ import { isAtLeast } from "./planConfig.js";
 import {
   GOAL_CONFIG, ACTIVITY_LEVELS,
   calcBMR, calcTDEE, calcSportBurn, calcMacros,
-  estimateProgress, detectContradictions,
+  estimateProgress, detectContradictions, formatProgress,
   inferActivityLevel, getWeeklySportFreq, getGoalMessage,
 } from "./nutritionScience.js";
 
@@ -252,7 +252,7 @@ function getTemporalIntelligence(today, history, goals) {
 const NUTRITION_TIPS = {
   all: [
     { q: "C'est quoi le TDEE ?", a: "Total Daily Energy Expenditure : la quantité de calories que tu brûles en une journée complète (métabolisme de base + activité physique + digestion). C'est ta référence pour savoir si tu es en surplus ou en déficit calorique." },
-    { q: "Pourquoi les protéines sont si importantes ?", a: "Les protéines sont les briques de construction des muscles. Sans apport suffisant, ton corps peut puiser dans le tissu musculaire pour récupérer. Objectif général : 1.8–2.5g par kg de poids corporel." },
+    { q: "Pourquoi les protéines sont si importantes ?", a: "Les protéines sont les briques de construction des muscles. Sans apport suffisant, ton corps peut puiser dans le tissu musculaire pour récupérer. Objectif général : 1,8 à 2,5g par kg de poids corporel." },
     { q: "Combien de repas par jour ?", a: "3 repas principaux bien structurés suffisent pour la plupart. L'important est d'atteindre tes objectifs caloriques et macro sur la journée, pas le nombre exact de repas." },
     { q: "Pourquoi noter ce que je mange ?", a: "Tracker ta nutrition révèle des habitudes invisibles : déficits en protéines, excès de graisses, repas sautés. La prise de conscience est la première étape du changement." },
     { q: "Les glucides font-ils grossir ?", a: "Non, pas en eux-mêmes. C'est le surplus calorique global qui fait stocker des graisses. Les glucides sont la principale source d'énergie pour le cerveau et les muscles." },
@@ -264,29 +264,29 @@ const NUTRITION_TIPS = {
   ],
   perte: [
     { q: "Pourquoi boire beaucoup d'eau quand on veut perdre du poids ?", a: "Les glucides stockés retiennent l'eau (environ 3g d'eau par gramme de glycogène). En réduisant les glucides, tu perds beaucoup d'eau rapidement. Il faut compenser pour maintenir ton hydratation cellulaire." },
-    { q: "Combien de calories en moins pour perdre du poids ?", a: "Un déficit de 400–500 kcal/jour est idéal : assez pour perdre 0.5–1% de ton poids corporel par semaine, sans trop sacrifier les performances ni la masse musculaire." },
+    { q: "Combien de calories en moins pour perdre du poids ?", a: "Un déficit de 400 à 500 kcal/jour est idéal : assez pour perdre 0,5 à 1% de ton poids corporel par semaine, sans trop sacrifier les performances ni la masse musculaire." },
     { q: "Pourquoi les protéines sont cruciales en perte de poids ?", a: "Les protéines ont un fort effet satiétant et un coût énergétique élevé à digérer (effet thermique ~25%). Surtout, elles protègent ta masse musculaire quand tu es en déficit calorique." },
     { q: "Faut-il supprimer les glucides ?", a: "Pas forcément. Réduire les glucides raffinés (sucre, pain blanc) est utile, mais les glucides complexes (riz, avoine, patate douce) restent d'excellentes sources d'énergie et de fibres." },
-    { q: "Pourquoi je pèse plus après une séance ?", a: "Inflammation musculaire post-effort, eau retenue pour réparer les fibres, glycogène reconstitué. Le poids peut augmenter de 0.5–2kg après une séance intense avant de redescendre." },
-    { q: "La balance ne bouge plus, que faire ?", a: "Plateau normal après 3–4 semaines. Options : réduire légèrement les calories (50–100 kcal), augmenter l'activité, faire une semaine de maintenance puis reprendre, ou vérifier si tu retiens de l'eau (stress, sel)." },
+    { q: "Pourquoi je pèse plus après une séance ?", a: "Inflammation musculaire post-effort, eau retenue pour réparer les fibres, glycogène reconstitué. Le poids peut augmenter de 0,5 à 2kg après une séance intense avant de redescendre." },
+    { q: "La balance ne bouge plus, que faire ?", a: "Plateau normal après 3 à 4 semaines. Options : réduire légèrement les calories (50 à 100 kcal), augmenter l'activité, faire une semaine de maintenance puis reprendre, ou vérifier si tu retiens de l'eau (stress, sel)." },
     { q: "Puis-je manger du sport food en perte de poids ?", a: "Les barres et whey sont des outils, pas des obligations. Si tu atteins tes besoins en protéines via la nourriture réelle, pas besoin de compléments." },
-    { q: "Pourquoi noter la junk food ?", a: "Une pizza ou un burger peut représenter 1000–1500 kcal, soit 50–75% de l'objectif journalier. L'identifier te donne un contrôle conscient sans te priver : une fois par semaine, c'est tout à fait viable." },
+    { q: "Pourquoi noter la junk food ?", a: "Une pizza ou un burger peut représenter 1000 à 1500 kcal, soit 50 à 75% de l'objectif journalier. L'identifier te donne un contrôle conscient sans te priver : une fois par semaine, c'est tout à fait viable." },
     { q: "Est-ce que le cardio aide à perdre du poids ?", a: "Oui, il augmente ta dépense calorique. MYLIDE calcule automatiquement les calories brûlées selon le type et la durée de ton sport pour ajuster tes objectifs en conséquence." },
-    { q: "Quelle est la différence entre poids perdu et graisse perdue ?", a: "Les premières semaines, tu perds surtout de l'eau et du glycogène (poids rapide). La vraie perte de graisse est plus lente (0.5–1kg par semaine en régime conservateur)." },
+    { q: "Quelle est la différence entre poids perdu et graisse perdue ?", a: "Les premières semaines, tu perds surtout de l'eau et du glycogène (poids rapide). La vraie perte de graisse est plus lente (0,5 à 1kg par semaine en régime conservateur)." },
     { q: "Dois-je manger avant ou après le sport en perte de poids ?", a: "Un repas riche en protéines dans les 2h après la séance est important pour la récupération musculaire. Le reste dépend de tes préférences, sauf si la séance est à jeun (possible mais déconseillé si intensité élevée)." },
     { q: "Pourquoi mon sommeil influence ma perte de poids ?", a: "Le manque de sommeil augmente la ghréline (hormone de la faim) et diminue la leptine (hormone de satiété). Résultat : tu manges plus et ton corps stocke davantage en graisses." },
   ],
   masse: [
-    { q: "Combien de calories en plus pour prendre de la masse ?", a: "Un surplus de 200–350 kcal/jour est idéal : suffisant pour construire du muscle sans prendre trop de gras. MYLIDE ajoute 300 kcal à ton TDEE de base." },
-    { q: "Quelle quantité de protéines pour la prise de masse ?", a: "2.0–2.2g par kg de poids corporel. Au-delà de 2.5g/kg, le surplus ne se transforme pas en muscle supplémentaire et est simplement brûlé comme énergie." },
+    { q: "Combien de calories en plus pour prendre de la masse ?", a: "Un surplus de 200 à 350 kcal/jour est idéal : suffisant pour construire du muscle sans prendre trop de gras. MYLIDE ajoute 300 kcal à ton TDEE de base." },
+    { q: "Quelle quantité de protéines pour la prise de masse ?", a: "2,0 à 2,2g par kg de poids corporel. Au-delà de 2,5g/kg, le surplus ne se transforme pas en muscle supplémentaire et est simplement brûlé comme énergie." },
     { q: "Faut-il manger même si on n'a pas faim ?", a: "En prise de masse, oui. Atteindre ton surplus calorique est la priorité. Des repas fréquents (toutes les 3-4h) peuvent aider à répartir l'apport sans se sentir surchargé." },
     { q: "Quand manger ses glucides ?", a: "Priorité avant et après la séance de sport pour maximiser l'énergie et la récupération. Les glucides pré-séance alimentent la performance, les glucides post-séance rechargent le glycogène musculaire." },
     { q: "Le gainer est-il nécessaire ?", a: "Seulement si tu as du mal à atteindre ton apport calorique via la nourriture solide. Préfère des aliments caloriques denses : flocons d'avoine, noix, banane, beurre de cacahuète." },
-    { q: "Combien de temps pour voir des résultats ?", a: "Les premières adaptations neuromusculaires (force) arrivent en 2–3 semaines. La masse musculaire visible prend 8–12 semaines minimum avec une nutrition et un entraînement constants." },
-    { q: "Prendre de la masse sans trop de gras, c'est possible ?", a: "Oui avec une prise de masse propre (lean bulk) : surplus modéré (200–300 kcal), protéines élevées, entraînement progressif. C'est plus lent mais préserve une composition corporelle favorable." },
-    { q: "La créatine aide-t-elle ?", a: "Oui, c'est le complément le mieux étudié. 3–5g/jour améliorent la force et favorisent la rétention d'eau dans les muscles (apparence plus volumineuse). Efficace dans 70-80% des cas." },
+    { q: "Combien de temps pour voir des résultats ?", a: "Les premières adaptations neuromusculaires (force) arrivent en 2 à 3 semaines. La masse musculaire visible prend 8 à 12 semaines minimum avec une nutrition et un entraînement constants." },
+    { q: "Prendre de la masse sans trop de gras, c'est possible ?", a: "Oui avec une prise de masse propre (lean bulk) : surplus modéré (200 à 300 kcal), protéines élevées, entraînement progressif. C'est plus lent mais préserve une composition corporelle favorable." },
+    { q: "La créatine aide-t-elle ?", a: "Oui, c'est le complément le mieux étudié. 3 à 5g/jour améliorent la force et favorisent la rétention d'eau dans les muscles (apparence plus volumineuse). Efficace dans 70 à 80% des cas." },
     { q: "Faut-il manger la nuit pour prendre de la masse ?", a: "La caséine (protéine à digestion lente) avant de dormir peut soutenir la synthèse protéique nocturne. 200g de fromage blanc ou 30g de caséine sont suffisants." },
-    { q: "Comment éviter de prendre trop de gras ?", a: "Surveille la vitesse de prise de poids : idéalement 0.25–0.5% de ton poids/semaine. Si tu prends plus vite, réduis le surplus calorique de 100–150 kcal." },
+    { q: "Comment éviter de prendre trop de gras ?", a: "Surveille la vitesse de prise de poids : idéalement 0,25 à 0,5% de ton poids/semaine. Si tu prends plus vite, réduis le surplus calorique de 100 à 150 kcal." },
     { q: "L'alcool bloque-t-il la prise de masse ?", a: "Oui sur plusieurs niveaux : il réduit la synthèse protéique, perturbe le sommeil (crucial pour la récupération), apporte des calories vides et diminue la testostérone. À éviter en période de prise sérieuse." },
     { q: "Peut-on prendre de la masse sans viande ?", a: "Absolument. Sources végétales complètes : soja/tofu, seitan, lentilles, pois chiches, quinoa. Complète avec de la whey végane si besoin. Surveille simplement l'apport en lysine et leucine." },
   ],
@@ -299,16 +299,16 @@ const NUTRITION_TIPS = {
     { q: "Comment gérer la faim intense pendant une sèche ?", a: "Priorise les aliments à volume élevé et calories basses : légumes verts, blanc d'œuf, fromage blanc 0%, bouillon. Les fibres (psyllium, légumineuses) ralentissent la digestion et maintiennent la satiété." },
     { q: "Faut-il faire beaucoup de cardio pendant une sèche ?", a: "Le cardio modéré (LISS 2-3x/semaine) aide à augmenter la dépense sans catabolisme. Évite l'excès : trop de cardio + déficit calorique = récupération compromise et risque de perte musculaire." },
     { q: "Les refeed days sont-ils utiles ?", a: "Oui. Une journée par semaine à maintenance calorique (avec plus de glucides) relance la leptine, améliore les performances à l'entraînement et réduit l'adaptation métabolique au régime prolongé." },
-    { q: "Peut-on faire une sèche longtemps ?", a: "Maximum 12–16 semaines d'affilée. Au-delà, les adaptations métaboliques (baisse du métabolisme, hormones perturbées) deviennent contre-productives. Fais une pause maintenance avant une autre phase de sèche." },
+    { q: "Peut-on faire une sèche longtemps ?", a: "Maximum 12 à 16 semaines d'affilée. Au-delà, les adaptations métaboliques (baisse du métabolisme, hormones perturbées) deviennent contre-productives. Fais une pause maintenance avant une autre phase de sèche." },
     { q: "Comment éviter la fatigue extrême pendant une sèche ?", a: "Mange suffisamment de protéines, maintiens un apport minimal en glucides avant tes séances, dors 7-9h, et réduis le stress. La fatigue intense est souvent le signe d'un déficit trop agressif." },
   ],
   maintenance: [
     { q: "C'est quoi exactement la maintenance ?", a: "Manger exactement autant de calories que tu en brûles. Ton poids reste stable, mais tu peux continuer à améliorer ta composition corporelle (recomposition lente) avec un entraînement sérieux." },
     { q: "Comment savoir si je suis vraiment en maintenance ?", a: "Pèse-toi tous les matins à jeun pendant 2 semaines. Si le poids moyen reste stable (±0.5kg), tu es en maintenance. Si ça varie plus, ajuste tes calories en conséquence." },
-    { q: "Faut-il compter les calories en maintenance ?", a: "Sur le long terme, non. La maintenance est souvent atteinte intuitivement une fois que tu connais bien les densités caloriques des aliments. Mais traquer pendant 2–3 semaines permet de calibrer ton intuition." },
-    { q: "Quelle quantité de protéines en maintenance ?", a: "1.8–2g par kg de poids corporel. Cela permet de maintenir la masse musculaire et de soutenir la récupération si tu t'entraînes régulièrement." },
+    { q: "Faut-il compter les calories en maintenance ?", a: "Sur le long terme, non. La maintenance est souvent atteinte intuitivement une fois que tu connais bien les densités caloriques des aliments. Mais traquer pendant 2 à 3 semaines permet de calibrer ton intuition." },
+    { q: "Quelle quantité de protéines en maintenance ?", a: "1,8 à 2g par kg de poids corporel. Cela permet de maintenir la masse musculaire et de soutenir la récupération si tu t'entraînes régulièrement." },
     { q: "Peut-on profiter de la maintenance pour améliorer sa forme physique ?", a: "Oui. En maintenance avec de l'entraînement progressif, la recomposition corporelle permet de gagner du muscle et de perdre de la graisse lentement. Idéal pour la durabilité à long terme." },
-    { q: "La maintenance est-elle une étape nécessaire après une sèche ?", a: "Fortement recommandée. Après une phase restrictive, 4–8 semaines de maintenance permettent de restaurer les hormones (leptine, testostérone), le métabolisme et les niveaux d'énergie avant une nouvelle phase." },
+    { q: "La maintenance est-elle une étape nécessaire après une sèche ?", a: "Fortement recommandée. Après une phase restrictive, 4 à 8 semaines de maintenance permettent de restaurer les hormones (leptine, testostérone), le métabolisme et les niveaux d'énergie avant une nouvelle phase." },
   ],
 };
 
@@ -1632,6 +1632,14 @@ const Onboarding = ({ onComplete }) => {
   const C = useC();
   const [step, setStep] = useState(0);
   const [name, setName] = useState(""); const [dob, setDob] = useState(""); const [photo, setPhoto] = useState("");
+  // Profil physique
+  const [sex, setSex] = useState("");
+  const [bodyHeight, setBodyHeight] = useState("");
+  const [bodyWeight, setBodyWeight] = useState("");
+  const [bodyWeightTarget, setBodyWeightTarget] = useState("");
+  const [bodyActivityLevel, setBodyActivityLevel] = useState("moderate");
+  const [nutritionGoalType, setNutritionGoalType] = useState("maintenance");
+  // Priorités
   const [priorities, setPriorities] = useState([]); const [goalTarget, setGoalTarget] = useState(""); const [goalEnd, setGoalEnd] = useState("");
   const photoRef = useRef();
   const handlePhoto = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => setPhoto(ev.target.result); r.readAsDataURL(f); };
@@ -1645,30 +1653,39 @@ const Onboarding = ({ onComplete }) => {
       nutrition: { label: "Proteines quotidiennes", sourceId: "proteines", target: 150, category: "Nutrition", color: "#D4580A" },
       business: { label: "Focus quotidien (4/5)", sourceId: "focus", target: 4, category: "Travail", color: "#1E5FCC" },
       running: { label: "Distance running (5km)", sourceId: "running_dist", target: 5, category: "Running", color: "#0891b2" },
-      body: { label: "Objectif poids", sourceId: "poids", target: Number(goalTarget) || 75, category: "Corps", color: "#D4580A" },
+      body: { label: "Objectif poids", sourceId: "poids", target: Number(bodyWeightTarget) || Number(goalTarget) || 75, category: "Corps", color: "#D4580A" },
       sleep: { label: "Sommeil optimal (score 70)", sourceId: "score", target: 70, category: "Sommeil", color: "#6B35C8" },
     };
     const createdGoals = priorities.map((pid, i) => ({ ...(templates[pid] || { label: pid, sourceId: "manual", target: 100, category: pid, color: "#CC2936" }), id: Date.now() + i, startDate: today, endDate: goalEnd || new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0], reverse: false, manualProgress: 0, target: i === 0 && goalTarget ? Number(goalTarget) : (templates[pid]?.target || 100) }));
-    onComplete({ name, dob, photo }, createdGoals);
+    const bodyProfileData = {
+      sex: sex || null,
+      height: Number(bodyHeight) || null,
+      weight: Number(bodyWeight) || null,
+      weightTarget: Number(bodyWeightTarget) || null,
+      activityLevel: bodyActivityLevel || "moderate",
+      goalType: nutritionGoalType || "maintenance",
+    };
+    onComplete({ name, dob, photo }, createdGoals, bodyProfileData);
   };
 
   const btnPrimary = { width: "100%", padding: "16px", background: "linear-gradient(135deg, #CC2936, #8B1A22)", color: "#fff", border: "none", borderRadius: 16, fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 10px 30px rgba(204,41,54,0.35)", letterSpacing: 0.3 };
   const btnSecondary = { flex: 1, padding: "14px", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 14, fontWeight: 600, cursor: "pointer", color: C.muted, fontSize: 14 };
+  const STEPS = 4;
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "inherit" }}>
-      <div style={{ width: "100%", maxWidth: 400 }}>
+      <div style={{ width: "100%", maxWidth: 420 }}>
         {step === 0 && (
           <div style={{ textAlign: "center" }}>
             <div style={{ width: 96, height: 96, background: "linear-gradient(135deg, #CC2936, #8B1A22)", borderRadius: 28, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 28px", boxShadow: "0 16px 48px rgba(204,41,54,0.4)", fontSize: 48 }}>🎯</div>
             <h1 style={{ fontSize: 32, fontWeight: 900, color: C.black, margin: "0 0 10px", lineHeight: 1.1, letterSpacing: -0.5 }}>Bienvenue sur<br /><span style={{ color: C.red }}>Mylide</span></h1>
-            <p style={{ fontSize: 16, color: C.muted, lineHeight: 1.7, margin: "0 0 40px" }}>Ton tracker de vie intelligent.<br />Configure en 2 minutes.</p>
+            <p style={{ fontSize: 16, color: C.muted, lineHeight: 1.7, margin: "0 0 40px" }}>Ton tracker de vie intelligent.<br />Configure en 3 minutes.</p>
             <button onClick={() => setStep(1)} style={btnPrimary}>Commencer →</button>
           </div>
         )}
         {step === 1 && (
           <div style={{ background: C.surface, borderRadius: 24, padding: 28, boxShadow: "0 24px 64px rgba(0,0,0,0.1)", border: `1px solid ${C.border}` }}>
-            <div style={{ display: "flex", gap: 6, marginBottom: 28 }}>{[1,2,3].map(s => <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= 1 ? C.red : C.surfaceAlt, transition: "background 0.3s" }} />)}</div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 28 }}>{Array.from({length: STEPS}, (_, i) => <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i < 1 ? C.red : C.surfaceAlt, transition: "background 0.3s" }} />)}</div>
             <h2 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 20px", color: C.black }}>Qui es-tu ?</h2>
             <input type="file" accept="image/*" ref={photoRef} style={{ display: "none" }} onChange={handlePhoto} />
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
@@ -1690,10 +1707,64 @@ const Onboarding = ({ onComplete }) => {
         )}
         {step === 2 && (
           <div style={{ background: C.surface, borderRadius: 24, padding: 28, boxShadow: "0 24px 64px rgba(0,0,0,0.1)", border: `1px solid ${C.border}` }}>
-            <div style={{ display: "flex", gap: 6, marginBottom: 28 }}>{[1,2,3].map(s => <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= 2 ? C.red : C.surfaceAlt }} />)}</div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 28 }}>{Array.from({length: STEPS}, (_, i) => <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i < 2 ? C.red : C.surfaceAlt, transition: "background 0.3s" }} />)}</div>
+            <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 4px", color: C.black }}>Ton profil physique</h2>
+            <p style={{ fontSize: 13, color: C.muted, margin: "0 0 20px", lineHeight: 1.5 }}>Pour des recommandations adaptées à ta physiologie.</p>
+
+            {/* Sexe */}
+            <p style={{ fontSize: 11, color: C.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 8px" }}>Sexe biologique</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 18 }}>
+              {[{ val: "male", label: "Homme", icon: "👨" }, { val: "female", label: "Femme", icon: "👩" }].map(({ val, label, icon }) => (
+                <button key={val} onClick={() => setSex(val)} style={{ padding: "14px 10px", borderRadius: 14, border: `2px solid ${sex === val ? "#CC2936" : C.border}`, background: sex === val ? "rgba(204,41,54,0.08)" : C.surfaceAlt, color: sex === val ? "#CC2936" : C.muted, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  <span style={{ fontSize: 20 }}>{icon}</span> {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Morphologie */}
+            <p style={{ fontSize: 11, color: C.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 8px" }}>Morphologie</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 18 }}>
+              <Field label="Taille (cm)"><input type="number" value={bodyHeight} min={100} max={250} onChange={e => setBodyHeight(e.target.value)} placeholder="175" style={inp} /></Field>
+              <Field label="Poids actuel"><input type="number" value={bodyWeight} min={30} max={300} step={0.1} onChange={e => setBodyWeight(e.target.value)} placeholder="75" style={inp} /></Field>
+              <Field label="Poids cible"><input type="number" value={bodyWeightTarget} min={30} max={300} step={0.1} onChange={e => setBodyWeightTarget(e.target.value)} placeholder="70" style={inp} /></Field>
+            </div>
+
+            {/* Objectif nutritionnel */}
+            <p style={{ fontSize: 11, color: C.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 8px" }}>Objectif principal</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 18 }}>
+              {Object.entries(GOAL_CONFIG).map(([key, cfg]) => (
+                <button key={key} onClick={() => setNutritionGoalType(key)} style={{ padding: "12px 10px", borderRadius: 14, border: `2px solid ${nutritionGoalType === key ? cfg.color : C.border}`, background: nutritionGoalType === key ? `${cfg.color}12` : C.surfaceAlt, cursor: "pointer", textAlign: "left" }}>
+                  <div style={{ fontSize: 16, marginBottom: 4 }}>{cfg.emoji}</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: nutritionGoalType === key ? cfg.color : C.text, lineHeight: 1.2 }}>{cfg.label}</div>
+                  <div style={{ fontSize: 10, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>{cfg.tagline}</div>
+                </button>
+              ))}
+            </div>
+
+            {/* Niveau d'activité */}
+            <Field label="Niveau d'activite habituel">
+              <select value={bodyActivityLevel} onChange={e => setBodyActivityLevel(e.target.value)} style={{ ...inp, appearance: "auto" }}>
+                {Object.entries(ACTIVITY_LEVELS).map(([k, v]) => (
+                  <option key={k} value={k}>{v.label} — {v.desc}</option>
+                ))}
+              </select>
+            </Field>
+
+            <p style={{ fontSize: 11, color: C.muted, margin: "10px 0 18px", lineHeight: 1.5 }}>
+              Ces données servent uniquement à calibrer tes recommandations. Tu peux les modifier à tout moment dans Nutrition.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setStep(1)} style={btnSecondary}>← Retour</button>
+              <button onClick={() => setStep(3)} style={{ ...btnPrimary, flex: 2 }}>Continuer →</button>
+            </div>
+          </div>
+        )}
+        {step === 3 && (
+          <div style={{ background: C.surface, borderRadius: 24, padding: 28, boxShadow: "0 24px 64px rgba(0,0,0,0.1)", border: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", gap: 6, marginBottom: 28 }}>{Array.from({length: STEPS}, (_, i) => <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i < 3 ? C.red : C.surfaceAlt }} />)}</div>
             <h2 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 6px", color: C.black }}>Tes priorites</h2>
             <p style={{ fontSize: 14, color: C.muted, margin: "0 0 18px" }}>Selectionne tout ce que tu veux ameliorer.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 360, overflowY: "auto" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 340, overflowY: "auto" }}>
               {PRIORITIES.map(p => { const selected = priorities.includes(p.id); return (
                 <div key={p.id} onClick={() => togglePriority(p.id)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", borderRadius: 14, border: `1.5px solid ${selected ? p.color : C.border}`, background: selected ? `${p.color}10` : C.surface, cursor: "pointer", transition: "all 0.15s" }}>
                   <span style={{ fontSize: 24 }}>{p.icon}</span>
@@ -1703,14 +1774,14 @@ const Onboarding = ({ onComplete }) => {
               ); })}
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-              <button onClick={() => setStep(1)} style={btnSecondary}>← Retour</button>
-              <button onClick={() => priorities.length > 0 && setStep(3)} style={{ ...btnPrimary, flex: 2, opacity: priorities.length > 0 ? 1 : 0.5 }}>Continuer →</button>
+              <button onClick={() => setStep(2)} style={btnSecondary}>← Retour</button>
+              <button onClick={() => priorities.length > 0 && setStep(4)} style={{ ...btnPrimary, flex: 2, opacity: priorities.length > 0 ? 1 : 0.5 }}>Continuer →</button>
             </div>
           </div>
         )}
-        {step === 3 && (
+        {step === 4 && (
           <div style={{ background: C.surface, borderRadius: 24, padding: 28, boxShadow: "0 24px 64px rgba(0,0,0,0.1)", border: `1px solid ${C.border}` }}>
-            <div style={{ display: "flex", gap: 6, marginBottom: 28 }}>{[1,2,3].map(s => <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: C.red }} />)}</div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 28 }}>{Array.from({length: STEPS}, (_, i) => <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: C.red }} />)}</div>
             <h2 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 6px", color: C.black }}>Objectif principal</h2>
             <p style={{ fontSize: 14, color: C.muted, margin: "0 0 16px" }}>{priorities.length} objectif{priorities.length > 1 ? "s" : ""} crees automatiquement.</p>
             <div style={{ background: C.surfaceAlt, borderRadius: 14, padding: 16, marginBottom: 18, display: "flex", alignItems: "center", gap: 14, border: `1px solid ${C.border}` }}>
@@ -1722,7 +1793,7 @@ const Onboarding = ({ onComplete }) => {
               <Field label="Date limite"><input type="date" value={goalEnd} onChange={e => setGoalEnd(e.target.value)} style={inp} /></Field>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setStep(2)} style={btnSecondary}>← Retour</button>
+              <button onClick={() => setStep(3)} style={btnSecondary}>← Retour</button>
               <button onClick={handleComplete} style={{ ...btnPrimary, flex: 2 }}>Lancer l'app !</button>
             </div>
           </div>
@@ -2007,10 +2078,43 @@ export default function App() {
     if (t.length) await supabase.from("todos").insert(t.map(todo => ({ user_id: user.id, data: todo })));
   }, []);
 
-  const handleOnboardingComplete = async (profileData, createdGoals) => {
+  const handleOnboardingComplete = async (profileData, createdGoals, bodyProfileData) => {
     const { data: { session } } = await supabase.auth.getSession(); const user = session?.user; if (!user) return;
     await supabase.from("profiles").upsert({ id: user.id, name: profileData.name, dob: profileData.dob, photo: profileData.photo });
     setProfile(profileData); setGoals(createdGoals); setOnboarded(true);
+
+    // Sauvegarder le profil physique dans nutritionGoals
+    if (bodyProfileData) {
+      const ng = {
+        goalType: bodyProfileData.goalType || "maintenance",
+        sex: bodyProfileData.sex || null,
+        height: bodyProfileData.height || null,
+        activityLevel: bodyProfileData.activityLevel || null,
+        protTarget: 150, calTarget: 2000, fatTarget: 65, carbsTarget: 200,
+      };
+      setNutritionGoals(ng);
+      localStorage.setItem("nutritionGoals", JSON.stringify(ng));
+
+      // Si le poids initial est renseigné, l'enregistrer dans la journée
+      if (bodyProfileData.weight) {
+        const todayStr = new Date().toISOString().split("T")[0];
+        const initialDay = {
+          ...defaultDay(),
+          date: todayStr,
+          body: {
+            weight: bodyProfileData.weight,
+            weightTarget: bodyProfileData.weightTarget || 0,
+            chest: 0, waist: 0, hips: 0, arms: 0, thighs: 0, restingHR: 0, maxHR: 0,
+          },
+        };
+        initialDay.score = calcScore(initialDay);
+        historyRef.current = [initialDay];
+        setHistory([initialDay]);
+        setToday(initialDay);
+        saveAll([initialDay], [], createdGoals, defaultPatrimoine(), profileData);
+        return;
+      }
+    }
     saveAll([], [], createdGoals, defaultPatrimoine(), profileData);
   };
 
@@ -2091,8 +2195,8 @@ export default function App() {
   ), [currentWeight, today.sport?.type, today.sport?.duration]);
 
   const scienceMacros = useMemo(() => calcMacros(
-    currentWeight, tdee, nutritionGoals.goalType, sportCalBurnScience
-  ), [currentWeight, tdee, nutritionGoals.goalType, sportCalBurnScience]);
+    currentWeight, tdee, nutritionGoals.goalType, sportCalBurnScience, nutritionGoals.sex || "male"
+  ), [currentWeight, tdee, nutritionGoals.goalType, sportCalBurnScience, nutritionGoals.sex]);
 
   const weeklyFreq = useMemo(() => getWeeklySportFreq(history), [history]);
 
@@ -2107,11 +2211,12 @@ export default function App() {
     tdee,
     sleepDuration:  today.sleep?.duration || 0,
     sportFreqWeek:  weeklyFreq,
-  }), [nutritionGoals.goalType, currentWeight, today.body?.weightTarget, calCurrent, calTarget, protCurrent, protTarget, tdee, today.sleep?.duration, weeklyFreq]);
+    sex:            nutritionGoals.sex || "male",
+  }), [nutritionGoals.goalType, currentWeight, today.body?.weightTarget, calCurrent, calTarget, protCurrent, protTarget, tdee, today.sleep?.duration, weeklyFreq, nutritionGoals.sex]);
 
   const progressEst = useMemo(() => estimateProgress(
-    currentWeight, today.body?.weightTarget, nutritionGoals.goalType
-  ), [currentWeight, today.body?.weightTarget, nutritionGoals.goalType]);
+    currentWeight, today.body?.weightTarget, nutritionGoals.goalType, nutritionGoals.sex || "male"
+  ), [currentWeight, today.body?.weightTarget, nutritionGoals.goalType, nutritionGoals.sex]);
 
   // Legacy compat (used by radar score + a few display checks)
   const nutritionGoalConflict = contradictions.find(a => a.suggestGoal) || null;
@@ -2749,7 +2854,9 @@ export default function App() {
                       {scienceMacros && currentWeight ? (
                         <div style={{ background: `${activeGoalColor}12`, border: `1.5px solid ${activeGoalColor}30`, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                            <p style={{ fontSize: 12, color: activeGoalColor, fontWeight: 700, margin: 0 }}>⚗️ Calculé · {currentWeight}kg · {ACTIVITY_LEVELS[activeActivity]?.label}</p>
+                            <p style={{ fontSize: 12, color: activeGoalColor, fontWeight: 700, margin: 0 }}>
+                              ⚗️ {currentWeight}kg · {ACTIVITY_LEVELS[activeActivity]?.label}{nutritionGoals.sex === "female" ? " · Femme" : nutritionGoals.sex === "male" ? " · Homme" : ""}
+                            </p>
                             <button onClick={() => saveNG({ ...nutritionGoals, calTarget: scienceMacros.calTarget, protTarget: scienceMacros.protTarget, fatTarget: scienceMacros.fatTarget, carbsTarget: scienceMacros.carbsTarget })}
                               style={{ background: activeGoalColor, color: "#fff", border: "none", borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>Appliquer</button>
                           </div>
@@ -2765,6 +2872,18 @@ export default function App() {
                           <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>💡 Entre ton poids dans <strong>Corps</strong> et complète ton profil pour des calculs TDEE personnalisés.</p>
                         </div>
                       )}
+
+                      {/* Estimation de progression réaliste */}
+                      {(() => {
+                        const progressText = formatProgress(progressEst, nutritionGoals.goalType);
+                        if (!progressText) return null;
+                        return (
+                          <div style={{ background: `${activeGoalColor}08`, border: `1px solid ${activeGoalColor}20`, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
+                            <p style={{ fontSize: 11, color: activeGoalColor, fontWeight: 700, margin: "0 0 3px" }}>📊 Estimation personnalisée</p>
+                            <p style={{ fontSize: 11, color: C.muted, margin: 0, lineHeight: 1.6 }}>{progressText}</p>
+                          </div>
+                        );
+                      })()}
 
                       {/* Panneau de configuration profil (Modifier) */}
                       {editingNutrGoals && (
@@ -2924,7 +3043,7 @@ export default function App() {
                         <div style={{ marginBottom: 14, background: `${col}12`, border: `1.5px solid ${col}28`, borderRadius: 14, padding: "12px 16px" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                             <span style={{ fontSize: 13, fontWeight: 800, color: col }}>🔥 Recomposition corporelle</span>
-                            <span style={{ fontSize: 13, fontWeight: 900, color: col }}>~{progressEst.minWeeks}–{progressEst.maxWeeks} sem.</span>
+                            <span style={{ fontSize: 13, fontWeight: 900, color: col }}>~{progressEst.minWeeks} à {progressEst.maxWeeks} sem.</span>
                           </div>
                           <p style={{ margin: 0, fontSize: 11, color: C.muted, lineHeight: 1.6 }}>📊 {progressEst.note}</p>
                         </div>
@@ -2935,10 +3054,10 @@ export default function App() {
                             <span style={{ fontSize: 14, fontWeight: 800, color: col }}>
                               {isGain ? `+${progressEst.diff}kg` : `−${progressEst.diff}kg`} {isGain ? "à prendre" : "à perdre"}
                             </span>
-                            <span style={{ fontSize: 16, fontWeight: 900, color: col, letterSpacing: -0.5 }}>~{progressEst.minWeeks}–{progressEst.maxWeeks} sem.</span>
+                            <span style={{ fontSize: 16, fontWeight: 900, color: col, letterSpacing: -0.5 }}>~{progressEst.minWeeks} à {progressEst.maxWeeks} sem.</span>
                           </div>
                           <p style={{ margin: 0, fontSize: 11, color: C.muted, lineHeight: 1.6 }}>
-                            📊 Estimation saine à {progressEst.weeklyMin}–{progressEst.weeklyMax} kg/semaine · {goalCfg?.tagline}
+                            📊 Estimation saine à {progressEst.weeklyMin} à {progressEst.weeklyMax} kg/semaine · {goalCfg?.tagline}
                           </p>
                         </div>
                       );
