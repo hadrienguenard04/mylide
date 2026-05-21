@@ -1767,10 +1767,13 @@ export default function App() {
   const [showFAQ, setShowFAQ] = useState(false);
   const [showProPopup, setShowProPopup] = useState(false);
   const photoRef = useRef(); const sportPhotoRef = useRef();
+  const autoSaveRef = useRef(null);
+  const loadDoneRef = useRef(false);
+  const todayRef = useRef(null);
+  const historyRef = useRef(null);
 
   useEffect(() => {
-    const loadData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+    const loadData = async (user) => {
       if (!user) { setOnboarded(false); return; }
       setCurrentUser(user);
       const { data: profileData } = await supabase.from("profiles").select("*").eq("id", user.id).single();
@@ -1805,8 +1808,24 @@ export default function App() {
       if (patrimoineData) setPatrimoine(patrimoineData.data);
       const { data: todosData } = await supabase.from("todos").select("*").eq("user_id", user.id);
       if (todosData?.length) setTodos(todosData.map(t => t.data));
+      // Marquer le chargement terminé pour l'auto-save
+      loadDoneRef.current = true;
     };
-    loadData();
+
+    // Restaurer la session depuis le cache local (pas de réseau) puis écouter les changements
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      loadData(session?.user ?? null);
+    });
+
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // SIGNED_IN déclenché au retour OAuth ou renouvellement token
+      if (session?.user) {
+        loadDoneRef.current = false;
+        loadData(session.user);
+      } else {
+        setOnboarded(false);
+      }
+    });
 
     // Demande permission notifs au premier lancement
     if (!localStorage.getItem("notifAsked") && "Notification" in window) {
@@ -1818,6 +1837,8 @@ export default function App() {
         await registerPush(notifPrefs, wake, sleep);
       }, 3000);
     }
+
+    return () => { authSub?.unsubscribe(); };
   }, []);
 
   // Pré-remplir les mesures corpo depuis le dernier enregistrement connu
@@ -1841,8 +1862,30 @@ export default function App() {
     });
   }, [history]);
 
+  // ── Auto-save refs (toujours à jour sans déclencher l'effet auto-save) ────
+  useEffect(() => { todayRef.current = today; }, [today]);
+  useEffect(() => { historyRef.current = history; }, [history]);
+
+  // ── Auto-save : 2 secondes après la dernière modification de today ────────
+  useEffect(() => {
+    if (!loadDoneRef.current) return;
+    clearTimeout(autoSaveRef.current);
+    autoSaveRef.current = setTimeout(() => {
+      const t = todayRef.current;
+      const h = historyRef.current;
+      if (!t || !h) return;
+      const updated = { ...t, score: calcScore(t) };
+      const newH = [...h.filter(d => d.date !== t.date), updated].sort((a, b) => a.date.localeCompare(b.date));
+      historyRef.current = newH;
+      setHistory(newH);
+      saveAll(newH, todos, goals, patrimoine, profile);
+    }, 2000);
+    return () => clearTimeout(autoSaveRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [today]);
+
   const saveAll = useCallback(async (h, t, g, p, pr) => {
-    const { data: { user } } = await supabase.auth.getUser(); if (!user) return;
+    const { data: { session } } = await supabase.auth.getSession(); const user = session?.user; if (!user) return;
     await supabase.from("profiles").upsert({ id: user.id, name: pr.name, dob: pr.dob, photo: pr.photo });
     const todayStr = new Date().toISOString().split("T")[0]; const todayData = h.find(d => d.date === todayStr);
     if (todayData) await supabase.from("daily_logs").upsert({ user_id: user.id, date: todayStr, data: todayData, score: todayData.score || 0 });
@@ -1854,7 +1897,7 @@ export default function App() {
   }, []);
 
   const handleOnboardingComplete = async (profileData, createdGoals) => {
-    const { data: { user } } = await supabase.auth.getUser(); if (!user) return;
+    const { data: { session } } = await supabase.auth.getSession(); const user = session?.user; if (!user) return;
     await supabase.from("profiles").upsert({ id: user.id, name: profileData.name, dob: profileData.dob, photo: profileData.photo });
     setProfile(profileData); setGoals(createdGoals); setOnboarded(true);
     saveAll([], [], createdGoals, defaultPatrimoine(), profileData);
