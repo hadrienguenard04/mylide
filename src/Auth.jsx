@@ -57,7 +57,7 @@ export default function Auth() {
         
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <img src={mylidelogo} alt="MYLIDE" style={{ width: 72, height: 72, borderRadius: 20, objectFit: "cover", margin: "0 auto 16px", display: "block", boxShadow: "0 8px 24px rgba(204,41,54,0.3)" }} />
+          <img src={mylidelogo} alt="MYLIDE" style={{ width: 72, height: 72, margin: "0 auto 16px", display: "block", filter: "drop-shadow(0 8px 24px rgba(204,41,54,0.4))" }} />
           <h1 style={{ fontSize: 24, fontWeight: 900, color: C.text, margin: "0 0 4px" }}>MYLIDE</h1>
           <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>Ton tracker de vie intelligent</p>
         </div>
