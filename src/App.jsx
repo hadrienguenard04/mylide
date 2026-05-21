@@ -2697,7 +2697,6 @@ export default function App() {
   return (
     <div style={{ minHeight: "100dvh", background: C.bg, color: C.text, maxWidth: 480, margin: "0 auto", paddingBottom: "calc(72px + var(--sab))", position: "relative", touchAction: "pan-y" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
         * { font-family: 'DM Sans', sans-serif !important; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         input, select, textarea { font-family: 'DM Sans', sans-serif !important; font-size: 16px !important; }
         ::-webkit-scrollbar { display: none; }
