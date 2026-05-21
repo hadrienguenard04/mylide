@@ -1818,17 +1818,18 @@ export default function App() {
       loadDoneRef.current = true;
     };
 
-    // Restaurer la session depuis le cache local (pas de réseau) puis écouter les changements
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      loadData(session?.user ?? null);
-    });
-
-    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
-      // SIGNED_IN déclenché au retour OAuth ou renouvellement token
-      if (session?.user) {
+    // onAuthStateChange gère tout : INITIAL_SESSION (charge depuis localStorage,
+    // sans réseau), SIGNED_IN (retour OAuth / renouvellement token), SIGNED_OUT.
+    // On n'appelle plus getSession() séparément pour éviter la double exécution.
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION") {
+        // Premier check au démarrage — session null ou restaurée depuis localStorage
+        loadDoneRef.current = false;
+        loadData(session?.user ?? null);
+      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         loadDoneRef.current = false;
         loadData(session.user);
-      } else {
+      } else if (event === "SIGNED_OUT") {
         setOnboarded(false);
       }
     });
@@ -2130,7 +2131,14 @@ export default function App() {
   ];
 
   if (showSplash) return <SplashScreen onDone={() => setShowSplash(false)} />;
-  if (onboarded === null) return <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ width: 40, height: 40, border: `3px solid ${C.red}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.7s linear infinite" }}/><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
+  if (onboarded === null) return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
+      <img src={kojihLogo} alt="MYLIDE" style={{ width: 72, height: 72, filter: "drop-shadow(0 8px 24px rgba(204,41,54,0.35))" }} />
+      <p style={{ fontSize: 22, fontWeight: 900, color: C.text, margin: 0, letterSpacing: -0.5 }}>MYLIDE</p>
+      <div style={{ width: 36, height: 36, border: `3px solid ${C.red}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
   if (!onboarded) return <Onboarding onComplete={handleOnboardingComplete} />;
 
   return (
