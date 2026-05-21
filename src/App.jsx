@@ -3,6 +3,12 @@ import { supabase } from "./supabase";
 import FAQPage from "./FAQ.jsx";
 import LegalPage from "./Legal.jsx";
 import { isAtLeast } from "./planConfig.js";
+import {
+  GOAL_CONFIG, ACTIVITY_LEVELS,
+  calcBMR, calcTDEE, calcSportBurn, calcMacros,
+  estimateProgress, detectContradictions,
+  inferActivityLevel, getWeeklySportFreq, getGoalMessage,
+} from "./nutritionScience.js";
 
 const VAPID_PUBLIC_KEY = "BHfX8lG2QQGuaE8AW9qOykb2GZaxtzONoy7k3feJBGzf-Dyrx4h2qUk4xt9FQyo8H1Cr1EuemZLucqdd0iEt7M4";
 
@@ -1757,7 +1763,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [lang, setLang] = useState(() => localStorage.getItem("lang") || "fr");
   _lang = lang;
-  const [nutritionGoals, setNutritionGoals] = useState(() => { try { return JSON.parse(localStorage.getItem("nutritionGoals")) || { goalType: "maintenance", protTarget: 150, calTarget: 2000, fatTarget: 65, carbsTarget: 200 }; } catch { return { goalType: "maintenance", protTarget: 150, calTarget: 2000, fatTarget: 65, carbsTarget: 200 }; } });
+  const [nutritionGoals, setNutritionGoals] = useState(() => { try { return { goalType: "maintenance", protTarget: 150, calTarget: 2000, fatTarget: 65, carbsTarget: 200, sex: null, height: null, activityLevel: null, ...JSON.parse(localStorage.getItem("nutritionGoals") || "{}") }; } catch { return { goalType: "maintenance", protTarget: 150, calTarget: 2000, fatTarget: 65, carbsTarget: 200, sex: null, height: null, activityLevel: null }; } });
   const [veganOnly, setVeganOnly] = useState(() => localStorage.getItem("veganOnly") === "true");
   const [editingNutrGoals, setEditingNutrGoals] = useState(false);
   const [radarDate, setRadarDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -1959,24 +1965,47 @@ export default function App() {
   const fatCurrent = today.nutrition.fat || 0;
   const carbsCurrent = today.nutrition.carbs || 0;
 
-  // ── BODY ↔ NUTRITION COHERENCE ────────────────────────────────────────────
-  // Infer goal type from weight vs target — used for coherence check + auto-suggest
-  const bodyGoalType = (() => {
-    const w = today.body?.weight || 0;
-    const wt = today.body?.weightTarget || 0;
-    if (!w || !wt) return null;
-    const diff = wt - w;
-    if (Math.abs(diff) < 0.5) return "maintenance";
-    return diff < 0 ? "perte" : "masse";
-  })();
-  // Alert when nutrition goal contradicts body goal
-  const nutritionGoalConflict = (() => {
-    if (!bodyGoalType || bodyGoalType === "maintenance") return null;
-    if (bodyGoalType === "perte" && nutritionGoals.goalType === "masse") return { bodyGoal: "perte", nutrGoal: "masse", msg: "Ton objectif corps est une perte de poids, mais ton objectif nutrition est une prise de masse. Ces deux objectifs sont contradictoires." };
-    if (bodyGoalType === "masse" && nutritionGoals.goalType === "perte") return { bodyGoal: "masse", nutrGoal: "perte", msg: "Ton objectif corps est une prise de masse, mais ton objectif nutrition est en déficit calorique. Tu ne pourras pas prendre de masse ainsi." };
-    if (bodyGoalType === "masse" && nutritionGoals.goalType === "seche") return { bodyGoal: "masse", nutrGoal: "seche", msg: "Ton objectif corps est une prise de masse, mais ton objectif nutrition est une sèche/recompo. Envisage plutôt une prise de masse." };
-    return null;
-  })();
+  // ── SCIENCE ENGINE — TDEE + macros + contradictions ───────────────────────
+  const currentWeight = today.body?.weight || history.slice().reverse().find(d => d.body?.weight > 0)?.body?.weight || 0;
+  const inferredActivity = useMemo(() => inferActivityLevel(history), [history]);
+  const activeActivity   = nutritionGoals.activityLevel || inferredActivity;
+  const tdee = useMemo(() => calcTDEE(
+    currentWeight,
+    nutritionGoals.height || 175,
+    age || 30,
+    nutritionGoals.sex || "male",
+    activeActivity,
+  ), [currentWeight, nutritionGoals.height, age, nutritionGoals.sex, activeActivity]);
+
+  const sportCalBurnScience = useMemo(() => calcSportBurn(
+    currentWeight, today.sport?.type, today.sport?.duration
+  ), [currentWeight, today.sport?.type, today.sport?.duration]);
+
+  const scienceMacros = useMemo(() => calcMacros(
+    currentWeight, tdee, nutritionGoals.goalType, sportCalBurnScience
+  ), [currentWeight, tdee, nutritionGoals.goalType, sportCalBurnScience]);
+
+  const weeklyFreq = useMemo(() => getWeeklySportFreq(history), [history]);
+
+  const contradictions = useMemo(() => detectContradictions({
+    goalType:       nutritionGoals.goalType,
+    currentWeight,
+    targetWeight:   today.body?.weightTarget || 0,
+    calCurrent,
+    calTarget,
+    protCurrent,
+    protTarget,
+    tdee,
+    sleepDuration:  today.sleep?.duration || 0,
+    sportFreqWeek:  weeklyFreq,
+  }), [nutritionGoals.goalType, currentWeight, today.body?.weightTarget, calCurrent, calTarget, protCurrent, protTarget, tdee, today.sleep?.duration, weeklyFreq]);
+
+  const progressEst = useMemo(() => estimateProgress(
+    currentWeight, today.body?.weightTarget, nutritionGoals.goalType
+  ), [currentWeight, today.body?.weightTarget, nutritionGoals.goalType]);
+
+  // Legacy compat (used by radar score + a few display checks)
+  const nutritionGoalConflict = contradictions.find(a => a.suggestGoal) || null;
 
   const simResult = useMemo(() => {
     let total = Number(sim.amount) || 0; const data = [{ year: 0, value: Math.round(total) }];
@@ -2491,159 +2520,213 @@ export default function App() {
               )}
 
               {trackTab === "nutrition" && (() => {
-                const goalLabels = { masse: "Prise de masse", perte: "Perte de poids", maintenance: "Maintien", seche: "Séche / Recompo" };
-                const goalColors = { masse: "#CC2936", perte: C.blue, maintenance: C.green, seche: C.purple };
-                const activeGoalColor = goalColors[nutritionGoals.goalType] || C.orange;
-                const currentWeight = today.body?.weight || history.slice().reverse().find(d => d.body?.weight > 0)?.body?.weight || 0;
-                // Estimate calories burned by today's sport session
-                const sportCalBurn = (() => {
-                  if (!currentWeight || !today.sport.type || today.sport.isRest) return 0;
-                  const metMap = { Musculation: 5.5, Running: 9.0, Football: 8.0, Tennis: 7.0, Boxe: 10.0 };
-                  const met = metMap[today.sport.type] || 6.0;
-                  const dur = today.sport.duration || 0;
-                  return dur > 0 ? Math.round(met * currentWeight * (dur / 60)) : 0;
-                })();
-                const calcAutoMacros = (w, goalType) => {
-                  if (!w) return null;
-                  // TDEE base: 32.5 kcal/kg · adjusted per goal · sport burn added back for active days
-                  const baseTDEE = Math.round(w * 32.5) + sportCalBurn;
-                  const calMap = { maintenance: baseTDEE, masse: baseTDEE + 300, perte: baseTDEE - 400, seche: baseTDEE - 550 };
-                  const protMap = { maintenance: 1.9, masse: 2.1, perte: 2.3, seche: 2.5 };
-                  const fatMap = { maintenance: 1.0, masse: 0.9, perte: 0.7, seche: 0.65 };
-                  const cal = Math.max(1200, calMap[goalType]);
-                  const prot = Math.round(w * protMap[goalType]);
-                  const fat = Math.round(w * fatMap[goalType]);
-                  const carbs = Math.max(0, Math.round((cal - prot * 4 - fat * 9) / 4));
-                  return { calTarget: cal, protTarget: prot, fatTarget: fat, carbsTarget: carbs };
+                const activeGoalColor = GOAL_CONFIG[nutritionGoals.goalType]?.color || C.orange;
+                const activeGoalLabel = GOAL_CONFIG[nutritionGoals.goalType]?.label || "Maintien";
+                const goalMsg = getGoalMessage(nutritionGoals.goalType);
+
+                // Smart macros: from science engine if TDEE available, else stored targets
+                const displayMacros = scienceMacros && currentWeight ? scienceMacros : {
+                  calTarget, protTarget, fatTarget, carbsTarget,
                 };
-                const autoMacros = calcAutoMacros(currentWeight, nutritionGoals.goalType);
-                const MacroBar = ({ label, current, target, color }) => (
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 12, color: C.muted }}>
-                      <span style={{ fontWeight: 600 }}>{label}</span>
-                      <span style={{ fontWeight: 800, color: current >= target ? C.green : color }}>{current}/{target}{label === "Calories" ? " kcal" : "g"}</span>
+
+                const MacroBar = ({ label, current, target, color, unit = "g" }) => {
+                  const pct = target > 0 ? Math.min(110, Math.round((current / target) * 100)) : 0;
+                  const over = current > target * 1.05;
+                  const done = current >= target * 0.95 && !over;
+                  const barColor = over ? C.orange : done ? C.green : color;
+                  return (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 12, color: C.muted }}>
+                        <span style={{ fontWeight: 700, color: C.text }}>{label}</span>
+                        <span style={{ fontWeight: 800, color: barColor }}>{current}<span style={{ fontWeight: 400 }}>/{target}{unit}</span></span>
+                      </div>
+                      <div style={{ height: 7, background: C.surfaceAlt, borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ height: "100%", borderRadius: 4, background: barColor, width: `${Math.min(100, pct)}%`, transition: "width 0.5s ease" }} />
+                      </div>
+                      {over && <p style={{ fontSize: 10, color: C.orange, margin: "3px 0 0", fontWeight: 600 }}>Au-dessus de l'objectif (+{current - target}{unit})</p>}
                     </div>
-                    <div style={{ height: 6, background: C.surfaceAlt, borderRadius: 4, overflow: "hidden" }}>
-                      <div style={{ height: "100%", borderRadius: 4, background: current >= target ? C.green : color, width: `${Math.min(100, target > 0 ? (current / target) * 100 : 0)}%`, transition: "width 0.5s ease" }} />
-                    </div>
-                  </div>
-                );
+                  );
+                };
+
                 const filteredMeals = (cat) => MEAL_DB[cat].filter(m => m.goals.includes(nutritionGoals.goalType) && (!veganOnly || m.vegan)).slice(0, 4);
                 const mealCategories = [
                   { key: "breakfast", label: "🌅 " + tr("nutr_breakfast") },
-                  { key: "lunch", label: "☀️ " + tr("nutr_lunch") },
-                  { key: "snack", label: "🍎 " + tr("nutr_snack") },
-                  { key: "dinner", label: "🌙 " + tr("nutr_dinner") },
+                  { key: "lunch",     label: "☀️ " + tr("nutr_lunch") },
+                  { key: "snack",     label: "🍎 " + tr("nutr_snack") },
+                  { key: "dinner",    label: "🌙 " + tr("nutr_dinner") },
                 ];
+                const saveNG = ng => { setNutritionGoals(ng); localStorage.setItem("nutritionGoals", JSON.stringify(ng)); };
+
                 return (
                   <div>
                     <EvoChart data={waterH.slice(-30)} dataKey="nutrition.water" color={C.blue} label="Hydratation" unit="L" />
-                    <EvoChart data={history.filter(d => d.nutrition?.protein > 0).slice(-30)} dataKey="nutrition.protein" color={C.purple} label="Proteines" unit="g" />
+                    <EvoChart data={history.filter(d => d.nutrition?.protein > 0).slice(-30)} dataKey="nutrition.protein" color={C.purple} label="Protéines" unit="g" />
                     {temporalInsights.filter(i => i.msg.includes("prot") || i.msg.includes("repas") || i.msg.includes("eau")).map((ins, i) => <MsgBox key={i} type={ins.type} msg={ins.msg} suggestions={ins.suggestions} />)}
 
-                    {/* Objectifs nutritionnels */}
+                    {/* ── Objectif principal ── */}
                     <Card>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                         <ST style={{ margin: 0 }}>{tr("nutr_goals_title")}</ST>
-                        <button onClick={() => setEditingNutrGoals(v => !v)} style={{ background: editingNutrGoals ? activeGoalColor : C.surfaceAlt, color: editingNutrGoals ? "#fff" : C.muted, border: "none", borderRadius: 10, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{editingNutrGoals ? "Fermer" : "Modifier"}</button>
+                        <button onClick={() => setEditingNutrGoals(v => !v)} style={{ background: editingNutrGoals ? activeGoalColor : C.surfaceAlt, color: editingNutrGoals ? "#fff" : C.muted, border: "none", borderRadius: 10, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                          {editingNutrGoals ? "Fermer" : "Modifier"}
+                        </button>
                       </div>
-                      {/* Type d'objectif */}
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-                        {Object.entries(goalLabels).map(([key, label]) => (
-                          <button key={key} onClick={() => { const ng = { ...nutritionGoals, goalType: key }; setNutritionGoals(ng); localStorage.setItem("nutritionGoals", JSON.stringify(ng)); }} style={{ padding: "7px 14px", borderRadius: 20, border: `2px solid ${nutritionGoals.goalType === key ? goalColors[key] : C.border}`, background: nutritionGoals.goalType === key ? `${goalColors[key]}18` : C.surfaceAlt, color: nutritionGoals.goalType === key ? goalColors[key] : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{label}</button>
+
+                      {/* Sélecteur d'objectif */}
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                        {Object.entries(GOAL_CONFIG).map(([key, cfg]) => (
+                          <button key={key} onClick={() => saveNG({ ...nutritionGoals, goalType: key })}
+                            style={{ padding: "7px 14px", borderRadius: 20, border: `2px solid ${nutritionGoals.goalType === key ? cfg.color : C.border}`, background: nutritionGoals.goalType === key ? `${cfg.color}18` : C.surfaceAlt, color: nutritionGoals.goalType === key ? cfg.color : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                            {cfg.emoji} {cfg.label}
+                          </button>
                         ))}
                       </div>
-                      {/* Alerte cohérence Corps ↔ Nutrition */}
-                      {nutritionGoalConflict && (
-                        <div style={{ background: `${C.red10}`, border: `1.5px solid ${C.red22}`, borderRadius: 12, padding: "10px 14px", marginBottom: 12 }}>
-                          <p style={{ fontSize: 12, color: C.red, fontWeight: 700, margin: "0 0 4px" }}>⚠️ Incohérence détectée</p>
-                          <p style={{ fontSize: 12, color: C.muted, margin: 0, lineHeight: 1.5 }}>{nutritionGoalConflict.msg}</p>
-                          <button onClick={() => {
-                            const suggested = nutritionGoalConflict.bodyGoal === "perte" ? "perte" : "masse";
-                            const ng = { ...nutritionGoals, goalType: suggested };
-                            setNutritionGoals(ng);
-                            localStorage.setItem("nutritionGoals", JSON.stringify(ng));
-                          }} style={{ marginTop: 8, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
-                            Corriger automatiquement
-                          </button>
+
+                      {/* Message scientifique rotatif */}
+                      <div style={{ background: `${activeGoalColor}10`, border: `1.5px solid ${activeGoalColor}28`, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
+                        <p style={{ fontSize: 12, color: activeGoalColor, fontWeight: 700, margin: "0 0 4px" }}>{GOAL_CONFIG[nutritionGoals.goalType]?.emoji} {activeGoalLabel}</p>
+                        <p style={{ fontSize: 12, color: C.muted, margin: 0, lineHeight: 1.55 }}>{goalMsg}</p>
+                        <p style={{ fontSize: 11, color: `${activeGoalColor}aa`, margin: "4px 0 0", fontWeight: 600 }}>{GOAL_CONFIG[nutritionGoals.goalType]?.tagline}</p>
+                      </div>
+
+                      {/* Alertes de cohérence (science-based) */}
+                      {contradictions.length > 0 && contradictions.map((a, i) => (
+                        <div key={i} style={{ background: a.level === "warning" ? `${C.red}10` : `${C.orange}10`, border: `1.5px solid ${a.level === "warning" ? C.red : C.orange}30`, borderRadius: 12, padding: "10px 14px", marginBottom: 10 }}>
+                          <p style={{ fontSize: 12, color: a.level === "warning" ? C.red : C.orange, fontWeight: 700, margin: "0 0 4px" }}>{a.icon} {a.msg}</p>
+                          <p style={{ fontSize: 11, color: C.muted, margin: 0, lineHeight: 1.5 }}>{a.tip}</p>
+                          {a.suggestGoal && (
+                            <button onClick={() => saveNG({ ...nutritionGoals, goalType: a.suggestGoal })}
+                              style={{ marginTop: 8, background: C.red, color: "#fff", border: "none", borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
+                              Corriger l'objectif → {GOAL_CONFIG[a.suggestGoal]?.label}
+                            </button>
+                          )}
+                        </div>
+                      ))}
+
+                      {/* Bloc TDEE + calories sportives */}
+                      {tdee > 0 && (
+                        <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+                          <div style={{ flex: 1, minWidth: 80, background: C.surfaceAlt, borderRadius: 12, padding: "10px 12px", textAlign: "center" }}>
+                            <div style={{ fontSize: 16, fontWeight: 900, color: C.text }}>{tdee}</div>
+                            <div style={{ fontSize: 10, color: C.muted, fontWeight: 600, marginTop: 2 }}>TDEE kcal/j</div>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 80, background: `${activeGoalColor}12`, borderRadius: 12, padding: "10px 12px", textAlign: "center" }}>
+                            <div style={{ fontSize: 16, fontWeight: 900, color: activeGoalColor }}>{displayMacros.calTarget}</div>
+                            <div style={{ fontSize: 10, color: C.muted, fontWeight: 600, marginTop: 2 }}>Objectif kcal</div>
+                          </div>
+                          {sportCalBurnScience > 0 && (
+                            <div style={{ flex: 1, minWidth: 80, background: `${C.red}10`, borderRadius: 12, padding: "10px 12px", textAlign: "center" }}>
+                              <div style={{ fontSize: 16, fontWeight: 900, color: C.red }}>−{sportCalBurnScience}</div>
+                              <div style={{ fontSize: 10, color: C.muted, fontWeight: 600, marginTop: 2 }}>Sport kcal</div>
+                            </div>
+                          )}
+                          {scienceMacros?.deficit > 0 && (
+                            <div style={{ flex: 1, minWidth: 80, background: `${C.purple}10`, borderRadius: 12, padding: "10px 12px", textAlign: "center" }}>
+                              <div style={{ fontSize: 16, fontWeight: 900, color: C.purple }}>−{scienceMacros.deficit}</div>
+                              <div style={{ fontSize: 10, color: C.muted, fontWeight: 600, marginTop: 2 }}>Déficit net</div>
+                            </div>
+                          )}
                         </div>
                       )}
-                      {/* Sport burn info */}
-                      {sportCalBurn > 0 && (
-                        <div style={{ background: `${C.red10}`, border: `1.5px solid ${C.red22}`, borderRadius: 10, padding: "8px 12px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: 12, color: C.muted }}>🏋️ Dépense sportive estimée</span>
-                          <span style={{ fontSize: 13, fontWeight: 800, color: C.red }}>+{sportCalBurn} kcal</span>
-                        </div>
-                      )}
-                      {/* Bandeau poids détecté + suggestion auto */}
-                      {autoMacros ? (
-                        <div style={{ background: `${activeGoalColor}12`, border: `1.5px solid ${activeGoalColor}30`, borderRadius: 12, padding: "10px 14px", marginBottom: 12 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                            <p style={{ fontSize: 12, color: activeGoalColor, fontWeight: 700, margin: 0 }}>⚡ Calculé pour {currentWeight}kg · {goalLabels[nutritionGoals.goalType]}</p>
-                            <button onClick={() => { const ng = { ...nutritionGoals, ...autoMacros }; setNutritionGoals(ng); localStorage.setItem("nutritionGoals", JSON.stringify(ng)); }} style={{ background: activeGoalColor, color: "#fff", border: "none", borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>Appliquer</button>
+
+                      {/* Suggestion auto basée sur TDEE */}
+                      {scienceMacros && currentWeight ? (
+                        <div style={{ background: `${activeGoalColor}12`, border: `1.5px solid ${activeGoalColor}30`, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                            <p style={{ fontSize: 12, color: activeGoalColor, fontWeight: 700, margin: 0 }}>⚗️ Calculé · {currentWeight}kg · {ACTIVITY_LEVELS[activeActivity]?.label}</p>
+                            <button onClick={() => saveNG({ ...nutritionGoals, calTarget: scienceMacros.calTarget, protTarget: scienceMacros.protTarget, fatTarget: scienceMacros.fatTarget, carbsTarget: scienceMacros.carbsTarget })}
+                              style={{ background: activeGoalColor, color: "#fff", border: "none", borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>Appliquer</button>
                           </div>
                           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                            <span style={{ fontSize: 11, color: C.orange, fontWeight: 700 }}>{autoMacros.calTarget} kcal</span>
-                            <span style={{ fontSize: 11, color: C.purple, fontWeight: 700 }}>{autoMacros.protTarget}g prot</span>
-                            <span style={{ fontSize: 11, color: C.blue, fontWeight: 700 }}>{autoMacros.carbsTarget}g gluc</span>
-                            <span style={{ fontSize: 11, color: C.green, fontWeight: 700 }}>{autoMacros.fatTarget}g lip</span>
+                            <span style={{ fontSize: 11, color: C.orange, fontWeight: 700 }}>{scienceMacros.calTarget} kcal</span>
+                            <span style={{ fontSize: 11, color: C.purple, fontWeight: 700 }}>{scienceMacros.protTarget}g prot</span>
+                            <span style={{ fontSize: 11, color: C.blue, fontWeight: 700 }}>{scienceMacros.carbsTarget}g gluc</span>
+                            <span style={{ fontSize: 11, color: C.green, fontWeight: 700 }}>{scienceMacros.fatTarget}g lip</span>
                           </div>
                         </div>
                       ) : (
-                        <div style={{ background: C.surfaceAlt, borderRadius: 12, padding: "10px 14px", marginBottom: 12 }}>
-                          <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>💡 Entre ton poids dans <strong>Corps</strong> pour obtenir des objectifs personnalisés.</p>
+                        <div style={{ background: C.surfaceAlt, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
+                          <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>💡 Entre ton poids dans <strong>Corps</strong> et complète ton profil pour des calculs TDEE personnalisés.</p>
                         </div>
                       )}
-                      {/* Champs modifiables */}
+
+                      {/* Panneau de configuration profil (Modifier) */}
                       {editingNutrGoals && (
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-                          {[
-                            { key: "calTarget", label: "Calories (kcal)", max: 6000 },
-                            { key: "protTarget", label: "Protéines (g)", max: 400 },
-                            { key: "carbsTarget", label: "Glucides (g)", max: 600 },
-                            { key: "fatTarget", label: "Lipides (g)", max: 300 },
-                          ].map(({ key, label, max }) => (
-                            <Field key={key} label={label}>
-                              <input type="number" value={nutritionGoals[key] || ""} min={0} max={max} onChange={e => { const ng = { ...nutritionGoals, [key]: +e.target.value }; setNutritionGoals(ng); localStorage.setItem("nutritionGoals", JSON.stringify(ng)); }} style={inp} />
+                        <div style={{ marginBottom: 14 }}>
+                          {/* Profil corporel pour TDEE */}
+                          <p style={{ fontSize: 11, color: C.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 8px" }}>Profil pour calcul TDEE</p>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+                            <Field label="Sexe">
+                              <select value={nutritionGoals.sex || ""} onChange={e => saveNG({ ...nutritionGoals, sex: e.target.value || null })} style={{ ...inp, appearance: "auto" }}>
+                                <option value="">Non renseigné</option>
+                                <option value="male">Homme</option>
+                                <option value="female">Femme</option>
+                              </select>
                             </Field>
-                          ))}
+                            <Field label="Taille (cm)">
+                              <input type="number" value={nutritionGoals.height || ""} min={100} max={250} onChange={e => saveNG({ ...nutritionGoals, height: +e.target.value || null })} style={inp} placeholder="Ex : 175" />
+                            </Field>
+                          </div>
+                          <Field label="Niveau d'activité">
+                            <select value={nutritionGoals.activityLevel || ""} onChange={e => saveNG({ ...nutritionGoals, activityLevel: e.target.value || null })} style={{ ...inp, appearance: "auto" }}>
+                              <option value="">Auto-détecté ({ACTIVITY_LEVELS[inferredActivity]?.label})</option>
+                              {Object.entries(ACTIVITY_LEVELS).map(([k, v]) => (
+                                <option key={k} value={k}>{v.label} — {v.desc}</option>
+                              ))}
+                            </select>
+                          </Field>
+                          <p style={{ fontSize: 11, color: C.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, margin: "12px 0 8px" }}>Objectifs manuels</p>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            {[
+                              { key: "calTarget", label: "Calories (kcal)", max: 6000 },
+                              { key: "protTarget", label: "Protéines (g)", max: 400 },
+                              { key: "carbsTarget", label: "Glucides (g)", max: 600 },
+                              { key: "fatTarget", label: "Lipides (g)", max: 300 },
+                            ].map(({ key, label, max }) => (
+                              <Field key={key} label={label}>
+                                <input type="number" value={nutritionGoals[key] || ""} min={0} max={max} onChange={e => saveNG({ ...nutritionGoals, [key]: +e.target.value })} style={inp} />
+                              </Field>
+                            ))}
+                          </div>
                         </div>
                       )}
+
                       {/* Barres de progression */}
-                      <MacroBar label="Calories" current={calCurrent} target={calTarget} color={C.orange} />
-                      <MacroBar label="Protéines" current={protCurrent} target={protTarget} color={C.purple} />
-                      <MacroBar label="Glucides" current={carbsCurrent} target={carbsTarget} color={C.blue} />
-                      <MacroBar label="Lipides" current={fatCurrent} target={fatTarget} color={C.green} />
+                      <MacroBar label="Calories" current={calCurrent} target={displayMacros.calTarget} color={C.orange} unit=" kcal" />
+                      <MacroBar label="Protéines" current={protCurrent} target={displayMacros.protTarget} color={C.purple} />
+                      <MacroBar label="Glucides"  current={carbsCurrent} target={displayMacros.carbsTarget} color={C.blue} />
+                      <MacroBar label="Lipides"   current={fatCurrent} target={displayMacros.fatTarget} color={C.green} />
                     </Card>
 
-                    {/* Saisie du jour */}
+                    {/* ── Saisie du jour ── */}
                     <Card>
                       <ST>{tr("nutr_meals_day")}</ST>
                       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
                         <Toggle value={today.nutrition.breakfast} onChange={v => update("nutrition", "breakfast", v)} label={tr("nutr_breakfast")} />
-                        <Toggle value={today.nutrition.lunch} onChange={v => update("nutrition", "lunch", v)} label={tr("nutr_lunch")} />
-                        <Toggle value={today.nutrition.dinner} onChange={v => update("nutrition", "dinner", v)} label={tr("nutr_dinner")} />
-                        <Toggle value={today.nutrition.junk} onChange={v => update("nutrition", "junk", v)} label="Junk food" />
+                        <Toggle value={today.nutrition.lunch}     onChange={v => update("nutrition", "lunch",     v)} label={tr("nutr_lunch")} />
+                        <Toggle value={today.nutrition.dinner}    onChange={v => update("nutrition", "dinner",    v)} label={tr("nutr_dinner")} />
+                        <Toggle value={today.nutrition.junk}      onChange={v => update("nutrition", "junk",      v)} label="Junk food" />
                       </div>
                       <ST>{tr("nutr_macros")}</ST>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                        <Field label="Eau (L)"><input type="number" value={today.nutrition.water || ""} min={0} max={5} step={0.25} onChange={e => update("nutrition", "water", +e.target.value)} style={inp} /></Field>
-                        <Field label="Calories (kcal)"><input type="number" value={today.nutrition.calories || ""} min={0} max={6000} onChange={e => update("nutrition", "calories", +e.target.value)} style={inp} /></Field>
-                        <Field label="Protéines (g)"><input type="number" value={today.nutrition.protein || ""} min={0} max={400} onChange={e => update("nutrition", "protein", +e.target.value)} style={inp} /></Field>
-                        <Field label="Glucides (g)"><input type="number" value={today.nutrition.carbs || ""} min={0} max={600} onChange={e => update("nutrition", "carbs", +e.target.value)} style={inp} /></Field>
-                        <Field label="Lipides (g)"><input type="number" value={today.nutrition.fat || ""} min={0} max={300} onChange={e => update("nutrition", "fat", +e.target.value)} style={inp} /></Field>
+                        <Field label="Eau (L)">         <input type="number" value={today.nutrition.water    || ""} min={0} max={5}    step={0.25} onChange={e => update("nutrition","water",   +e.target.value)} style={inp} /></Field>
+                        <Field label="Calories (kcal)"> <input type="number" value={today.nutrition.calories || ""} min={0} max={6000}             onChange={e => update("nutrition","calories",+e.target.value)} style={inp} /></Field>
+                        <Field label="Protéines (g)">   <input type="number" value={today.nutrition.protein  || ""} min={0} max={400}              onChange={e => update("nutrition","protein", +e.target.value)} style={inp} /></Field>
+                        <Field label="Glucides (g)">    <input type="number" value={today.nutrition.carbs    || ""} min={0} max={600}              onChange={e => update("nutrition","carbs",   +e.target.value)} style={inp} /></Field>
+                        <Field label="Lipides (g)">     <input type="number" value={today.nutrition.fat      || ""} min={0} max={300}              onChange={e => update("nutrition","fat",     +e.target.value)} style={inp} /></Field>
                       </div>
                     </Card>
 
-                    {/* Suggestions de repas */}
+                    {/* ── Suggestions de repas ── */}
                     <Card>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                         <ST style={{ margin: 0 }}>{tr("nutr_suggest")}</ST>
-                        <button onClick={() => { const v = !veganOnly; setVeganOnly(v); localStorage.setItem("veganOnly", String(v)); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 20, border: `2px solid ${veganOnly ? C.green : C.border}`, background: veganOnly ? `${C.green18}` : C.surfaceAlt, color: veganOnly ? C.green : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                        <button onClick={() => { const v = !veganOnly; setVeganOnly(v); localStorage.setItem("veganOnly", String(v)); }}
+                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 20, border: `2px solid ${veganOnly ? C.green : C.border}`, background: veganOnly ? `${C.green}18` : C.surfaceAlt, color: veganOnly ? C.green : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                           🌱 Vegan{veganOnly ? " ✓" : ""}
                         </button>
                       </div>
-                      <p style={{ fontSize: 12, color: C.muted, margin: "0 0 14px" }}>Suggestions pour <strong style={{ color: activeGoalColor }}>{goalLabels[nutritionGoals.goalType]}</strong>{veganOnly ? " · vegan uniquement" : ""}</p>
+                      <p style={{ fontSize: 12, color: C.muted, margin: "0 0 14px" }}>Suggestions pour <strong style={{ color: activeGoalColor }}>{activeGoalLabel}</strong>{veganOnly ? " · vegan uniquement" : ""}</p>
                       {mealCategories.map(({ key, label }) => {
                         const meals = filteredMeals(key);
                         if (!meals.length) return null;
@@ -2658,11 +2741,11 @@ export default function App() {
                                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                                       <span style={{ fontSize: 11, color: C.orange, fontWeight: 700 }}>{m.calories} kcal</span>
                                       <span style={{ fontSize: 11, color: C.purple, fontWeight: 700 }}>{m.protein}g prot</span>
-                                      <span style={{ fontSize: 11, color: C.blue, fontWeight: 700 }}>{m.carbs}g gluc</span>
-                                      <span style={{ fontSize: 11, color: C.green, fontWeight: 700 }}>{m.fat}g lip</span>
+                                      <span style={{ fontSize: 11, color: C.blue,   fontWeight: 700 }}>{m.carbs}g gluc</span>
+                                      <span style={{ fontSize: 11, color: C.green,  fontWeight: 700 }}>{m.fat}g lip</span>
                                     </div>
                                   </div>
-                                  {m.vegan && <span style={{ fontSize: 10, background: `${C.green22}`, color: C.green, borderRadius: 6, padding: "2px 6px", fontWeight: 700, whiteSpace: "nowrap" }}>🌱</span>}
+                                  {m.vegan && <span style={{ fontSize: 10, background: `${C.green}22`, color: C.green, borderRadius: 6, padding: "2px 6px", fontWeight: 700, whiteSpace: "nowrap" }}>🌱</span>}
                                 </div>
                               ))}
                             </div>
@@ -2670,7 +2753,8 @@ export default function App() {
                         );
                       })}
                     </Card>
-                    {/* Bloc "Plus d'infos" — Q&A nutritionnelles (Pro+) */}
+
+                    {/* ── Q&A nutritionnelles (Pro+) ── */}
                     {isPro ? (() => {
                       const allTips = [...(NUTRITION_TIPS.all || []), ...(NUTRITION_TIPS[nutritionGoals.goalType] || [])];
                       return <NutritionTipsBlock tips={allTips} goalType={nutritionGoals.goalType} />;
@@ -2698,29 +2782,35 @@ export default function App() {
                       const w = today.body?.weight || 0;
                       const wt = today.body?.weightTarget || 0;
                       if (!w || !wt) return null;
-                      const diff = wt - w;
-                      const absDiff = Math.abs(diff);
-                      const isGain = diff > 0;
-                      if (absDiff < 0.3) return <p style={{ fontSize: 12, color: C.green, fontWeight: 700, margin: "0 0 14px" }}>✓ Tu es à ton objectif !</p>;
-                      // Scientific rates: loss 0.5–1 %/week · gain 0.25–0.5 %/week
-                      let minW, maxW, advice;
-                      if (isGain) {
-                        minW = Math.ceil(absDiff / (w * 0.005));
-                        maxW = Math.ceil(absDiff / (w * 0.0025));
-                        advice = "0.25–0.5 % poids/sem · prise musculaire contrôlée";
-                      } else {
-                        minW = Math.ceil(absDiff / (w * 0.01));
-                        maxW = Math.ceil(absDiff / (w * 0.005));
-                        advice = "0.5–1 % poids/sem · préservation musculaire";
-                      }
-                      const col = isGain ? C.green : C.orange;
-                      return (
-                        <div style={{ marginBottom: 14, background: `${col}12`, border: `1.5px solid ${col}30`, borderRadius: 14, padding: "12px 16px" }}>
+                      if (progressEst?.done) return (
+                        <div style={{ marginBottom: 14, background: `${C.green}12`, border: `1.5px solid ${C.green}30`, borderRadius: 14, padding: "12px 16px" }}>
+                          <p style={{ fontSize: 13, color: C.green, fontWeight: 800, margin: 0 }}>✓ Tu es à ton objectif !</p>
+                        </div>
+                      );
+                      if (!progressEst) return null;
+                      const goalCfg = GOAL_CONFIG[nutritionGoals.goalType];
+                      const col = goalCfg?.color || C.orange;
+                      const isGain = wt > w;
+                      if (progressEst.recomp) return (
+                        <div style={{ marginBottom: 14, background: `${col}12`, border: `1.5px solid ${col}28`, borderRadius: 14, padding: "12px 16px" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                            <span style={{ fontSize: 14, fontWeight: 800, color: col }}>{isGain ? `+${diff.toFixed(1)}kg` : `${diff.toFixed(1)}kg`} {isGain ? "à prendre" : "à perdre"}</span>
-                            <span style={{ fontSize: 20, fontWeight: 900, color: col, letterSpacing: -0.5 }}>{minW}–{maxW} sem.</span>
+                            <span style={{ fontSize: 13, fontWeight: 800, color: col }}>🔥 Recomposition corporelle</span>
+                            <span style={{ fontSize: 13, fontWeight: 900, color: col }}>~{progressEst.minWeeks}–{progressEst.maxWeeks} sem.</span>
                           </div>
-                          <p style={{ margin: 0, fontSize: 11, color: C.muted, lineHeight: 1.5 }}>📊 {advice}</p>
+                          <p style={{ margin: 0, fontSize: 11, color: C.muted, lineHeight: 1.6 }}>📊 {progressEst.note}</p>
+                        </div>
+                      );
+                      return (
+                        <div style={{ marginBottom: 14, background: `${col}12`, border: `1.5px solid ${col}28`, borderRadius: 14, padding: "12px 16px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                            <span style={{ fontSize: 14, fontWeight: 800, color: col }}>
+                              {isGain ? `+${progressEst.diff}kg` : `−${progressEst.diff}kg`} {isGain ? "à prendre" : "à perdre"}
+                            </span>
+                            <span style={{ fontSize: 16, fontWeight: 900, color: col, letterSpacing: -0.5 }}>~{progressEst.minWeeks}–{progressEst.maxWeeks} sem.</span>
+                          </div>
+                          <p style={{ margin: 0, fontSize: 11, color: C.muted, lineHeight: 1.6 }}>
+                            📊 Estimation saine à {progressEst.weeklyMin}–{progressEst.weeklyMax} kg/semaine · {goalCfg?.tagline}
+                          </p>
                         </div>
                       );
                     })()}
