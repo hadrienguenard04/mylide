@@ -610,7 +610,7 @@ const TRANSLATIONS = {
     sleep_schedule:"Horaires",sleep_quality:"Qualité",sleep_bedtime:"Coucher",sleep_wakeup:"Réveil",sleep_noscreen:"Pas d'écran 30min avant de dormir",sleep_optimal:"Optimal",sleep_ok:"Correct, visez 7h30+",sleep_insufficient:"Insuffisant",
     sport_type:"Type d'activité",sport_recovery:"Récupération",sport_photo:"Photo de progression",sport_import_photo:"📷 Importer une photo",
     nutr_goals_title:"Objectifs nutritionnels",nutr_meals_day:"Repas du jour",nutr_macros:"Macros du jour",nutr_suggest:"Idées repas",nutr_breakfast:"Petit-déjeuner",nutr_lunch:"Déjeuner",nutr_snack:"Collation",nutr_dinner:"Dîner",
-    body_weight_sec:"Poids & objectif",body_measures:"Mensurations",body_current:"Poids actuel (kg)",body_target:"Objectif poids (kg)",body_chest:"Poitrine (cm)",body_waist:"Taille (cm)",body_hips:"Hanches (cm)",body_arms:"Bras (cm)",body_thighs:"Cuisses (cm)",
+    body_weight_sec:"Poids & objectif",body_measures:"Mensurations",body_current:"Poids actuel (kg)",body_target:"Objectif poids (kg)",body_chest:"Poitrine (cm)",body_waist:"Tour de taille (cm)",body_hips:"Hanches (cm)",body_arms:"Bras (cm)",body_thighs:"Cuisses (cm)",
     work_focus_sec:"Focus & Productivité",work_tasks:"Tâches",work_tasks_planned:"Prévues",work_tasks_done:"Faites",work_highlight:"Highlight du jour",work_screen:"Temps d'écran",work_screen_hours:"Heures aujourd'hui",
     mind_mood_day:"Humeur du jour",mind_dev:"Développement",mind_reading:"Lecture (pages)",mind_meditation:"Méditation / Cohérence cardiaque",mind_skill:"Compétence travaillée",mind_gratitude:"Gratitude du jour",
     todo_new:"Nouvelle tâche",todo_placeholder:"Ajouter une tâche...",todo_today:"Aujourd'hui",todo_older:"Anciennes",
@@ -3147,6 +3147,41 @@ export default function App() {
               {trackTab === "body" && (
                 <div>
                   <EvoChart data={history.filter(d => d.body?.weight > 0).slice(-60)} dataKey="body.weight" color={C.orange} label="Evolution du poids" unit="kg" />
+
+                  {/* ── Bloc taille fixe depuis le profil ── */}
+                  {(() => {
+                    const h = nutritionGoals.height;
+                    const goalCfg = GOAL_CONFIG[nutritionGoals.goalType];
+                    const sexLabel = nutritionGoals.sex === "female" ? "Femme" : nutritionGoals.sex === "male" ? "Homme" : null;
+                    if (!h) return (
+                      <div onClick={() => setShowSettings(true)} style={{ background: C.surfaceAlt, border: `1.5px dashed ${C.border}`, borderRadius: 16, padding: "14px 16px", marginBottom: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+                        <span style={{ fontSize: 22 }}>📏</span>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>Taille non renseignée</p>
+                          <p style={{ margin: "2px 0 0", fontSize: 11, color: C.muted }}>Ta taille influence le TDEE et le déficit optimal. Appuie pour la renseigner.</p>
+                        </div>
+                        <span style={{ color: C.muted, fontSize: 18 }}>›</span>
+                      </div>
+                    );
+                    const bmrDisplay = tdee > 0 ? `TDEE ${tdee} kcal/j` : null;
+                    return (
+                      <div style={{ background: `${C.orange}0D`, border: `1.5px solid ${C.orange}28`, borderRadius: 16, padding: "13px 16px", marginBottom: 10, display: "flex", alignItems: "center", gap: 14 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 12, background: `${C.orange}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>📏</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", gap: 8, alignItems: "baseline", marginBottom: 3 }}>
+                            <span style={{ fontSize: 22, fontWeight: 900, color: C.orange }}>{h} cm</span>
+                            {sexLabel && <span style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>{sexLabel}</span>}
+                          </div>
+                          <p style={{ margin: 0, fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
+                            {goalCfg?.emoji} {goalCfg?.label}
+                            {bmrDisplay ? ` · ${bmrDisplay}` : ""}
+                          </p>
+                        </div>
+                        <button onClick={() => setShowSettings(true)} style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "6px 12px", fontSize: 11, fontWeight: 700, color: C.muted, cursor: "pointer" }}>Modifier</button>
+                      </div>
+                    );
+                  })()}
+
                   <Card>
                     <ST>{tr("body_weight_sec")}</ST>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
