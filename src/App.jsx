@@ -1820,6 +1820,27 @@ export default function App() {
     }
   }, []);
 
+  // Pré-remplir les mesures corpo depuis le dernier enregistrement connu
+  useEffect(() => {
+    if (!history.length) return;
+    const todayStr = new Date().toISOString().split("T")[0];
+    const bodyFields = ["weight", "weightTarget", "chest", "waist", "hips", "arms", "thighs", "restingHR", "maxHR"];
+    const lastBody = [...history].reverse().find(d => d.date !== todayStr && d.body && bodyFields.some(f => d.body[f] > 0));
+    if (!lastBody?.body) return;
+    setToday(prev => {
+      const mergedBody = { ...prev.body };
+      let changed = false;
+      bodyFields.forEach(f => {
+        if ((!mergedBody[f] || mergedBody[f] === 0) && lastBody.body[f] > 0) {
+          mergedBody[f] = lastBody.body[f];
+          changed = true;
+        }
+      });
+      if (!changed) return prev;
+      return { ...prev, body: mergedBody };
+    });
+  }, [history]);
+
   const saveAll = useCallback(async (h, t, g, p, pr) => {
     const { data: { user } } = await supabase.auth.getUser(); if (!user) return;
     await supabase.from("profiles").upsert({ id: user.id, name: pr.name, dob: pr.dob, photo: pr.photo });
