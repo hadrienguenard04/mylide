@@ -3023,10 +3023,14 @@ export default function App() {
                 <input value={profile.vision || ""} onChange={e => updateProfile("vision", e.target.value)} placeholder="Ta vision personnelle..." style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 12, padding: "12px 16px", color: "#fff", fontSize: 16, width: "100%", boxSizing: "border-box", fontFamily: "inherit", outline: "none" }} />
               </Card>
               <Card>
-                <div onClick={() => setShowSubscription(true)} style={{ background: "linear-gradient(135deg, #CC2936, #8B1A22)", borderRadius: 16, padding: "18px 20px", marginBottom: 14, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 10px 32px rgba(204,41,54,0.35)" }}>
+                <div onClick={() => setShowSubscription(true)} style={{ background: isPro ? "linear-gradient(135deg, #1a1a2e, #16213e)" : "linear-gradient(135deg, #CC2936, #8B1A22)", borderRadius: 16, padding: "18px 20px", marginBottom: 14, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: isPro ? "0 10px 32px rgba(0,0,0,0.2)" : "0 10px 32px rgba(204,41,54,0.35)" }}>
                   <div>
-                    <p style={{ color: "#fff", fontWeight: 900, fontSize: 17, margin: "0 0 3px", letterSpacing: -0.2 }}>Passer a Pro ⭐</p>
-                    <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 13, margin: 0 }}>1 mois gratuit · 3,59€/mois ensuite</p>
+                    <p style={{ color: "#fff", fontWeight: 900, fontSize: 17, margin: "0 0 3px", letterSpacing: -0.2 }}>
+                      {isPro ? `⭐ Membre ${userPlan === "premium" ? "Premium" : userPlan === "starter" ? "Starter" : "Pro"} actif` : "Passer à Pro ⭐"}
+                    </p>
+                    <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 13, margin: 0 }}>
+                      {isPro ? "Gérer mon abonnement →" : "1 mois gratuit · à partir de 3,99€/mois ensuite"}
+                    </p>
                   </div>
                   <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 20 }}>→</span>
                 </div>
