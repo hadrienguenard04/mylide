@@ -305,7 +305,7 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel 
             Confirmer la résiliation ?
           </p>
           <p style={{ margin: "0 0 14px", fontSize: 12, color: "#CC2936", textAlign: "center", lineHeight: 1.5 }}>
-            Tu repasseras en plan Gratuit immédiatement. Cette action est irréversible.
+            Tu gardes ton accès jusqu'à la fin de ta période en cours. Après ça, tu repasseras en plan Gratuit.
           </p>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => setShowConfirm(false)} style={{ flex: 1, padding: "11px", background: "none", border: `1.5px solid #CC293640`, borderRadius: 10, color: "#CC2936", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -472,9 +472,16 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
       });
-      const { success, error: e } = await r.json();
+      const { success, immediate, period_end, error: e } = await r.json();
       if (e) throw new Error(e);
-      if (success) { onClose(); window.location.reload(); }
+      if (success) {
+        if (immediate) {
+          onClose(); window.location.reload();
+        } else {
+          const dateStr = period_end ? new Date(period_end).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "";
+          setError(`✅ Résiliation programmée. Ton accès reste actif jusqu'au ${dateStr}.`);
+        }
+      }
     } catch (e) {
       setError(e.message || "Erreur lors de la résiliation. Reessaie.");
     }
