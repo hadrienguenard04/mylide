@@ -50,7 +50,7 @@ module.exports = async function handler(req, res) {
     // Créer la session Checkout
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      automatic_payment_methods: { enabled: true },
+      payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
       subscription_data: {
