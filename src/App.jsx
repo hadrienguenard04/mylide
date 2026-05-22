@@ -2476,12 +2476,14 @@ export default function App() {
   const totalPatrimoine = patrimoine.reduce((a, b) => a + (Number(b.amount) || 0), 0);
   const updateGoalField = (id, f, v) => { const g = goals.map(g => g.id === id ? { ...g, [f]: v } : g); setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
   const saveEditedGoal = (edited) => { const g = goals.map(g => g.id === edited.id ? edited : g); setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
+  const GOAL_COLORS = ["#CC2936","#1A7A4A","#1E5FCC","#6B35C8","#D4580A","#0891b2","#be185d","#0A0A0A"];
+  const randomGoalColor = () => GOAL_COLORS[Math.floor(Math.random() * GOAL_COLORS.length)];
   const addGoal = () => {
     if (!newGoal.label.trim()) return;
     if (!isAtLeast(userPlan, "starter") && goals.length >= 3) { setShowSubscription(true); return; }
-    const g = [...goals, { ...newGoal, id: Date.now(), manualProgress: 0 }];
+    const g = [...goals, { ...newGoal, id: Date.now(), manualProgress: 0, color: randomGoalColor() }];
     setGoals(g); saveAll(history, todos, g, patrimoine, profile);
-    setNewGoal({ label: "", category: "", color: C.red, sourceId: "manual", target: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reverse: false, manualProgress: 0 });
+    setNewGoal({ label: "", category: "", color: "#CC2936", sourceId: "manual", target: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reverse: false, manualProgress: 0 });
   };
   const deleteGoal = id => { const g = goals.filter(g => g.id !== id); setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
   const moveGoal = (idx, dir) => { const g = [...goals]; const ni = idx + dir; if (ni < 0 || ni >= g.length) return; [g[idx], g[ni]] = [g[ni], g[idx]]; setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
@@ -3751,10 +3753,6 @@ export default function App() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <Field label="Debut"><input type="date" value={newGoal.startDate} onChange={e => setNewGoal(p => ({ ...p, startDate: e.target.value }))} style={inp} /></Field>
                     <Field label="Fin"><input type="date" value={newGoal.endDate} onChange={e => setNewGoal(p => ({ ...p, endDate: e.target.value }))} style={inp} /></Field>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <label style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: 1.2, flexShrink: 0, fontWeight: 600 }}>Couleur</label>
-                    <input type="color" value={newGoal.color} onChange={e => setNewGoal(p => ({ ...p, color: e.target.value }))} style={{ width: 46, height: 46, borderRadius: 12, border: `2px solid ${C.border}`, cursor: "pointer", padding: 2 }} />
                   </div>
                   <button onClick={addGoal} style={{ background: C.black, color: "#fff", border: "none", borderRadius: 14, padding: "15px", fontWeight: 800, cursor: "pointer", fontSize: 15 }}>+ Ajouter l'objectif</button>
                 </div>
