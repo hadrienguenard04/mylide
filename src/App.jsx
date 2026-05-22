@@ -2692,13 +2692,14 @@ export default function App() {
     () => { if (nav === "track") setTrackTab(TRACK_ORDER[Math.max(trackIdx - 1, 0)]); else setNav(NAV_ORDER[Math.max(navIdx - 1, 0)]); }
   );
 
+  const _sd = radarDayData || today;
   const STAT_CARDS = [
-    { label: "Sommeil", value: today.sleep.duration ? `${today.sleep.duration}h` : "-", icon: "sleep", color: C.purple, tab: "sleep" },
-    { label: "Sport", value: today.sport.isRest ? "Repos" : today.sport.duration ? `${today.sport.duration}m` : "-", icon: "sport", color: C.red, tab: "sport" },
-    { label: "Eau", value: today.nutrition.water ? `${today.nutrition.water}L` : "-", icon: "water", color: C.blue, tab: "nutrition" },
-    { label: "Poids", value: today.body?.weight ? `${today.body.weight}kg` : "-", icon: "scale", color: C.orange, tab: "body" },
-    { label: "Focus", value: today.work.focus ? `${today.work.focus}/5` : "-", icon: "focus", color: C.red, tab: "work" },
-    { label: "Humeur", value: today.mind.mood ? `${today.mind.mood}/5` : "-", icon: "mood", color: C.green, tab: "mind" },
+    { label: "Sommeil", value: _sd.sleep?.duration ? `${_sd.sleep.duration}h` : "-", icon: "sleep", color: C.purple, tab: "sleep" },
+    { label: "Sport", value: _sd.sport?.isRest ? "Repos" : _sd.sport?.duration ? `${_sd.sport.duration}m` : "-", icon: "sport", color: C.red, tab: "sport" },
+    { label: "Eau", value: _sd.nutrition?.water ? `${_sd.nutrition.water}L` : "-", icon: "water", color: C.blue, tab: "nutrition" },
+    { label: "Poids", value: _sd.body?.weight ? `${_sd.body.weight}kg` : "-", icon: "scale", color: C.orange, tab: "body" },
+    { label: "Focus", value: _sd.work?.focus ? `${_sd.work.focus}/5` : "-", icon: "focus", color: C.red, tab: "work" },
+    { label: "Humeur", value: _sd.mind?.mood ? `${_sd.mind.mood}/5` : "-", icon: "mood", color: C.green, tab: "mind" },
   ];
 
   if (showSplash) return <SplashScreen onDone={() => setShowSplash(false)} />;
