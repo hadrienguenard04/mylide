@@ -2246,7 +2246,7 @@ export default function App() {
       const { data: goalsData } = await supabase.from("goals").select("*").eq("user_id", user.id);
       if (goalsData?.length) setGoals(goalsData.map(g => g.data));
       const { data: patrimoineData } = await supabase.from("patrimoine").select("*").eq("user_id", user.id).single();
-      if (patrimoineData) setPatrimoine(patrimoineData.data);
+      if (patrimoineData) { setPatrimoine(patrimoineData.data); patrimoineRef.current = patrimoineData.data; }
       const { data: todosData } = await supabase.from("todos").select("*").eq("user_id", user.id);
       if (todosData?.length) setTodos(todosData.map(t => t.data));
       // Marquer le chargement terminé pour l'auto-save
@@ -2363,16 +2363,6 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [today]);
 
-  // ── Auto-save patrimoine : 1.5s après la dernière modification ──────────
-  useEffect(() => {
-    if (!loadDoneRef.current) return;
-    clearTimeout(patrimoineAutoSaveRef.current);
-    patrimoineAutoSaveRef.current = setTimeout(() => {
-      saveAll(historyRef.current, todosRef.current, goalsRef.current, patrimoine, profileRef.current);
-    }, 1500);
-    return () => clearTimeout(patrimoineAutoSaveRef.current);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patrimoine]);
 
   const saveAll = useCallback(async (h, t, g, p, pr) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -2493,7 +2483,16 @@ export default function App() {
   };
   const deleteGoal = id => { const g = goals.filter(g => g.id !== id); setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
   const moveGoal = (idx, dir) => { const g = [...goals]; const ni = idx + dir; if (ni < 0 || ni >= g.length) return; [g[idx], g[ni]] = [g[ni], g[idx]]; setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
-  const updatePoche = (id, f, v) => { const p = patrimoine.map(p => p.id === id ? { ...p, [f]: v } : p); setPatrimoine(p); /* auto-saved by patrimoine effect */ };
+  const updatePoche = (id, f, v) => {
+    const p = patrimoine.map(x => x.id === id ? { ...x, [f]: v } : x);
+    setPatrimoine(p);
+    patrimoineRef.current = p;
+    if (!loadDoneRef.current) return;
+    clearTimeout(patrimoineAutoSaveRef.current);
+    patrimoineAutoSaveRef.current = setTimeout(() => {
+      saveAll(historyRef.current, todosRef.current, goalsRef.current, p, profileRef.current);
+    }, 800);
+  };
   const addPoche = () => { if (!newPoche.name.trim()) return; const pocheLimit = isAtLeast(userPlan, "pro") ? 999 : isAtLeast(userPlan, "starter") ? 5 : 2; if (patrimoine.length >= pocheLimit) { setShowSubscription(true); return; } const p = [...patrimoine, { ...newPoche, id: Date.now(), amount: Number(newPoche.amount) }]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); setNewPoche({ name: "", amount: 0, color: "#2563eb" }); };
   const deletePoche = id => { const p = patrimoine.filter(p => p.id !== id); setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
   const movePoche = (idx, dir) => { const p = [...patrimoine]; const ni = idx + dir; if (ni < 0 || ni >= p.length) return; [p[idx], p[ni]] = [p[ni], p[idx]]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
