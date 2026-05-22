@@ -2247,8 +2247,7 @@ export default function App() {
       if (goalsData?.length) setGoals(goalsData.map(g => g.data));
       const { data: patrimoineRows } = await supabase.from("patrimoine").select("*").eq("user_id", user.id).order("id", { ascending: false }).limit(1);
       const patrimoineData = patrimoineRows?.[0];
-      if (patrimoineData?.data) { setPatrimoine(patrimoineData.data); patrimoineRef.current = patrimoineData.data; console.log("[load] patrimoine loaded:", patrimoineData.data?.length, "poches"); }
-      else console.warn("[load] no patrimoine found");
+      if (patrimoineData?.data) { setPatrimoine(patrimoineData.data); patrimoineRef.current = patrimoineData.data; }
       const { data: todosData } = await supabase.from("todos").select("*").eq("user_id", user.id);
       if (todosData?.length) setTodos(todosData.map(t => t.data));
       // Marquer le chargement terminé pour l'auto-save
@@ -2409,13 +2408,8 @@ export default function App() {
     if (g.length) await supabase.from("goals").insert(g.map(goal => ({ user_id: user.id, data: goal })));
 
     // Patrimoine - delete+insert pour éviter les doublons
-    const { error: patDelErr } = await supabase.from("patrimoine").delete().eq("user_id", user.id);
-    if (patDelErr) console.error("[saveAll] patrimoine delete error:", patDelErr);
-    if (p && p.length) {
-      const { error: patInsErr } = await supabase.from("patrimoine").insert({ user_id: user.id, data: p });
-      if (patInsErr) console.error("[saveAll] patrimoine insert error:", patInsErr);
-      else console.log("[saveAll] patrimoine saved:", p.length, "poches");
-    }
+    await supabase.from("patrimoine").delete().eq("user_id", user.id);
+    if (p && p.length) await supabase.from("patrimoine").insert({ user_id: user.id, data: p });
 
     // Todos
     await supabase.from("todos").delete().eq("user_id", user.id);
@@ -2495,10 +2489,9 @@ export default function App() {
     const p = patrimoine.map(x => x.id === id ? { ...x, [f]: v } : x);
     setPatrimoine(p);
     patrimoineRef.current = p;
-    if (!loadDoneRef.current) { console.warn("[updatePoche] loadDone=false, skip save"); return; }
+    if (!loadDoneRef.current) return;
     clearTimeout(patrimoineAutoSaveRef.current);
     patrimoineAutoSaveRef.current = setTimeout(() => {
-      console.log("[updatePoche] saving patrimoine:", p);
       saveAll(historyRef.current, todosRef.current, goalsRef.current, p, profileRef.current);
     }, 800);
   };
