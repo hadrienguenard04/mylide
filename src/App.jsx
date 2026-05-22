@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { MEAL_DB as NEW_MEAL_DB, getMeals, getMealEmoji, CAT_LABELS, CAT_ICONS } from './mealEngine.js';
 import { supabase } from "./supabase";
 import FAQPage from "./FAQ.jsx";
 import LegalPage from "./Legal.jsx";
@@ -63,6 +64,8 @@ const NAV_ORDER = ["today", "track", "money", "goals", "stats", "profile"];
 const TRACK_ORDER = ["sleep", "sport", "nutrition", "body", "work", "todo", "mind"];
 
 // ── FOOD DATABASE ──────────────────────────────────────────────────────────
+// allMeals : liste plate pour les suggestions intelligentes de protéines
+const allMeals = Object.values(NEW_MEAL_DB).flat();
 
 const getMealSuggestions = (proteinNeeded, hour) => {
   if (proteinNeeded <= 0) return [];
@@ -78,14 +81,15 @@ const getMealSuggestions = (proteinNeeded, hour) => {
     suggestions.push({ name: "Shake whey", items: ["30g whey (24g prot)", "200ml lait ou eau"], totalProtein: 24, timing: hour >= 22 ? "Trop tard pour bien dormir" : "Rapide et efficace" });
   }
   return allMeals
-    .filter(m => m.protein >= proteinNeeded * 0.5 && m.protein <= proteinNeeded * 1.5)
-    .sort((a, b) => Math.abs(a.protein - proteinNeeded) - Math.abs(b.protein - proteinNeeded))
+    .filter(m => m.macros.prot >= proteinNeeded * 0.5 && m.macros.prot <= proteinNeeded * 1.5)
+    .sort((a, b) => Math.abs(a.macros.prot - proteinNeeded) - Math.abs(b.macros.prot - proteinNeeded))
     .slice(0, 2)
-    .map(m => ({ name: m.name, items: [`${m.protein}g prot`, `${m.calories} kcal`], totalProtein: m.protein, timing: hour >= 22 ? "Léger avant 23h" : "Idéal maintenant" }));
+    .map(m => ({ name: m.name, items: [`${m.macros.prot}g prot`, `${m.macros.cal} kcal`], totalProtein: m.macros.prot, timing: hour >= 22 ? "Léger avant 23h" : "Idéal maintenant" }));
 };
-const MEAL_DB = {
+const _OLD_MEAL_DB_REMOVED = null; // suprimé — utilise mealEngine.js
+if (false) { const _MEAL_DB_STUB = {
   breakfast: [
-    { name: "Œufs brouillés avocat toast", ingredients: ["3 œufs entiers", "75g avocat (½)", "2 tranches pain complet"], protein: 24, carbs: 28, fat: 22, calories: 410, vegan: false, goals: ["masse","maintenance","seche"] },
+    { name: "stub", ingredients: [], protein: 0, carbs: 0, fat: 0, calories: 0, vegan: false, goals: [] },
     { name: "Porridge whey banane", ingredients: ["80g flocons d'avoine", "30g whey protéine", "1 banane (120g)", "200ml lait"], protein: 38, carbs: 68, fat: 7, calories: 491, vegan: false, goals: ["masse","maintenance"] },
     { name: "Yaourt grec miel noix", ingredients: ["200g yaourt grec 0%", "1 c.à.s miel", "30g noix"], protein: 22, carbs: 28, fat: 14, calories: 326, vegan: false, goals: ["masse","maintenance","perte"] },
     { name: "Pancakes protéinés", ingredients: ["3 œufs entiers", "30g whey protéine", "50g flocons d'avoine"], protein: 42, carbs: 40, fat: 14, calories: 458, vegan: false, goals: ["masse","maintenance"] },
@@ -210,11 +214,9 @@ const MEAL_DB = {
     { name: "Lieu noir purée de céleri-rave salade", ingredients: ["150g lieu noir", "200g purée de céleri-rave (sans beurre)", "100g salade verte"], protein: 36, carbs: 22, fat: 3, calories: 259, vegan: false, goals: ["seche","perte"] },
     { name: "Poitrine de veau ratatouille polenta", ingredients: ["200g poitrine de veau", "200g ratatouille provençale", "60g polenta cuite"], protein: 44, carbs: 32, fat: 8, calories: 378, vegan: false, goals: ["masse","maintenance"] },
     { name: "Shakshuka aux œufs feta", ingredients: ["3 œufs entiers", "100g tomates concassées", "60g feta", "thym frais"], protein: 26, carbs: 10, fat: 20, calories: 318, vegan: false, goals: ["maintenance","seche","perte"] },
-    { name: "Curry de pois chiches lait de coco", ingredients: ["250g pois chiches cuits", "200ml lait de coco", "80g riz basmati cuit"], protein: 18, carbs: 68, fat: 16, calories: 488, vegan: true, goals: ["masse","maintenance"] },
+    { name: "Curry de pois chiches lait de coco", ingredients: [], protein: 0, carbs: 0, fat: 0, calories: 0, vegan: true, goals: [] },
   ],
-};
-// Flat list for getMealSuggestions (defined after MEAL_DB so reference resolves)
-const allMeals = [...MEAL_DB.breakfast, ...MEAL_DB.lunch, ...MEAL_DB.snack, ...MEAL_DB.dinner];
+}; } // end if(false) — ancien MEAL_DB supprimé
 
 function getTemporalIntelligence(today, history, goals) {
   const now = new Date(); const hour = now.getHours(); const minute = now.getMinutes();
@@ -1754,210 +1756,233 @@ const PageTransition = ({ children, pageKey }) => {
 };
 
 // ── ONBOARDING ─────────────────────────────────────────────────────────────
-// ── MEAL CAROUSEL - emoji mapping ─────────────────────────────────────────
-const MEAL_EMOJI_MAP = [
-  ["omelette","🍳"],["œuf","🍳"],["oeuf","🍳"],["brouillé","🍳"],["poché","🍳"],
-  ["poulet","🍗"],["dinde","🍗"],["blanc de poulet","🍗"],
-  ["saumon","🐟"],["thon","🐟"],["cabillaud","🐟"],["poisson","🐟"],
-  ["shake","🥤"],["whey","🥤"],["smoothie","🥤"],["protéiné","🥤"],
-  ["porridge","🥣"],["muesli","🥣"],["avoine","🥣"],["flocon","🥣"],["skyr","🥣"],
-  ["yaourt","🥛"],["fromage blanc","🥛"],["lait","🥛"],["caséine","🥛"],
-  ["toast","🍞"],["pain","🍞"],["seigle","🍞"],["bagel","🥯"],
-  ["pancake","🥞"],["crêpe","🥞"],
-  ["salade","🥗"],["épinard","🥗"],["légume","🥗"],
-  ["tofu","🫘"],["seitan","🫘"],["pois chiche","🫘"],["lentille","🫘"],
-  ["banane","🍌"],["myrtille","🫐"],["fruit rouge","🍓"],
-  ["avocat","🥑"],
-  ["noix","🥜"],["amande","🥜"],["cacahuète","🥜"],["beurre de cacahuète","🥜"],
-  ["riz","🍚"],["quinoa","🍚"],["pâte","🍝"],
-  ["bœuf","🥩"],["steak","🥩"],["viande","🥩"],
-  ["jambon","🥙"],
-  ["granola","🫙"],
+// ── MEAL CAROUSEL — version premium avec onglets par catégorie ─────────────
+const MEAL_TABS = [
+  { key: "breakfast", icon: CAT_ICONS.breakfast, label: CAT_LABELS.breakfast },
+  { key: "lunch",     icon: CAT_ICONS.lunch,     label: CAT_LABELS.lunch },
+  { key: "snack",     icon: CAT_ICONS.snack,     label: CAT_LABELS.snack },
+  { key: "dinner",    icon: CAT_ICONS.dinner,    label: CAT_LABELS.dinner },
 ];
-const getMealEmoji = name => {
-  const l = name.toLowerCase();
-  for (const [k, e] of MEAL_EMOJI_MAP) { if (l.includes(k)) return e; }
-  return "🍽️";
-};
 
-// ── MEAL CAROUSEL ──────────────────────────────────────────────────────────
-const MealCarousel = ({ meals, categoryLabel, categoryIcon, activeGoalColor, onAdd }) => {
+const MealCarousel = ({ mealsByCategory, activeGoalColor, onAdd }) => {
   const C = useC();
-  const [idx, setIdx] = useState(0);
-  const [added, setAdded] = useState(false);
+  const [activeTab, setActiveTab] = useState("breakfast");
+  const [idxByTab, setIdxByTab] = useState({ breakfast:0, lunch:0, snack:0, dinner:0 });
+  const [expandedId, setExpandedId] = useState(null);
+  const [addedId, setAddedId] = useState(null);
   const touchStartX = useRef(null);
-  const containerRef = useRef(null);
-  if (!meals.length) return null;
 
+  const meals = mealsByCategory[activeTab] || [];
+  const idx = idxByTab[activeTab] || 0;
   const total = meals.length;
-  const go = dir => setIdx(prev => (prev + dir + total) % total);
+
+  const go = dir => {
+    setIdxByTab(prev => ({ ...prev, [activeTab]: ((prev[activeTab] || 0) + dir + total) % total }));
+    setExpandedId(null);
+  };
 
   const handleTouchStart = e => { touchStartX.current = e.touches[0].clientX; };
   const handleTouchEnd = e => {
     if (touchStartX.current === null) return;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 48) go(diff > 0 ? 1 : -1);
+    if (Math.abs(diff) > 44) go(diff > 0 ? 1 : -1);
     touchStartX.current = null;
   };
 
-  const handleAdd = m => {
-    onAdd(m);
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+  const handleAdd = meal => {
+    onAdd(meal);
+    setAddedId(meal.id);
+    setTimeout(() => setAddedId(null), 2200);
   };
 
   const isDark = C.bg === "#0C0C0C";
+  const meal = meals[idx];
 
   return (
-    <div style={{ marginBottom: 28 }}>
-      {/* Category header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, padding: "0 2px" }}>
-        <p style={{ fontSize: 15, fontWeight: 800, color: C.black, margin: 0 }}>{categoryIcon} {categoryLabel}</p>
-        {total > 1 && <span style={{ fontSize: 11, color: C.muted, fontWeight: 600, background: C.surfaceAlt, borderRadius: 8, padding: "3px 9px" }}>{idx + 1}/{total}</span>}
+    <div>
+      {/* ── Onglets catégories ── */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 18, overflowX: "auto", paddingBottom: 2, scrollbarWidth: "none" }}>
+        {MEAL_TABS.map(tab => {
+          const tabMeals = mealsByCategory[tab.key] || [];
+          if (!tabMeals.length) return null;
+          const isActive = activeTab === tab.key;
+          const tabIdx = isActive ? idx : (idxByTab[tab.key] || 0);
+          return (
+            <button key={tab.key}
+              onClick={() => { setActiveTab(tab.key); setExpandedId(null); }}
+              style={{
+                flexShrink: 0, display: "flex", alignItems: "center", gap: 5,
+                padding: "8px 14px", borderRadius: 22,
+                border: `1.5px solid ${isActive ? activeGoalColor : C.border}`,
+                background: isActive ? `${activeGoalColor}14` : C.surfaceAlt,
+                color: isActive ? activeGoalColor : C.muted,
+                fontSize: 12, fontWeight: 700, cursor: "pointer",
+                transition: "all 180ms ease", fontFamily: "inherit",
+              }}>
+              <span style={{ fontSize: 14 }}>{tab.icon}</span>
+              <span>{tab.label}</span>
+              {isActive && total > 1 && (
+                <span style={{
+                  background: activeGoalColor, color: "#fff", borderRadius: 10,
+                  fontSize: 10, fontWeight: 800, padding: "1px 6px", marginLeft: 2,
+                }}>{tabIdx + 1}/{total}</span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Sliding strip - GPU-accelerated translateX */}
-      <div
-        ref={containerRef}
-        style={{ overflow: "hidden", borderRadius: 22, willChange: "transform" }}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
-        <div style={{
-          display: "flex",
-          transform: `translateX(${idx * -100}%)`,
-          transition: "transform 420ms cubic-bezier(0.4, 0, 0.2, 1)",
-          willChange: "transform",
-        }}>
-          {meals.map((m, i) => {
-            const emoji = getMealEmoji(m.name);
-            return (
-              <div key={i} style={{ flex: "0 0 100%", width: "100%", boxSizing: "border-box" }}>
-                <div style={{
-                  background: C.surface,
-                  borderRadius: 22,
-                  padding: "20px 18px 18px",
-                  border: `1.5px solid ${C.border}`,
-                  boxShadow: isDark
-                    ? "0 8px 36px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)"
-                    : "0 6px 30px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)",
-                  minHeight: 320,
-                  display: "flex", flexDirection: "column",
-                }}>
-                  {/* Emoji icon + vegan badge */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+      {/* ── Carousel ── */}
+      {meal ? (
+        <>
+          <div style={{ overflow: "hidden", borderRadius: 22 }}
+            onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+            <div style={{
+              display: "flex",
+              transform: `translateX(${idx * -100}%)`,
+              transition: "transform 380ms cubic-bezier(0.4,0,0.2,1)",
+            }}>
+              {meals.map((m) => {
+                const emoji = getMealEmoji(m.name);
+                const isExpanded = expandedId === m.id;
+                const isAdded = addedId === m.id;
+                return (
+                  <div key={m.id} style={{ flex: "0 0 100%", width: "100%", boxSizing: "border-box" }}>
                     <div style={{
-                      width: 54, height: 54, borderRadius: 16,
-                      background: `${activeGoalColor}16`,
-                      border: `1.5px solid ${activeGoalColor}24`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 28, flexShrink: 0,
-                    }}>{emoji}</div>
-                    {m.vegan && (
-                      <span style={{ fontSize: 10, background: "rgba(34,197,94,0.13)", color: "#16a34a", borderRadius: 20, padding: "5px 11px", fontWeight: 700, border: "1px solid rgba(34,197,94,0.25)" }}>🌱 Vegan</span>
-                    )}
-                  </div>
-
-                  {/* Meal name */}
-                  <p style={{ fontSize: 17, fontWeight: 900, color: C.black, margin: "0 0 16px", lineHeight: 1.25, letterSpacing: -0.3 }}>{m.name}</p>
-
-                  {/* Macros 2×2 grid */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
-                    {[
-                      { label: "Calories", value: `${m.calories}`, unit: " kcal", color: C.orange },
-                      { label: "Protéines", value: `${m.protein}`, unit: "g",     color: C.purple },
-                      { label: "Glucides",  value: `${m.carbs}`,   unit: "g",     color: C.blue },
-                      { label: "Lipides",   value: `${m.fat}`,     unit: "g",     color: C.green },
-                    ].map(({ label, value, unit, color }) => (
-                      <div key={label} style={{
-                        background: `${color}10`,
-                        border: `1px solid ${color}22`,
-                        borderRadius: 13, padding: "11px 13px",
-                      }}>
-                        <div style={{ fontSize: 17, fontWeight: 900, color, lineHeight: 1, letterSpacing: -0.3 }}>
-                          {value}<span style={{ fontSize: 12, fontWeight: 700, opacity: 0.75 }}>{unit}</span>
+                      background: C.surface, borderRadius: 22, padding: "20px 18px 18px",
+                      border: `1.5px solid ${C.border}`,
+                      boxShadow: isDark
+                        ? "0 8px 36px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)"
+                        : "0 6px 30px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)",
+                      display: "flex", flexDirection: "column",
+                    }}>
+                      {/* En-tête : emoji + nom + badge vegan */}
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
+                        <div style={{
+                          width: 54, height: 54, borderRadius: 16, flexShrink: 0,
+                          background: `${activeGoalColor}16`, border: `1.5px solid ${activeGoalColor}28`,
+                          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28,
+                        }}>{emoji}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 16, fontWeight: 900, color: C.black, margin: "0 0 6px", lineHeight: 1.2, letterSpacing: -0.3 }}>{m.name}</p>
+                          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 13, fontWeight: 800, color: C.orange }}>{m.macros.cal} kcal</span>
+                            <span style={{ fontSize: 11, color: C.muted }}>·</span>
+                            <span style={{ fontSize: 13, fontWeight: 800, color: C.purple }}>{m.macros.prot}g prot</span>
+                            {m.vegan && (
+                              <span style={{ fontSize: 10, background: "rgba(34,197,94,0.13)", color: "#16a34a", borderRadius: 20, padding: "2px 9px", fontWeight: 700, border: "1px solid rgba(34,197,94,0.22)" }}>🌱 Vegan</span>
+                            )}
+                          </div>
                         </div>
-                        <div style={{ fontSize: 10, color: C.muted, marginTop: 4, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
                       </div>
-                    ))}
-                  </div>
 
-                  {/* Ingredients pills */}
-                  {m.ingredients?.length > 0 && (
-                    <div style={{ marginBottom: 18, flex: 1 }}>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 0.8, margin: "0 0 7px" }}>Ingrédients</p>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                        {m.ingredients.map((ing, j) => (
-                          <span key={j} style={{
-                            fontSize: 11, background: C.surfaceAlt,
-                            border: `1px solid ${C.border}`,
-                            borderRadius: 8, padding: "4px 9px",
-                            color: C.muted, fontWeight: 500, lineHeight: 1.4,
-                          }}>{ing}</span>
+                      {/* Macros 2×2 */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+                        {[
+                          { label: "Calories",  value: m.macros.cal,   unit: " kcal", color: C.orange },
+                          { label: "Protéines", value: m.macros.prot,  unit: "g",     color: C.purple },
+                          { label: "Glucides",  value: m.macros.carbs, unit: "g",     color: C.blue },
+                          { label: "Lipides",   value: m.macros.fat,   unit: "g",     color: C.green },
+                        ].map(({ label, value, unit, color }) => (
+                          <div key={label} style={{ background: `${color}10`, border: `1px solid ${color}22`, borderRadius: 13, padding: "11px 13px" }}>
+                            <div style={{ fontSize: 17, fontWeight: 900, color, lineHeight: 1, letterSpacing: -0.3 }}>
+                              {value}<span style={{ fontSize: 11, fontWeight: 700, opacity: 0.75 }}>{unit}</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: C.muted, marginTop: 4, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
+                          </div>
                         ))}
                       </div>
+
+                      {/* Ingrédients expandable */}
+                      {m.ingredients?.length > 0 && (
+                        <div style={{ marginBottom: 14 }}>
+                          <button onClick={() => setExpandedId(isExpanded ? null : m.id)}
+                            style={{
+                              width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+                              background: "none", border: `1px solid ${C.border}`, borderRadius: 12,
+                              padding: "10px 14px", cursor: "pointer", fontFamily: "inherit",
+                              marginBottom: isExpanded ? 10 : 0,
+                            }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: C.muted }}>🧾 Ingrédients · {m.ingredients.length} aliments</span>
+                            <span style={{ fontSize: 13, color: C.muted, transition: "transform 220ms ease", display: "inline-block", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+                          </button>
+                          {isExpanded && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                              {m.ingredients.map((ing, j) => {
+                                const qDisplay = ing.u === "x" ? `${ing.q}×` :
+                                  ing.u === "tranche" ? `${ing.q} tranche${ing.q > 1 ? "s" : ""}` :
+                                  `${ing.q}${ing.u}`;
+                                return (
+                                  <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 12px", background: C.surfaceAlt, borderRadius: 10 }}>
+                                    <span style={{ fontSize: 13, color: C.text, fontWeight: 500 }}>{ing.n}</span>
+                                    <span style={{ fontSize: 13, color: activeGoalColor, fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>{qDisplay}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Bouton Ajouter */}
+                      <button onClick={() => handleAdd(m)}
+                        style={{
+                          width: "100%", padding: "14px",
+                          background: isAdded
+                            ? `linear-gradient(135deg, ${C.green}, #16a34a)`
+                            : `linear-gradient(135deg, ${activeGoalColor}, ${activeGoalColor}CC)`,
+                          color: "#fff", border: "none", borderRadius: 14,
+                          fontSize: 14, fontWeight: 800, cursor: "pointer",
+                          boxShadow: isAdded ? "0 4px 20px rgba(34,197,94,0.38)" : `0 4px 20px ${activeGoalColor}3A`,
+                          fontFamily: "inherit",
+                          transition: "background 340ms ease, box-shadow 340ms ease",
+                          marginTop: "auto",
+                        }}>
+                        {isAdded ? "✓ Ajouté à ta journée !" : "+ Ajouter à ma journée"}
+                      </button>
                     </div>
-                  )}
-
-                  {/* Add button */}
-                  <button
-                    onClick={() => handleAdd(m)}
-                    style={{
-                      width: "100%", padding: "14px",
-                      background: added
-                        ? `linear-gradient(135deg, ${C.green}, #16a34a)`
-                        : `linear-gradient(135deg, ${activeGoalColor}, ${activeGoalColor}CC)`,
-                      color: "#fff", border: "none", borderRadius: 14,
-                      fontSize: 14, fontWeight: 800, cursor: "pointer",
-                      boxShadow: added
-                        ? "0 4px 20px rgba(34,197,94,0.38)"
-                        : `0 4px 20px ${activeGoalColor}3A`,
-                      letterSpacing: 0.2, fontFamily: "inherit",
-                      transition: "background 350ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 350ms ease",
-                      marginTop: "auto",
-                    }}
-                  >{added ? "✓ Ajouté à ta journée !" : "+ Ajouter à ma journée"}</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Dots + arrow navigation */}
-      {total > 1 && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginTop: 16 }}>
-          <button onClick={() => go(-1)} style={{
-            width: 38, height: 38, borderRadius: "50%",
-            border: `1.5px solid ${C.border}`, background: C.surface,
-            color: C.text, fontSize: 20, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "all 180ms ease", flexShrink: 0,
-            boxShadow: isDark ? "0 2px 10px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.07)",
-          }}>‹</button>
-
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            {meals.map((_, i) => (
-              <div key={i} onClick={() => setIdx(i)} style={{
-                height: 6,
-                width: i === idx ? 24 : 6,
-                borderRadius: 3,
-                background: i === idx ? activeGoalColor : C.border,
-                cursor: "pointer",
-                transition: "all 380ms cubic-bezier(0.4, 0, 0.2, 1)",
-                flexShrink: 0,
-              }} />
-            ))}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          <button onClick={() => go(1)} style={{
-            width: 38, height: 38, borderRadius: "50%",
-            border: `1.5px solid ${C.border}`, background: C.surface,
-            color: C.text, fontSize: 20, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "all 180ms ease", flexShrink: 0,
-            boxShadow: isDark ? "0 2px 10px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.07)",
-          }}>›</button>
+          {/* Dots + flèches */}
+          {total > 1 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginTop: 14 }}>
+              <button onClick={() => go(-1)} style={{
+                width: 36, height: 36, borderRadius: "50%",
+                border: `1.5px solid ${C.border}`, background: C.surface,
+                color: C.text, fontSize: 18, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: isDark ? "0 2px 10px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.06)",
+                fontFamily: "inherit",
+              }}>‹</button>
+              <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                {meals.map((_, i) => (
+                  <div key={i} onClick={() => { setIdxByTab(prev => ({ ...prev, [activeTab]: i })); setExpandedId(null); }}
+                    style={{
+                      height: 6, width: i === idx ? 22 : 6, borderRadius: 3,
+                      background: i === idx ? activeGoalColor : C.border,
+                      cursor: "pointer",
+                      transition: "all 350ms cubic-bezier(0.4,0,0.2,1)", flexShrink: 0,
+                    }} />
+                ))}
+              </div>
+              <button onClick={() => go(1)} style={{
+                width: 36, height: 36, borderRadius: "50%",
+                border: `1.5px solid ${C.border}`, background: C.surface,
+                color: C.text, fontSize: 18, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: isDark ? "0 2px 10px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.06)",
+                fontFamily: "inherit",
+              }}>›</button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ textAlign: "center", padding: "32px 0", color: C.muted, fontSize: 13 }}>
+          Aucun repas disponible pour ce filtre
         </div>
       )}
     </div>
@@ -3176,13 +3201,13 @@ export default function App() {
                   );
                 };
 
-                const filteredMeals = (cat) => MEAL_DB[cat].filter(m => m.goals.includes(nutritionGoals.goalType) && (!veganOnly || m.vegan)).slice(0, 4);
-                const mealCategories = [
-                  { key: "breakfast", label: "🌅 " + tr("nutr_breakfast") },
-                  { key: "lunch",     label: "☀️ " + tr("nutr_lunch") },
-                  { key: "snack",     label: "🍎 " + tr("nutr_snack") },
-                  { key: "dinner",    label: "🌙 " + tr("nutr_dinner") },
-                ];
+                // Repas filtrés et adaptés via mealEngine (portions calibrées sur calTarget)
+                const mealsByCategory = {
+                  breakfast: getMeals("breakfast", { goalType: nutritionGoals.goalType, veganOnly, userCalTarget: calTarget }),
+                  lunch:     getMeals("lunch",     { goalType: nutritionGoals.goalType, veganOnly, userCalTarget: calTarget }),
+                  snack:     getMeals("snack",     { goalType: nutritionGoals.goalType, veganOnly, userCalTarget: calTarget }),
+                  dinner:    getMeals("dinner",    { goalType: nutritionGoals.goalType, veganOnly, userCalTarget: calTarget }),
+                };
                 const saveNG = ng => { setNutritionGoals(ng); localStorage.setItem("nutritionGoals", JSON.stringify(ng)); };
 
                 return (
@@ -3373,43 +3398,29 @@ export default function App() {
                         Adaptées à <strong style={{ color: activeGoalColor }}>{activeGoalLabel}</strong>{veganOnly ? " · vegan" : ""} · Swipe ou flèches pour naviguer
                       </p>
 
-                      {/* Carousels par catégorie */}
-                      {(() => {
-                        const addMealToday = meal => {
+                      {/* Carousel unique avec onglets par catégorie */}
+                      <MealCarousel
+                        mealsByCategory={mealsByCategory}
+                        activeGoalColor={activeGoalColor}
+                        onAdd={meal => {
                           setToday(prev => {
                             const n = prev.nutrition;
                             const updated = {
                               ...prev,
                               nutrition: {
                                 ...n,
-                                calories: (n.calories || 0) + (meal.calories || 0),
-                                protein:  (n.protein  || 0) + (meal.protein  || 0),
-                                carbs:    (n.carbs    || 0) + (meal.carbs    || 0),
-                                fat:      (n.fat      || 0) + (meal.fat      || 0),
+                                calories: (n.calories || 0) + (meal.macros?.cal   || 0),
+                                protein:  (n.protein  || 0) + (meal.macros?.prot  || 0),
+                                carbs:    (n.carbs    || 0) + (meal.macros?.carbs || 0),
+                                fat:      (n.fat      || 0) + (meal.macros?.fat   || 0),
                               },
                             };
                             updated.score = calcScore(updated);
                             return updated;
                           });
                           setSaved(false);
-                        };
-
-                        return mealCategories.map(({ key, label }) => {
-                          const catMeals = filteredMeals(key);
-                          if (!catMeals.length) return null;
-                          const [icon, ...rest] = label.split(" ");
-                          return (
-                            <MealCarousel
-                              key={key}
-                              meals={catMeals}
-                              categoryLabel={rest.join(" ")}
-                              categoryIcon={icon}
-                              activeGoalColor={activeGoalColor}
-                              onAdd={addMealToday}
-                            />
-                          );
-                        });
-                      })()}
+                        }}
+                      />
                     </div>
 
                     {/* ── Q&A nutritionnelles (Pro+) ── */}
