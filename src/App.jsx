@@ -293,7 +293,7 @@ const NUTRITION_TIPS = {
   seche: [
     { q: "Pourquoi boire encore plus d'eau pendant une sèche ?", a: "En réduisant drastiquement les glucides, ton corps stocke moins d'eau (chaque gramme de glycogène retient ~3g d'eau). Résultat : tu te déshydrates plus rapidement. Vise 3L/jour minimum pour maintenir les fonctions cellulaires, la lipolyse et les performances cognitives." },
     { q: "C'est quoi la différence sèche vs perte de poids ?", a: "La perte de poids = perdre du poids global (graisse + eau + muscle). La sèche = réduire au maximum la masse grasse tout en préservant absolument le muscle. C'est plus exigeant en protéines et en entraînement." },
-    { q: "Pourquoi les glucides sont réduits en sèche ?", a: "Les glucides bas maintiennent l'insuline basse, ce qui facilite la lipolyse (utilisation des graisses comme carburant). Mais attention : pas zéro glucides — les légumes, légumineuses et un peu de riz restent importants." },
+    { q: "Pourquoi les glucides sont réduits en sèche ?", a: "Les glucides bas maintiennent l'insuline basse, ce qui facilite la lipolyse (utilisation des graisses comme carburant). Mais attention : pas zéro glucides - les légumes, légumineuses et un peu de riz restent importants." },
     { q: "Pourquoi les protéines sont si élevées en sèche (2.5g/kg) ?", a: "Le déficit calorique important peut forcer ton corps à puiser dans les muscles. Un apport protéique très élevé crée un environnement anticatabolique : il protège le tissu musculaire que tu as mis des mois à construire." },
     { q: "Qu'est-ce que la recomposition corporelle ?", a: "Perdre de la graisse et gagner du muscle simultanément. Possible principalement chez les débutants ou après une pause longue. Elle nécessite un léger déficit calorique, beaucoup de protéines et un entraînement de résistance sérieux." },
     { q: "Comment gérer la faim intense pendant une sèche ?", a: "Priorise les aliments à volume élevé et calories basses : légumes verts, blanc d'œuf, fromage blanc 0%, bouillon. Les fibres (psyllium, légumineuses) ralentissent la digestion et maintiennent la satiété." },
@@ -355,7 +355,7 @@ function calcSleepScore(sleep, age, recentBedtimeMins = [], yesterdayHadSport = 
   else if (dur <= highMax + 1)        { durationStatus = "Long";             durationColor = "#D4580A"; }
   else                                { durationStatus = "Inhabituel";       durationColor = "#6B35C8"; }
 
-  // Duration component (0–40 pts) — sport de la veille assouplit les nuits longues
+  // Duration component (0–40 pts) - sport de la veille assouplit les nuits longues
   let dScore;
   if (!dur)                     dScore = 0;
   else if (dur < 5)             dScore = 3;
@@ -382,7 +382,7 @@ function calcSleepScore(sleep, age, recentBedtimeMins = [], yesterdayHadSport = 
   // Context component (0–15 pts)
   const cScore = dur > 0 ? (yesterdayHadSport ? 12 : 8) : 0;
 
-  // Weighted total — redistribuer les poids manquants
+  // Weighted total - redistribuer les poids manquants
   let score = 0;
   if (dur > 0) {
     let totalW = 40, weightedSum = dScore;
@@ -887,7 +887,7 @@ const SubPageBody = ({ onBack, nutritionGoals, setNutritionGoals }) => {
             </button>
           ))}
         </div>
-        {!sex && <p style={{ fontSize: 11, color: C.orange, margin: "8px 0 0", fontWeight: 600 }}>Non renseigné — les calculs utilisent les valeurs homme par défaut</p>}
+        {!sex && <p style={{ fontSize: 11, color: C.orange, margin: "8px 0 0", fontWeight: 600 }}>Non renseigné - les calculs utilisent les valeurs homme par défaut</p>}
       </div>
 
       {/* Taille */}
@@ -938,7 +938,7 @@ const SubPageBody = ({ onBack, nutritionGoals, setNutritionGoals }) => {
           ))}
           {!activityLevel && (
             <div style={{ padding: "10px 14px", borderRadius: 12, background: C.surfaceAlt, border: `1px solid ${C.border}` }}>
-              <p style={{ margin: 0, fontSize: 12, color: C.muted }}>Non renseigné — niveau auto-détecté depuis tes séances récentes</p>
+              <p style={{ margin: 0, fontSize: 12, color: C.muted }}>Non renseigné - niveau auto-détecté depuis tes séances récentes</p>
             </div>
           )}
         </div>
@@ -1181,12 +1181,12 @@ const DataExportModal = ({ history, profile, nutritionGoals, goals, patrimoine, 
     const sleepDays = history.filter(d => d.sleep?.duration > 0);
     const sportDays = history.filter(d => d.sport?.duration > 0 && !d.sport?.isRest);
     const weightDays = history.filter(d => d.body?.weight > 0);
-    const avgSleep = sleepDays.length ? (sleepDays.reduce((a,b)=>a+b.sleep.duration,0)/sleepDays.length).toFixed(1) : "—";
-    const avgScore = history.filter(d=>d.score>0).length ? Math.round(history.filter(d=>d.score>0).reduce((a,b)=>a+b.score,0)/history.filter(d=>d.score>0).length) : "—";
+    const avgSleep = sleepDays.length ? (sleepDays.reduce((a,b)=>a+b.sleep.duration,0)/sleepDays.length).toFixed(1) : "-";
+    const avgScore = history.filter(d=>d.score>0).length ? Math.round(history.filter(d=>d.score>0).reduce((a,b)=>a+b.score,0)/history.filter(d=>d.score>0).length) : "-";
     const firstWeight = weightDays[0]?.body?.weight; const lastWeight = weightDays[weightDays.length-1]?.body?.weight;
-    const weightEvol = firstWeight && lastWeight ? `${firstWeight} → ${lastWeight} kg (${(lastWeight-firstWeight>0?"+":"")}${(lastWeight-firstWeight).toFixed(1)} kg)` : "—";
+    const weightEvol = firstWeight && lastWeight ? `${firstWeight} → ${lastWeight} kg (${(lastWeight-firstWeight>0?"+":"")}${(lastWeight-firstWeight).toFixed(1)} kg)` : "-";
     const age = profile.dob ? Math.floor((Date.now()-new Date(profile.dob))/3.156e10) : null;
-    const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Rapport MYLIDE — ${profile.name}</title>
+    const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Rapport MYLIDE - ${profile.name}</title>
 <style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1A1A1A;background:#fff;padding:40px;}
 .header{background:linear-gradient(135deg,#CC2936,#8B1A22);color:#fff;padding:32px 36px;border-radius:16px;margin-bottom:32px;}
 .header h1{font-size:28px;font-weight:900;letter-spacing:-0.5px;margin-bottom:4px;}
@@ -1211,13 +1211,13 @@ tr:last-child td{border-bottom:none;}
 <div class="stat"><div class="val">${avgScore}/100</div><div class="lbl">Score moyen</div></div>
 <div class="stat"><div class="val">${avgSleep}h</div><div class="lbl">Sommeil moyen</div></div>
 <div class="stat"><div class="val">${sportDays.length}</div><div class="lbl">Séances sport</div></div>
-<div class="stat"><div class="val">${weightEvol.split("→")[1]?.trim()||"—"}</div><div class="lbl">Poids actuel</div></div>
+<div class="stat"><div class="val">${weightEvol.split("→")[1]?.trim()||"-"}</div><div class="lbl">Poids actuel</div></div>
 <div class="stat"><div class="val">${totalPatrimoine.toLocaleString("fr-FR")} €</div><div class="lbl">Patrimoine</div></div>
 </div>
-${sleepDays.length>0?`<h2>🌙 Sommeil</h2><table><tr><th>Date</th><th>Durée</th><th>Qualité</th><th>Coucher</th><th>Réveil</th></tr>${sleepDays.slice(-30).map(d=>`<tr><td>${d.date}</td><td>${d.sleep.duration}h</td><td>${d.sleep.quality?d.sleep.quality+"/5":"—"}</td><td>${d.sleep.bedtime||"—"}</td><td>${d.sleep.wakeup||"—"}</td></tr>`).join("")}</table>`:""}
-${sportDays.length>0?`<h2>🏋️ Sport</h2><table><tr><th>Date</th><th>Type</th><th>Durée</th><th>Intensité</th><th>FC moy.</th></tr>${sportDays.slice(-30).map(d=>`<tr><td>${d.date}</td><td>${d.sport.type}</td><td>${d.sport.duration} min</td><td>${d.sport.intensity?d.sport.intensity+"/5":"—"}</td><td>${d.sport.heartRate||"—"}</td></tr>`).join("")}</table>`:""}
-${weightDays.length>0?`<h2>⚖️ Évolution du poids</h2><p style="margin-bottom:12px;font-size:14px;">Progression : <strong>${weightEvol}</strong></p><table><tr><th>Date</th><th>Poids (kg)</th><th>Objectif</th><th>Tour de taille</th></tr>${weightDays.slice(-30).map(d=>`<tr><td>${d.date}</td><td>${d.body.weight}</td><td>${d.body.weightTarget||"—"}</td><td>${d.body.waist?d.body.waist+" cm":"—"}</td></tr>`).join("")}</table>`:""}
-${goals.length>0?`<h2>🎯 Objectifs</h2><table><tr><th>Objectif</th><th>Catégorie</th><th>Progression</th></tr>${goals.map(g=>`<tr><td>${g.label}</td><td>${g.category||"—"}</td><td><div style="display:flex;align-items:center;gap:8px"><span>${g.manualProgress||0}%</span><div class="goal-bar" style="flex:1"><div class="goal-fill" style="width:${g.manualProgress||0}%;background:${g.color||"#CC2936"}"></div></div></div></td></tr>`).join("")}</table>`:""}
+${sleepDays.length>0?`<h2>🌙 Sommeil</h2><table><tr><th>Date</th><th>Durée</th><th>Qualité</th><th>Coucher</th><th>Réveil</th></tr>${sleepDays.slice(-30).map(d=>`<tr><td>${d.date}</td><td>${d.sleep.duration}h</td><td>${d.sleep.quality?d.sleep.quality+"/5":"-"}</td><td>${d.sleep.bedtime||"-"}</td><td>${d.sleep.wakeup||"-"}</td></tr>`).join("")}</table>`:""}
+${sportDays.length>0?`<h2>🏋️ Sport</h2><table><tr><th>Date</th><th>Type</th><th>Durée</th><th>Intensité</th><th>FC moy.</th></tr>${sportDays.slice(-30).map(d=>`<tr><td>${d.date}</td><td>${d.sport.type}</td><td>${d.sport.duration} min</td><td>${d.sport.intensity?d.sport.intensity+"/5":"-"}</td><td>${d.sport.heartRate||"-"}</td></tr>`).join("")}</table>`:""}
+${weightDays.length>0?`<h2>⚖️ Évolution du poids</h2><p style="margin-bottom:12px;font-size:14px;">Progression : <strong>${weightEvol}</strong></p><table><tr><th>Date</th><th>Poids (kg)</th><th>Objectif</th><th>Tour de taille</th></tr>${weightDays.slice(-30).map(d=>`<tr><td>${d.date}</td><td>${d.body.weight}</td><td>${d.body.weightTarget||"-"}</td><td>${d.body.waist?d.body.waist+" cm":"-"}</td></tr>`).join("")}</table>`:""}
+${goals.length>0?`<h2>🎯 Objectifs</h2><table><tr><th>Objectif</th><th>Catégorie</th><th>Progression</th></tr>${goals.map(g=>`<tr><td>${g.label}</td><td>${g.category||"-"}</td><td><div style="display:flex;align-items:center;gap:8px"><span>${g.manualProgress||0}%</span><div class="goal-bar" style="flex:1"><div class="goal-fill" style="width:${g.manualProgress||0}%;background:${g.color||"#CC2936"}"></div></div></div></td></tr>`).join("")}</table>`:""}
 <div class="footer">Rapport généré par MYLIDE · ${new Date().toLocaleDateString("fr-FR")} · Données personnelles confidentielles</div>
 </body></html>`;
     const w = window.open("", "_blank");
@@ -1269,7 +1269,7 @@ const DeleteAccountModal = ({ profile, onClose, onConfirmDelete }) => {
     <div style={{ position: "fixed", inset: 0, background: C.bg, zIndex: 300, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, maxWidth: 480, margin: "0 auto" }}>
       <div style={{ fontSize: 64, marginBottom: 20 }}>✅</div>
       <p style={{ fontSize: 22, fontWeight: 900, color: C.black, textAlign: "center", marginBottom: 10 }}>Compte supprimé</p>
-      <p style={{ fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 1.6 }}>Toutes tes données ont été supprimées. Tu recevras un email de confirmation. N'abandonne jamais tes objectifs — tu peux revenir quand tu veux. 💪</p>
+      <p style={{ fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 1.6 }}>Toutes tes données ont été supprimées. Tu recevras un email de confirmation. N'abandonne jamais tes objectifs - tu peux revenir quand tu veux. 💪</p>
     </div>
   );
 
@@ -1397,7 +1397,7 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
           <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, fontWeight: 600 }}>{tr("settings_edit")}</span>
         </div>
 
-        {/* Abonnement EN HAUT si pas Pro — maximise la conversion */}
+        {/* Abonnement EN HAUT si pas Pro - maximise la conversion */}
         {!isPro && <SubscriptionBlock />}
 
         <Sec title={tr("sec_account")}>
@@ -1494,7 +1494,7 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
           <Row icon="🏥" label="Avertissement santé" desc="MYLIDE n'est pas une app médicale" onClick={() => { onClose(); setTimeout(() => setShowLegal && setShowLegal(true), 120); }} last />
         </Sec>
 
-        {/* Abonnement EN BAS si Pro — réduit la visibilité de la résiliation */}
+        {/* Abonnement EN BAS si Pro - réduit la visibilité de la résiliation */}
         {isPro && <SubscriptionBlock />}
 
         <div style={{ height: 40 }} />
@@ -1752,7 +1752,7 @@ const PageTransition = ({ children, pageKey }) => {
 };
 
 // ── ONBOARDING ─────────────────────────────────────────────────────────────
-// ── MEAL CAROUSEL — emoji mapping ─────────────────────────────────────────
+// ── MEAL CAROUSEL - emoji mapping ─────────────────────────────────────────
 const MEAL_EMOJI_MAP = [
   ["omelette","🍳"],["œuf","🍳"],["oeuf","🍳"],["brouillé","🍳"],["poché","🍳"],
   ["poulet","🍗"],["dinde","🍗"],["blanc de poulet","🍗"],
@@ -1814,7 +1814,7 @@ const MealCarousel = ({ meals, categoryLabel, categoryIcon, activeGoalColor, onA
         {total > 1 && <span style={{ fontSize: 11, color: C.muted, fontWeight: 600, background: C.surfaceAlt, borderRadius: 8, padding: "3px 9px" }}>{idx + 1}/{total}</span>}
       </div>
 
-      {/* Sliding strip — GPU-accelerated translateX */}
+      {/* Sliding strip - GPU-accelerated translateX */}
       <div
         ref={containerRef}
         style={{ overflow: "hidden", borderRadius: 22, willChange: "transform" }}
@@ -2079,7 +2079,7 @@ const Onboarding = ({ onComplete }) => {
             <Field label="Niveau d'activite habituel">
               <select value={bodyActivityLevel} onChange={e => setBodyActivityLevel(e.target.value)} style={{ ...inp, appearance: "auto" }}>
                 {Object.entries(ACTIVITY_LEVELS).map(([k, v]) => (
-                  <option key={k} value={k}>{v.label} — {v.desc}</option>
+                  <option key={k} value={k}>{v.label} - {v.desc}</option>
                 ))}
               </select>
             </Field>
@@ -2142,7 +2142,7 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [onboarded, setOnboarded] = useState(null);
   const { darkMode, themeMode, setThemeMode, C } = useTheme();
-  // C = CV (variables CSS) — on synchronise _themeC pour inp/settingsInp
+  // C = CV (variables CSS) - on synchronise _themeC pour inp/settingsInp
   Object.assign(_themeC, C);
 
   const [nav, setNav] = useState("today");
@@ -2186,8 +2186,9 @@ export default function App() {
   const historyRef = useRef(null);
   const todosRef = useRef([]);
   const goalsRef = useRef([]);
-  const patrimoineRef = useRef({});
+  const patrimoineRef = useRef([]);
   const profileRef = useRef({});
+  const patrimoineAutoSaveRef = useRef(null);
   const currentUserIdRef = useRef(null);
 
   useEffect(() => {
@@ -2231,7 +2232,7 @@ export default function App() {
           if (todayEntry.sleep?.bedtime && todayEntry.sleep?.wakeup && !todayEntry.sleep?.duration)
             todayEntry.sleep.duration = calcDuration(todayEntry.sleep.bedtime, todayEntry.sleep.wakeup);
           setToday(todayEntry);
-          console.log("[loadData] ✓ today from DB:", todayStr, "sport:", todayEntry.sport?.type || "—", "weight:", todayEntry.body?.weight || "—");
+          console.log("[loadData] ✓ today from DB:", todayStr, "sport:", todayEntry.sport?.type || "-", "weight:", todayEntry.body?.weight || "-");
         } else {
           console.log("[loadData] no entry for today in DB →", todayStr);
         }
@@ -2259,7 +2260,7 @@ export default function App() {
     // PAS loadDoneRef à false (ce qui bloquerait l'auto-save et écraserait today).
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "INITIAL_SESSION") {
-        // Premier check au démarrage — session null ou restaurée depuis localStorage
+        // Premier check au démarrage - session null ou restaurée depuis localStorage
         loadDoneRef.current = false;
         loadData(session?.user ?? null);
       } else if (event === "SIGNED_IN") {
@@ -2287,7 +2288,7 @@ export default function App() {
       const updated = { ...t, score: calcScore(t) };
       const newH = [...h.filter(d => d.date !== t.date), updated].sort((a, b) => a.date.localeCompare(b.date));
       historyRef.current = newH;
-      // saveAll est async mais on l'appelle quand même — le navigateur laisse
+      // saveAll est async mais on l'appelle quand même - le navigateur laisse
       // quelques ms aux promesses fetch() en cours avant de fermer la page.
       saveAll(newH, todosRef.current ?? [], goalsRef.current ?? [], patrimoineRef.current ?? {}, profileRef.current ?? {});
     };
@@ -2310,7 +2311,7 @@ export default function App() {
   // Pré-remplir les mesures corpo depuis le dernier enregistrement connu.
   // SÉCURITÉ : on ne préremplit QUE si today n'est pas encore dans l'historique
   // (= première visite du jour). Si today est déjà dans history (données sauvegardées),
-  // on ne touche PAS — évite d'écraser le poids changé par l'utilisateur lors d'un
+  // on ne touche PAS - évite d'écraser le poids changé par l'utilisateur lors d'un
   // setHistory déclenché par l'auto-save.
   useEffect(() => {
     if (!history.length) return;
@@ -2362,10 +2363,21 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [today]);
 
+  // ── Auto-save patrimoine : 1.5s après la dernière modification ──────────
+  useEffect(() => {
+    if (!loadDoneRef.current) return;
+    clearTimeout(patrimoineAutoSaveRef.current);
+    patrimoineAutoSaveRef.current = setTimeout(() => {
+      saveAll(historyRef.current, todosRef.current, goalsRef.current, patrimoine, profileRef.current);
+    }, 1500);
+    return () => clearTimeout(patrimoineAutoSaveRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patrimoine]);
+
   const saveAll = useCallback(async (h, t, g, p, pr) => {
     const { data: { session } } = await supabase.auth.getSession();
     const user = session?.user;
-    if (!user) { console.warn("[saveAll] No session — skipping save"); return; }
+    if (!user) { console.warn("[saveAll] No session - skipping save"); return; }
 
     // Profil
     await supabase.from("profiles").upsert({ id: user.id, name: pr.name, dob: pr.dob, photo: pr.photo });
@@ -2396,7 +2408,7 @@ export default function App() {
         console.error("[saveAll] ERREUR save daily_logs:", saveErr);
         alert("❌ Erreur de sauvegarde : " + saveErr.message);
       } else {
-        console.log("[saveAll] ✓", rowId ? "UPDATE" : "INSERT", todayStr, "poids:", todayData.body?.weight, "sport:", todayData.sport?.type || "—");
+        console.log("[saveAll] ✓", rowId ? "UPDATE" : "INSERT", todayStr, "poids:", todayData.body?.weight, "sport:", todayData.sport?.type || "-");
       }
     }
 
@@ -2481,7 +2493,7 @@ export default function App() {
   };
   const deleteGoal = id => { const g = goals.filter(g => g.id !== id); setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
   const moveGoal = (idx, dir) => { const g = [...goals]; const ni = idx + dir; if (ni < 0 || ni >= g.length) return; [g[idx], g[ni]] = [g[ni], g[idx]]; setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
-  const updatePoche = (id, f, v) => { const p = patrimoine.map(p => p.id === id ? { ...p, [f]: v } : p); setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
+  const updatePoche = (id, f, v) => { const p = patrimoine.map(p => p.id === id ? { ...p, [f]: v } : p); setPatrimoine(p); /* auto-saved by patrimoine effect */ };
   const addPoche = () => { if (!newPoche.name.trim()) return; const pocheLimit = isAtLeast(userPlan, "pro") ? 999 : isAtLeast(userPlan, "starter") ? 5 : 2; if (patrimoine.length >= pocheLimit) { setShowSubscription(true); return; } const p = [...patrimoine, { ...newPoche, id: Date.now(), amount: Number(newPoche.amount) }]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); setNewPoche({ name: "", amount: 0, color: "#2563eb" }); };
   const deletePoche = id => { const p = patrimoine.filter(p => p.id !== id); setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
   const movePoche = (idx, dir) => { const p = [...patrimoine]; const ni = idx + dir; if (ni < 0 || ni >= p.length) return; [p[idx], p[ni]] = [p[ni], p[idx]]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
@@ -2512,7 +2524,7 @@ export default function App() {
   const fatCurrent = today.nutrition.fat || 0;
   const carbsCurrent = today.nutrition.carbs || 0;
 
-  // ── SCIENCE ENGINE — TDEE + macros + contradictions ───────────────────────
+  // ── SCIENCE ENGINE - TDEE + macros + contradictions ───────────────────────
   const currentWeight = today.body?.weight || history.slice().reverse().find(d => d.body?.weight > 0)?.body?.weight || 0;
   const inferredActivity = useMemo(() => inferActivityLevel(history), [history]);
   const activeActivity   = nutritionGoals.activityLevel || inferredActivity;
@@ -2561,14 +2573,14 @@ export default function App() {
     return data;
   }, [sim]);
 
-  // Sleep analysis — computed once, used in tracker UI and radar
+  // Sleep analysis - computed once, used in tracker UI and radar
   const recentBedtimeMins = history.slice(-7).filter(d => d.sleep?.bedtime).map(d => { const [h, m] = d.sleep.bedtime.split(":").map(Number); return h * 60 + m; });
   const todayDate = new Date().toISOString().split("T")[0];
   const yesterdayEntry = [...history].reverse().find(d => d.date !== todayDate);
   const yesterdayHadSport = !!(yesterdayEntry?.sport?.duration >= 30 || yesterdayEntry?.sport?.intensity >= 3);
   const sleepAnalysis = calcSleepScore(today.sleep, age, recentBedtimeMins, yesterdayHadSport);
 
-  // ── RADAR SCORES — multi-factor 0-100 per category ───────────────────────
+  // ── RADAR SCORES - multi-factor 0-100 per category ───────────────────────
   const radarSportScore = (() => {
     if (!today.sport.type) return 5;
     if (today.sport.isRest) return today.sport.stretching ? 65 : 50;
@@ -2669,12 +2681,12 @@ export default function App() {
   );
 
   const STAT_CARDS = [
-    { label: "Sommeil", value: today.sleep.duration ? `${today.sleep.duration}h` : "—", icon: "sleep", color: C.purple, tab: "sleep" },
-    { label: "Sport", value: today.sport.isRest ? "Repos" : today.sport.duration ? `${today.sport.duration}m` : "—", icon: "sport", color: C.red, tab: "sport" },
-    { label: "Eau", value: today.nutrition.water ? `${today.nutrition.water}L` : "—", icon: "water", color: C.blue, tab: "nutrition" },
-    { label: "Poids", value: today.body?.weight ? `${today.body.weight}kg` : "—", icon: "scale", color: C.orange, tab: "body" },
-    { label: "Focus", value: today.work.focus ? `${today.work.focus}/5` : "—", icon: "focus", color: C.red, tab: "work" },
-    { label: "Humeur", value: today.mind.mood ? `${today.mind.mood}/5` : "—", icon: "mood", color: C.green, tab: "mind" },
+    { label: "Sommeil", value: today.sleep.duration ? `${today.sleep.duration}h` : "-", icon: "sleep", color: C.purple, tab: "sleep" },
+    { label: "Sport", value: today.sport.isRest ? "Repos" : today.sport.duration ? `${today.sport.duration}m` : "-", icon: "sport", color: C.red, tab: "sport" },
+    { label: "Eau", value: today.nutrition.water ? `${today.nutrition.water}L` : "-", icon: "water", color: C.blue, tab: "nutrition" },
+    { label: "Poids", value: today.body?.weight ? `${today.body.weight}kg` : "-", icon: "scale", color: C.orange, tab: "body" },
+    { label: "Focus", value: today.work.focus ? `${today.work.focus}/5` : "-", icon: "focus", color: C.red, tab: "work" },
+    { label: "Humeur", value: today.mind.mood ? `${today.mind.mood}/5` : "-", icon: "mood", color: C.green, tab: "mind" },
   ];
 
   if (showSplash) return <SplashScreen onDone={() => setShowSplash(false)} />;
@@ -2726,7 +2738,7 @@ export default function App() {
       {showDeleteAccount && <DeleteAccountModal profile={profile} onClose={() => setShowDeleteAccount(false)} onConfirmDelete={async () => { const { data: { user } } = await supabase.auth.getUser(); if (user) { await supabase.from("daily_logs").delete().eq("user_id", user.id); await supabase.from("goals").delete().eq("user_id", user.id); await supabase.from("patrimoine").delete().eq("user_id", user.id); await supabase.from("todos").delete().eq("user_id", user.id); await supabase.from("profiles").delete().eq("id", user.id); await supabase.auth.signOut(); } setShowDeleteAccount(false); }} />}
       {showFAQ && <FAQPage onBack={() => setShowFAQ(false)} />}
 
-      {/* POPUP 7 JOURS — argument 0€ premier mois */}
+      {/* POPUP 7 JOURS - argument 0€ premier mois */}
       {showProPopup && (
         <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 0 20px" }} onClick={() => { setShowProPopup(false); localStorage.setItem("proPopupSeen", "1"); }}>
           <div onClick={e => e.stopPropagation()} style={{ background: C.surface, borderRadius: 28, padding: "28px 24px", maxWidth: 420, width: "100%", boxShadow: "0 -8px 40px rgba(0,0,0,0.18)" }}>
@@ -2735,7 +2747,7 @@ export default function App() {
               Tu utilises MYLIDE depuis 7 jours !
             </h2>
             <p style={{ margin: "0 0 20px", fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 1.6 }}>
-              Débloque les statistiques avancées, l'historique complet et bien plus — <strong style={{ color: C.text }}>gratuitement pendant 1 mois</strong>.
+              Débloque les statistiques avancées, l'historique complet et bien plus - <strong style={{ color: C.text }}>gratuitement pendant 1 mois</strong>.
             </p>
             <div style={{ background: "linear-gradient(135deg, #10B981, #059669)", borderRadius: 16, padding: "14px 18px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ fontSize: 28 }}>🎁</span>
@@ -2822,7 +2834,7 @@ export default function App() {
                 {STAT_CARDS.map(item => (
                   <div key={item.label} onClick={() => { setNav("track"); setTrackTab(item.tab); }} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "14px 10px", textAlign: "center", borderTop: `3px solid ${item.color}`, cursor: "pointer", transition: "transform 0.15s", WebkitTapHighlightColor: "transparent", userSelect: "none" }}>
                     <div style={{ display: "flex", justifyContent: "center", marginBottom: 6 }}>{Ico[item.icon](item.color, 20)}</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: item.value === "—" ? C.muted : item.color, letterSpacing: -0.3 }}>{item.value}</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: item.value === "-" ? C.muted : item.color, letterSpacing: -0.3 }}>{item.value}</div>
                     <div style={{ fontSize: 9, color: C.muted, marginTop: 2, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>{item.label}</div>
                   </div>
                 ))}
@@ -3247,7 +3259,7 @@ export default function App() {
                             <select value={nutritionGoals.activityLevel || ""} onChange={e => saveNG({ ...nutritionGoals, activityLevel: e.target.value || null })} style={{ ...inp, appearance: "auto" }}>
                               <option value="">Auto-détecté ({ACTIVITY_LEVELS[inferredActivity]?.label})</option>
                               {Object.entries(ACTIVITY_LEVELS).map(([k, v]) => (
-                                <option key={k} value={k}>{v.label} — {v.desc}</option>
+                                <option key={k} value={k}>{v.label} - {v.desc}</option>
                               ))}
                             </select>
                           </Field>
@@ -3293,7 +3305,7 @@ export default function App() {
                       </div>
                     </Card>
 
-                    {/* ── Suggestions de repas — carousel premium ── */}
+                    {/* ── Suggestions de repas - carousel premium ── */}
                     <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "18px 16px 10px", marginBottom: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
                       {/* Header */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
@@ -3628,7 +3640,7 @@ export default function App() {
                   );
                 })}
 
-                {/* Formulaire ajout — nom + montant, couleur auto */}
+                {/* Formulaire ajout - nom + montant, couleur auto */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <input value={newPoche.name} onChange={e => setNewPoche(p => ({ ...p, name: e.target.value }))} placeholder="Nom" style={inp} />
@@ -3770,10 +3782,10 @@ export default function App() {
                   return [
                     { label: "Jours trackes", value: history.length, color: C.red },
                     { label: "Score moyen", value: `${intel.scoreAvg}/100`, color: C.orange },
-                    { label: "Sommeil moyen", value: avgSleepVal ? `${avgSleepVal}h` : "—", color: C.purple },
+                    { label: "Sommeil moyen", value: avgSleepVal ? `${avgSleepVal}h` : "-", color: C.purple },
                     { label: "Seances sport", value: sportSessions, color: C.red },
                     { label: "Streak actuel", value: `${streak}j 🔥`, color: C.orange },
-                    { label: "Évolution poids", value: weightDeltaNum !== null ? (weightDeltaNum > 0 ? `+${weightDelta}kg` : `${weightDelta}kg`) : "—", color: weightDeltaNum > 0 ? C.green : weightDeltaNum < 0 ? C.orange : C.muted },
+                    { label: "Évolution poids", value: weightDeltaNum !== null ? (weightDeltaNum > 0 ? `+${weightDelta}kg` : `${weightDelta}kg`) : "-", color: weightDeltaNum > 0 ? C.green : weightDeltaNum < 0 ? C.orange : C.muted },
                   ];
                 })().map(item => (
                   <div key={item.label} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 14px", textAlign: "center", borderTop: `3px solid ${item.color}` }}>

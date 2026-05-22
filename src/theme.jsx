@@ -92,7 +92,7 @@ const CV = {
   purple:    "var(--c-purple)",
   blue:      "var(--c-blue)",
   navBg:     "var(--c-navBg)",
-  // Variantes alpha — remplacent ${C.red}44, ${C.green}22, etc.
+  // Variantes alpha - remplacent ${C.red}44, ${C.green}22, etc.
   red0c:     "var(--c-red-0c)",
   red10:     "var(--c-red-10)",
   red12:     "var(--c-red-12)",
@@ -118,7 +118,7 @@ export const ThemeContext = createContext({
 });
 
 export const useTheme = () => useContext(ThemeContext);
-// useC() retourne CV (variables CSS) — le composant devient consommateur du contexte
+// useC() retourne CV (variables CSS) - le composant devient consommateur du contexte
 // → re-render garanti sur changement de thème ET les var() se résolvent instantanément
 export const useC = () => {
   useContext(ThemeContext); // abonnement au contexte pour déclencher le re-render

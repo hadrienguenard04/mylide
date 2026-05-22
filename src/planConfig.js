@@ -1,4 +1,4 @@
-// ─── MYLIDE — Plan & Feature Configuration ────────────────────────────────────
+// ─── MYLIDE - Plan & Feature Configuration ────────────────────────────────────
 
 export const PLAN_LEVELS = { free: 0, starter: 1, pro: 2, premium: 3 };
 

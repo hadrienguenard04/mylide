@@ -747,7 +747,7 @@ function AccordionItem({ item, isOpen, onToggle, C }) {
         <IconChevron size={18} color={isOpen ? C.red : C.muted} open={isOpen} />
       </button>
 
-      {/* Answer — max-height animation trick */}
+      {/* Answer - max-height animation trick */}
       <div
         style={{
           maxHeight: isOpen ? 600 : 0,

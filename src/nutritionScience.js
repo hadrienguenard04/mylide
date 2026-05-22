@@ -1,4 +1,4 @@
-// ─── MYLIDE — Scientific Nutrition & Body Engine v2 ───────────────────────────
+// ─── MYLIDE - Scientific Nutrition & Body Engine v2 ───────────────────────────
 // References scientifiques :
 //   · Mifflin-St Jeor 1990          → BMR, la plus validée en population générale
 //   · ISSN Position Stand 2017       → protéines, timing nutritionnel
@@ -86,17 +86,17 @@ export const GOAL_CONFIG = {
     proteinPerKg:      2.6,
     fatPerKgMale:      0.75,
     fatPerKgFemale:    0.90,
-    // Rythme de recompo : 0,1 à 0,3% du poids par semaine — les changements sont surtout compositionnels
+    // Rythme de recompo : 0,1 à 0,3% du poids par semaine - les changements sont surtout compositionnels
     weeklyRateMin:     0.001,
     weeklyRateMax:     0.003,
     minCalMale:        1500,
     minCalFemale:      1200,
     tagline:           "Déficit léger, recomposition progressive",
-    description:       "Le poids peut peu bouger — les vrais progrès se voient aux mensurations et aux performances.",
+    description:       "Le poids peut peu bouger - les vrais progrès se voient aux mensurations et aux performances.",
   },
 };
 
-// ── BMR — Mifflin-St Jeor (1990) ──────────────────────────────────────────────
+// ── BMR - Mifflin-St Jeor (1990) ──────────────────────────────────────────────
 // Validée contre la calorimétrie indirecte. Précision ±10% en population générale.
 // Prend en compte les différences métaboliques homme/femme.
 export function calcBMR(weight, height, age, sex) {
@@ -106,7 +106,7 @@ export function calcBMR(weight, height, age, sex) {
   return Math.round(sex === "female" ? base - 161 : base + 5);
 }
 
-// ── TDEE — Dépense Énergétique Totale ─────────────────────────────────────────
+// ── TDEE - Dépense Énergétique Totale ─────────────────────────────────────────
 export function calcTDEE(weight, height, age, sex, activityLevel) {
   const bmr = calcBMR(weight, height, age, sex);
   if (!bmr) return 0;
@@ -153,7 +153,7 @@ export function calcMacros(weight, tdee, goalType, sportBurnToday = 0, sex = "ma
   // Protéines : même ratio g/kg pour les deux sexes (différence est dans le poids absolu)
   const prot = Math.round(weight * cfg.proteinPerKg);
 
-  // Lipides : minimum plus élevé pour les femmes (santé hormonale — Stachenfeld 2014)
+  // Lipides : minimum plus élevé pour les femmes (santé hormonale - Stachenfeld 2014)
   const fatPerKg = isFemale ? cfg.fatPerKgFemale : cfg.fatPerKgMale;
   const fat = Math.round(weight * fatPerKg);
 
@@ -199,7 +199,7 @@ export function estimateProgress(currentWeight, targetWeight, goalType, sex = "m
       maxWeeks: 24,
       diff:     diffFormatted,
       direction,
-      note:     "La recomposition se mesure aux mensurations et aux performances — pas seulement au poids.",
+      note:     "La recomposition se mesure aux mensurations et aux performances - pas seulement au poids.",
     };
   }
 
@@ -342,7 +342,7 @@ export function detectContradictions({
 
   // 6. Spécifique femmes : lipides très bas
   if (sex === "female" && calCurrent > 0) {
-    const fatCurrent = 0; // passed separately if needed — skip for now
+    const fatCurrent = 0; // passed separately if needed - skip for now
   }
 
   return alerts;
@@ -376,7 +376,7 @@ export function getWeeklySportFreq(history) {
 export const GOAL_MESSAGES = {
   perte: [
     "Une perte progressive préserve la masse musculaire et facilite l'adhérence à long terme.",
-    "Un déficit trop agressif peut ralentir ton métabolisme — la régularité prime sur la vitesse.",
+    "Un déficit trop agressif peut ralentir ton métabolisme - la régularité prime sur la vitesse.",
     "La perte de poids durable se construit sur des semaines, pas sur des jours.",
     "Ton corps s'adapte mieux à un déficit modéré. La patience est une stratégie.",
   ],
@@ -388,12 +388,12 @@ export const GOAL_MESSAGES = {
   ],
   maintenance: [
     "La phase de maintien consolide tes habitudes et optimise tes performances.",
-    "Ton équilibre énergétique est stable — c'est la période idéale pour progresser en force.",
+    "Ton équilibre énergétique est stable - c'est la période idéale pour progresser en force.",
     "Le maintien n'est pas une pause : récupération et régularité restent les priorités.",
     "Un corps stabilisé à un poids stable sur plusieurs mois est souvent plus sain à long terme.",
   ],
   seche: [
-    "La recomposition est plus progressive — le poids seul ne reflète pas les vrais changements.",
+    "La recomposition est plus progressive - le poids seul ne reflète pas les vrais changements.",
     "Les mensurations, la force et les photos montrent les progrès que la balance ne voit pas.",
     "La recomposition demande patience et constance. Les résultats arrivent sur 3 à 6 mois.",
     "Priorise les protéines et l'entraînement : ce sont les deux leviers principaux.",
