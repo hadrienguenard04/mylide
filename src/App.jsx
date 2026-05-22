@@ -733,19 +733,20 @@ const settingsInp = {
   get background() { return _themeC.surfaceAlt; },
   get border() { return `1.5px solid ${_themeC.border}`; },
   get color() { return _themeC.black; },
-  width: "100%", padding: "14px 16px", borderRadius: 14,
+  width: "100%", padding: "14px 16px", borderRadius: 14, minHeight: 52,
   fontSize: 16, fontFamily: "DM Sans, sans-serif",
   outline: "none", boxSizing: "border-box",
+  transition: "border-color 0.15s ease",
 };
 
 const SubLayout = ({ onBack, title, onSave, saving, saveOk, children }) => {
   const C = useC();
   return (
     <div style={{ position: "fixed", inset: 0, background: C.bg, zIndex: 210, overflowY: "auto", maxWidth: 480, margin: "0 auto", fontFamily: "DM Sans, sans-serif" }}>
-      <div style={{ padding: "calc(var(--sat) + 16px) 20px 14px", background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", display: "flex", alignItems: "center", gap: 12 }}>
-        <button onClick={onBack} style={{ background: C.surfaceAlt, border: "none", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontSize: 18, color: C.black, fontFamily: "inherit" }}>←</button>
+      <div style={{ padding: "calc(var(--sat) + 14px) 18px 14px", background: C.navBg, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", display: "flex", alignItems: "center", gap: 12 }}>
+        <button onClick={onBack} style={{ background: C.surfaceAlt, border: "none", borderRadius: 12, width: 40, height: 40, cursor: "pointer", fontSize: 20, color: C.black, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>←</button>
         <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.black, flex: 1 }}>{title}</p>
-        {onSave && <button onClick={onSave} disabled={saving} style={{ background: saveOk ? C.green : C.red, color: "#fff", border: "none", borderRadius: 12, padding: "9px 18px", cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>{saving ? "..." : saveOk ? "Sauvegardé !" : "Enregistrer"}</button>}
+        {onSave && <button onClick={onSave} disabled={saving} style={{ background: saveOk ? C.green : C.red, color: "#fff", border: "none", borderRadius: 12, padding: "9px 20px", cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: "inherit", opacity: saving ? 0.7 : 1, transition: "background 0.2s ease" }}>{saving ? "…" : saveOk ? "✓ Sauvegardé" : "Enregistrer"}</button>}
       </div>
       <div style={{ padding: "20px 18px 40px" }}>{children}</div>
     </div>
@@ -1288,7 +1289,7 @@ const DeleteAccountModal = ({ profile, onClose, onConfirmDelete }) => {
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={onClose} style={{ flex: 1, padding: "14px", borderRadius: 14, border: `1.5px solid ${C.border}`, background: C.surfaceAlt, color: C.black, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>← Retour</button>
-            <button onClick={() => setStep(1)} style={{ flex: 1, padding: "14px", borderRadius: 14, border: "none", background: `${C.red10}`, color: C.red, fontWeight: 800, fontSize: 15, cursor: "pointer", border: `1.5px solid ${C.red22}` }}>Supprimer</button>
+            <button onClick={() => setStep(1)} style={{ flex: 1, padding: "14px", borderRadius: 14, border: `1.5px solid ${C.red22}`, background: C.red10, color: C.red, fontWeight: 800, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>Supprimer</button>
           </div>
         </>) : (<>
           <p style={{ fontSize: 17, fontWeight: 800, color: C.black, marginBottom: 10 }}>Tu es sûr(e) ?</p>
@@ -1509,16 +1510,17 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
 const ScoreRing = ({ score, delta, streak }) => {
   const C = useC();
   const r = 36; const circ = 2 * Math.PI * r; const fill = (score / 100) * circ;
-  const col = score >= 80 ? "#1A7A4A" : score >= 60 ? "#D4580A" : "#CC2936";
+  // Utilise les CSS vars du thème (fonctionnent dans SVG sur tous les browsers modernes)
+  const col = score >= 80 ? C.green : score >= 60 ? C.orange : C.red;
   return (
     <div style={{ position: "relative", width: 84, height: 84, flexShrink: 0 }}>
       <svg width="84" height="84" style={{ transform: "rotate(-90deg)" }}>
         <circle cx="42" cy="42" r={r} fill="none" stroke={C.border} strokeWidth="6"/>
-        <circle cx="42" cy="42" r={r} fill="none" stroke={col} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${fill} ${circ - fill}`} style={{ transition: "stroke-dasharray 1s cubic-bezier(0.4,0,0.2,1)" }}/>
+        <circle cx="42" cy="42" r={r} fill="none" stroke={col} strokeWidth="6.5" strokeLinecap="round" strokeDasharray={`${fill} ${circ - fill}`} style={{ transition: "stroke-dasharray 1.1s cubic-bezier(0.4,0,0.2,1)" }}/>
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <span style={{ fontSize: 20, fontWeight: 900, color: col, lineHeight: 1 }}>{score}</span>
-        {streak > 0 && <span style={{ fontSize: 9, color: "#D4580A", fontWeight: 700, marginTop: 1 }}>🔥{streak}j</span>}
+        {streak > 0 && <span style={{ fontSize: 9, color: C.orange, fontWeight: 700, marginTop: 1 }}>🔥{streak}j</span>}
       </div>
     </div>
   );
@@ -1546,7 +1548,7 @@ const CalendarHeatmap = ({ history }) => {
 // ── ATHLETIC RADAR ─────────────────────────────────────────────────────────
 const AthleticRadar = ({ data }) => {
   const C = useC();
-  const COLORS = { Sommeil: "#A855F7", Sport: "#CC2936", Nutrition: "#F97316", Travail: "#3B82F6", Mental: "#22C55E", Corps: "#F59E0B" };
+  const COLORS = { Sommeil: C.purple, Sport: C.red, Nutrition: C.orange, Travail: C.blue, Mental: C.green, Corps: "#F59E0B" };
   return (
     <div style={{ background: C.surfaceAlt, borderRadius: 16, padding: 16, position: "relative" }}>
       <ResponsiveContainer width="100%" height={195}>
@@ -1570,9 +1572,10 @@ const AthleticRadar = ({ data }) => {
 // inp uses getters so C.xxx is evaluated at render time (not at module init)
 const inp = {
   get background() { return _themeC.surfaceAlt; },
-  get border() { return `1px solid ${_themeC.border}`; },
-  borderRadius: 12,
-  padding: "13px 16px",
+  get border() { return `1.5px solid ${_themeC.border}`; },
+  borderRadius: 14,
+  padding: "14px 16px",
+  minHeight: 52,
   get color() { return _themeC.text; },
   fontSize: 16,
   outline: "none",
@@ -1581,10 +1584,12 @@ const inp = {
   WebkitAppearance: "none",
   appearance: "none",
   fontFamily: "inherit",
+  transition: "border-color 0.15s ease",
 };
 
 const EvoChart = ({ data, dataKey, color, label, unit, height = 150 }) => {
   const C = useC();
+  const { darkMode } = useTheme();
   if (data.length < 2) return <div style={{ background: C.surfaceAlt, borderRadius: 14, padding: 14, textAlign: "center", marginBottom: 14 }}><p style={{ fontSize: 12, color: C.muted, margin: 0 }}>Graphique disponible apres 2+ jours</p></div>;
   const getVal = d => dataKey.split(".").reduce((o, k) => o?.[k], d) ?? 0;
   const last = getVal(data[data.length - 1]); const first = getVal(data[0]); const trend = last - first;
@@ -1603,7 +1608,7 @@ const EvoChart = ({ data, dataKey, color, label, unit, height = 150 }) => {
           <CartesianGrid stroke={C.border} vertical={false} strokeDasharray="3 3"/>
           <XAxis dataKey="date" tick={{ fill: C.muted, fontSize: 9, fontWeight: 500 }} tickFormatter={d => d.slice(5)} axisLine={false} tickLine={false}/>
           <YAxis tick={{ fill: C.muted, fontSize: 9 }} width={28} domain={["auto","auto"]} axisLine={false} tickLine={false}/>
-          <Tooltip contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 12, color: C.text, boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }} formatter={v => [`${v}${unit}`, label]}/>
+          <Tooltip contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 12, color: C.text, boxShadow: darkMode ? "0 8px 24px rgba(0,0,0,0.5)" : "0 8px 24px rgba(0,0,0,0.12)" }} formatter={v => [`${v}${unit}`, label]}/>
           <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2.5} fill={`url(#g${label.replace(/\s/g,"")})`} dot={false} activeDot={{ r: 5, fill: color, stroke: C.surface, strokeWidth: 2 }}/>
         </AreaChart>
       </ResponsiveContainer>
@@ -1647,9 +1652,15 @@ const Field = ({ label, children }) => {
 
 const Card = ({ children, style = {}, accent, dark }) => {
   const C = useC();
+  const { darkMode } = useTheme();
   const bg = accent ? `linear-gradient(135deg, ${C.red} 0%, #8B1A22 100%)` : dark ? C.bg : C.surface;
+  const shadow = accent
+    ? "0 12px 40px rgba(204,41,54,0.22)"
+    : darkMode
+      ? "0 2px 20px rgba(0,0,0,0.38)"
+      : "0 2px 16px rgba(0,0,0,0.05)";
   return (
-    <div style={{ background: bg, border: accent || dark ? "none" : `1px solid ${C.border}`, borderRadius: 22, padding: "20px 20px", marginBottom: 14, boxShadow: accent ? "0 12px 40px rgba(204,41,54,0.22)" : "0 2px 16px rgba(0,0,0,0.05)", ...style }}>{children}</div>
+    <div style={{ background: bg, border: accent || dark ? "none" : `1px solid ${C.border}`, borderRadius: 22, padding: "20px 20px", marginBottom: 14, boxShadow: shadow, ...style }}>{children}</div>
   );
 };
 
@@ -2778,31 +2789,45 @@ export default function App() {
   if (!onboarded) return <Onboarding onComplete={handleOnboardingComplete} />;
 
   return (
-    <div style={{ minHeight: "100dvh", background: C.bg, color: C.text, maxWidth: 480, margin: "0 auto", paddingBottom: "calc(72px + var(--sab))", position: "relative", touchAction: "pan-y" }}>
+    <div style={{ minHeight: "100dvh", background: C.bg, color: C.text, maxWidth: 480, margin: "0 auto", paddingBottom: "calc(76px + max(var(--sab), 8px))", position: "relative", touchAction: "pan-y" }}>
       <style>{`
         * { font-family: 'DM Sans', sans-serif !important; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         input, select, textarea { font-family: 'DM Sans', sans-serif !important; font-size: 16px !important; }
         ::-webkit-scrollbar { display: none; }
         * { scrollbar-width: none; }
         img { display: block; max-width: 100%; }
-        button { -webkit-appearance: none; }
+        button { -webkit-appearance: none; outline: none; }
         :root {
           --sat: env(safe-area-inset-top, 0px);
           --sab: env(safe-area-inset-bottom, 0px);
           --sal: env(safe-area-inset-left, 0px);
           --sar: env(safe-area-inset-right, 0px);
         }
+        /* Retour haptique visuel : léger scale sur tap */
+        button:active { transform: scale(0.97); }
+        /* Focus visible accessible */
+        button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+          outline: 2px solid var(--c-red);
+          outline-offset: 2px;
+        }
+        /* Transition globale sur les éléments interactifs */
+        button, a { transition: transform 0.1s ease, opacity 0.15s ease; }
+        /* Inputs focus */
+        input:focus, select:focus, textarea:focus {
+          border-color: var(--c-red) !important;
+          box-shadow: 0 0 0 3px var(--c-redLight);
+        }
         ${darkMode ? `
           input, select, textarea {
-            background: ${C.surfaceAlt} !important;
-            color: ${C.text} !important;
-            border-color: ${C.border} !important;
+            background: var(--c-surfaceAlt) !important;
+            color: var(--c-text) !important;
+            border-color: var(--c-border) !important;
             color-scheme: dark;
           }
-          input::placeholder { color: ${C.muted} !important; }
-          option { background: ${C.surfaceAlt} !important; color: ${C.text} !important; }
+          input::placeholder { color: var(--c-muted) !important; opacity: 1; }
+          option { background: var(--c-surfaceAlt) !important; color: var(--c-text) !important; }
         ` : `
-          input::placeholder { color: ${C.muted}; }
+          input::placeholder { color: var(--c-muted); }
           color-scheme: light;
         `}
       `}</style>
@@ -2844,7 +2869,7 @@ export default function App() {
       )}
 
       {/* HEADER */}
-      <div style={{ padding: "calc(var(--sat) + 12px) 20px 12px", background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
+      <div style={{ padding: "calc(var(--sat) + 14px) 20px 14px", background: C.navBg, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", boxShadow: darkMode ? "0 2px 16px rgba(0,0,0,0.3)" : "0 2px 12px rgba(0,0,0,0.04)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", minHeight: 52 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div onClick={() => setNav("profile")} style={{ cursor: "pointer", flexShrink: 0 }}>
@@ -2863,7 +2888,7 @@ export default function App() {
         {intel.alerts.length === 0 && intel.advice.length > 0 && <div style={{ marginTop: 10 }}><MsgBox type="advice" msg={intel.advice[0]} /></div>}
       </div>
 
-      <div style={{ padding: "16px 18px", position: "relative" }} {...swipeNav}>
+      <div style={{ padding: "16px 16px 8px", position: "relative" }} {...swipeNav}>
         <PageTransition pageKey={nav + trackTab}>
 
           {/* TODAY */}
@@ -2979,7 +3004,7 @@ export default function App() {
                 {TRACK_TABS.map(t => {
                   const active = trackTab === t.id;
                   return (
-                    <button key={t.id} onClick={() => setTrackTab(t.id)} style={{ flexShrink: 0, padding: "9px 16px", borderRadius: 40, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: active ? "#CC2936" : C.surface, color: active ? "#fff" : C.muted, display: "flex", alignItems: "center", gap: 7, transition: "all 0.2s", boxShadow: active ? "0 4px 16px rgba(204,41,54,0.4)" : `0 1px 4px rgba(0,0,0,0.06)`, border: active ? "none" : `1px solid ${C.border}` }}>
+                    <button key={t.id} onClick={() => setTrackTab(t.id)} style={{ flexShrink: 0, padding: "9px 16px", borderRadius: 40, cursor: "pointer", fontSize: 13, fontWeight: 700, background: active ? C.red : C.surface, color: active ? "#fff" : C.muted, display: "flex", alignItems: "center", gap: 7, transition: "background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease", boxShadow: active ? `0 4px 16px ${C.red44}` : `0 1px 4px rgba(0,0,0,0.06)`, border: active ? "none" : `1px solid ${C.border}`, fontFamily: "inherit" }}>
                       {Ico[t.icon](active ? "#fff" : C.muted, 15)}{tr("tab_" + t.id)}
                     </button>
                   );
@@ -3047,8 +3072,8 @@ export default function App() {
                         const active = today.sport.type === sport;
                         const icons = { Musculation: "💪", Running: "🏃", Football: "⚽", Tennis: "🎾", Boxe: "🥊", Repos: "🛌" };
                         return (
-                          <button key={sport} onClick={() => { update("sport", "type", sport); update("sport", "isRest", sport === "Repos"); }} style={{ padding: "10px 18px", borderRadius: 40, border: active ? "none" : `1px solid ${C.border}`, background: active ? C.black : C.surface, color: active ? C.bg : C.muted, fontWeight: 700, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 7, transition: "all 0.2s", boxShadow: active ? "0 4px 16px rgba(0,0,0,0.2)" : "none" }}>
-                            <span style={{ color: active ? C.red : "inherit" }}>{icons[sport]}</span> {sport}
+                          <button key={sport} onClick={() => { update("sport", "type", sport); update("sport", "isRest", sport === "Repos"); }} style={{ padding: "10px 18px", borderRadius: 40, border: active ? "none" : `1px solid ${C.border}`, background: active ? C.red : C.surface, color: active ? "#fff" : C.muted, fontWeight: 700, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 7, transition: "all 0.2s", boxShadow: active ? `0 4px 16px ${C.red44}` : "none", fontFamily: "inherit" }}>
+                            <span>{icons[sport]}</span> {sport}
                           </button>
                         );
                       })}
@@ -4001,15 +4026,24 @@ export default function App() {
       </div>
 
       {/* BOTTOM NAV */}
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: C.navBg, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20, paddingBottom: "var(--sab)", boxShadow: "0 -4px 24px rgba(0,0,0,0.07)" }}>
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: C.navBg, backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20, paddingBottom: "max(var(--sab), 4px)", boxShadow: darkMode ? "0 -4px 24px rgba(0,0,0,0.35)" : "0 -4px 24px rgba(0,0,0,0.07)" }}>
         {NAV.map(n => {
           const active = nav === n.id;
           return (
-            <button key={n.id} onClick={() => setNav(n.id)} style={{ flex: 1, padding: "11px 4px 9px", border: "none", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 14, background: active ? (darkMode ? "#1E1E1E" : "#F0F0EE") : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
-                {Ico[n.icon](active ? C.red : C.muted, 20)}
+            <button key={n.id} onClick={() => setNav(n.id)}
+              style={{ flex: 1, padding: "10px 4px 8px", border: "none", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: "inherit", WebkitTapHighlightColor: "transparent" }}>
+              {/* Icône avec fond coloré actif */}
+              <div style={{
+                width: 44, height: 38, borderRadius: 14,
+                background: active ? C.red12 : "transparent",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "background 0.22s ease",
+              }}>
+                {Ico[n.icon](active ? C.red : C.muted, active ? 22 : 20)}
               </div>
-              <span style={{ fontSize: 9, fontWeight: 700, color: active ? C.red : C.muted, textTransform: "uppercase", letterSpacing: 0.6 }}>{tr("nav_" + n.id)}</span>
+              <span style={{ fontSize: 9, fontWeight: active ? 800 : 600, color: active ? C.red : C.muted, textTransform: "uppercase", letterSpacing: 0.5, lineHeight: 1, transition: "color 0.2s ease" }}>
+                {tr("nav_" + n.id)}
+              </span>
             </button>
           );
         })}

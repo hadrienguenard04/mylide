@@ -207,7 +207,7 @@ function SuccessScreen({ plan, onClose }) {
         padding: "15px 40px", fontWeight: 800, fontSize: 16,
         cursor: "pointer", boxShadow: "0 6px 20px rgba(204,41,54,0.35)",
       }}>
-        Commencer a explorer ->
+        Commencer à explorer →
       </button>
     </div>
   );
@@ -394,7 +394,7 @@ export function PremiumLock({ plan = "pro", onUpgrade, small = false, children }
             color: "#fff", border: "none", borderRadius: 10,
             padding: "7px 16px", fontWeight: 700, fontSize: 12, cursor: "pointer",
           }}>
-            Debloquer ->
+            Débloquer →
           </button>
         </div>
       </div>
