@@ -313,18 +313,18 @@ const NUTRITION_TIPS = {
 };
 
 const DATA_SOURCES = [
-  { id: "manual", label: "Manuel", unit: "", path: null },
-  { id: "patrimoine", label: "Patrimoine total", unit: "€", path: "patrimoine_total" },
-  { id: "poids", label: "Poids", unit: "kg", path: "body.weight" },
-  { id: "proteines", label: "Proteines/jour", unit: "g", path: "nutrition.protein", isDaily: true },
-  { id: "eau", label: "Eau/jour", unit: "L", path: "nutrition.water", isDaily: true },
-  { id: "sport_duree", label: "Duree sport/seance", unit: "min", path: "sport.duration", isDaily: true },
-  { id: "running_dist", label: "Distance running", unit: "km", path: "sport.running.distance", isDaily: true },
-  { id: "score", label: "Score global/jour", unit: "", path: "score", isDaily: true },
-  { id: "humeur", label: "Humeur/jour", unit: "/5", path: "mind.mood", isDaily: true },
-  { id: "lecture", label: "Lecture/jour", unit: "p", path: "mind.reading", isDaily: true },
-  { id: "screen", label: "Temps ecran/jour", unit: "h", path: "work.screenTime", isDaily: true, reverse: true },
-  { id: "focus", label: "Focus/jour", unit: "/5", path: "work.focus", isDaily: true },
+  { id: "manual",       label: "Manuel",              unit: "",    path: null,                        example: "Ex: 100 (progression %)" },
+  { id: "patrimoine",   label: "Patrimoine total",    unit: "€",   path: "patrimoine_total",          example: "Ex: 50000 (euros)" },
+  { id: "poids",        label: "Poids",               unit: "kg",  path: "body.weight",               example: "Ex: 75 (kg cible)" },
+  { id: "proteines",    label: "Proteines/jour",      unit: "g",   path: "nutrition.protein",  isDaily: true, example: "Ex: 150 (grammes/jour)" },
+  { id: "eau",          label: "Eau/jour",            unit: "L",   path: "nutrition.water",    isDaily: true, example: "Ex: 2.5 (litres/jour)" },
+  { id: "sport_duree",  label: "Duree sport/seance",  unit: "min", path: "sport.duration",     isDaily: true, example: "Ex: 45 (minutes/seance)" },
+  { id: "running_dist", label: "Distance running",    unit: "km",  path: "sport.running.distance", isDaily: true, example: "Ex: 5 (km/seance)" },
+  { id: "score",        label: "Score global/jour",   unit: "",    path: "score",              isDaily: true, example: "Ex: 80 (score /100)" },
+  { id: "humeur",       label: "Humeur/jour",         unit: "/5",  path: "mind.mood",          isDaily: true, example: "Ex: 4 (humeur /5)" },
+  { id: "lecture",      label: "Lecture/jour",        unit: "p",   path: "mind.reading",       isDaily: true, example: "Ex: 20 (pages/jour)" },
+  { id: "screen",       label: "Temps ecran/jour",    unit: "h",   path: "work.screenTime",    isDaily: true, reverse: true, example: "Ex: 2 (heures max/jour)" },
+  { id: "focus",        label: "Focus/jour",          unit: "/5",  path: "work.focus",         isDaily: true, example: "Ex: 4 (focus /5)" },
 ];
 
 const getNestedVal = (obj, path) => path?.split(".").reduce((o, k) => o?.[k] ?? 0, obj) ?? 0;
@@ -1700,9 +1700,11 @@ const EditGoalModal = ({ goal, onSave, onClose }) => {
             </select>
           </Field>
           {edited.sourceId !== "manual" && (<>
-            <Field label={`Valeur cible (${DATA_SOURCES.find(s => s.id === edited.sourceId)?.unit || ""})`}>
-              <input type="number" value={edited.target} onChange={e => setEdited(p => ({ ...p, target: e.target.value }))} style={inp} />
-            </Field>
+            {(() => { const src = DATA_SOURCES.find(s => s.id === edited.sourceId); return (
+              <Field label={`Valeur cible${src?.unit ? ` (${src.unit})` : ""}`}>
+                <input type="number" value={edited.target} onChange={e => setEdited(p => ({ ...p, target: e.target.value }))} placeholder={src?.example || "Ex: 100"} style={inp} />
+              </Field>
+            ); })()}
             <Toggle value={edited.reverse || false} onChange={v => setEdited(p => ({ ...p, reverse: v }))} label="Objectif : descendre sous la cible" />
           </>)}
           {edited.sourceId === "manual" && (
@@ -3779,9 +3781,11 @@ export default function App() {
                     </select>
                   </Field>
                   {newGoal.sourceId !== "manual" && (<>
-                    <Field label={`Valeur cible (${DATA_SOURCES.find(s => s.id === newGoal.sourceId)?.unit || ""})`}>
-                      <input type="number" value={newGoal.target} onChange={e => setNewGoal(p => ({ ...p, target: e.target.value }))} placeholder="Ex: 170" style={inp} />
-                    </Field>
+                    {(() => { const src = DATA_SOURCES.find(s => s.id === newGoal.sourceId); return (
+                      <Field label={`Valeur cible${src?.unit ? ` (${src.unit})` : ""}`}>
+                        <input type="number" value={newGoal.target} onChange={e => setNewGoal(p => ({ ...p, target: e.target.value }))} placeholder={src?.example || "Ex: 100"} style={inp} />
+                      </Field>
+                    ); })()}
                     <Toggle value={newGoal.reverse} onChange={v => setNewGoal(p => ({ ...p, reverse: v }))} label="Objectif : descendre sous la cible" />
                   </>)}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
