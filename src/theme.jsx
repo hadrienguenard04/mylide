@@ -65,9 +65,9 @@ function applyCSSVars(dark) {
 // → évite le flash de thème sur la première frame
 if (typeof window !== "undefined") {
   try {
-    const saved = localStorage.getItem("themeMode") || "auto";
-    const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initDark = saved === "dark" || (saved === "auto" && sysDark);
+    const saved = localStorage.getItem("themeMode");
+    const oldDark = localStorage.getItem("darkMode");
+    const initDark = saved === "dark" || (!saved && oldDark === "true");
     applyCSSVars(initDark);
   } catch { /* SSR / env sans window */ }
 }
@@ -128,12 +128,12 @@ export const useC = () => {
 export function ThemeProvider({ children }) {
   const [themeMode, setThemeMode] = useState(() => {
     const saved = localStorage.getItem("themeMode");
-    if (saved === "light" || saved === "dark" || saved === "auto") return saved;
-    // Migration depuis l'ancien système booléen
+    if (saved === "dark") return "dark";
+    if (saved === "light") return "light";
+    // Migration depuis l'ancien système booléen ou "auto"
     const oldDark = localStorage.getItem("darkMode");
     if (oldDark === "true") return "dark";
-    if (oldDark === "false") return "light";
-    return "auto";
+    return "light"; // défaut : clair
   });
 
   const [systemDark, setSystemDark] = useState(() => {
@@ -151,7 +151,7 @@ export function ThemeProvider({ children }) {
     } catch { /* pas de support matchMedia */ }
   }, []);
 
-  const darkMode = themeMode === "dark" || (themeMode === "auto" && systemDark);
+  const darkMode = themeMode === "dark";
 
   // useLayoutEffect : s'exécute AVANT que le navigateur peigne → zéro flash
   useLayoutEffect(() => {

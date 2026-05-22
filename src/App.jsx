@@ -1457,7 +1457,6 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
             {[
               { value: "light", icon: "☀️", label: "Clair" },
               { value: "dark",  icon: "🌙", label: "Sombre" },
-              { value: "auto",  icon: "⚙️", label: "Auto" },
             ].map(opt => {
               const active = themeMode === opt.value;
               return (
@@ -1476,11 +1475,6 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
               );
             })}
           </div>
-          {themeMode === "auto" && (
-            <p style={{ margin: "2px 0 6px", fontSize: 12, color: C.muted }}>
-              Suit automatiquement le thème de ton appareil.
-            </p>
-          )}
         </Sec>
 
         <Sec title={tr("sec_privacy")}>
@@ -3889,7 +3883,7 @@ export default function App() {
                 </div>
                 <ST>Parametres</ST>
                 <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                  {[{ value: "light", icon: "☀️", label: "Clair" }, { value: "dark", icon: "🌙", label: "Sombre" }, { value: "auto", icon: "⚙️", label: "Auto" }].map(opt => {
+                  {[{ value: "light", icon: "☀️", label: "Clair" }, { value: "dark", icon: "🌙", label: "Sombre" }].map(opt => {
                     const active = themeMode === opt.value;
                     return (
                       <button key={opt.value} onClick={() => setThemeMode(opt.value)} style={{ flex: 1, padding: "12px 6px", borderRadius: 12, cursor: "pointer", border: active ? `2px solid ${C.red}` : `1.5px solid ${C.border}`, background: active ? C.redLight : C.surfaceAlt, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, fontFamily: "inherit" }}>
