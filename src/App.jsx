@@ -2164,7 +2164,7 @@ export default function App() {
   const [newPoche, setNewPoche] = useState({ name: "", amount: 0, color: "#2563eb" });
   const [statRange, setStatRange] = useState(() => localStorage.getItem("statRange") || "7");
   const [profile, setProfile] = useState({ name: "", dob: "", photo: "" });
-  const [sim, setSim] = useState({ amount: 10000, monthly: 200, rate: 10, years: 10 });
+  const [sim, setSim] = useState(() => { try { const s = JSON.parse(localStorage.getItem("simData")); return s && s.years ? s : { amount: 10000, monthly: 200, rate: 10, years: 10 }; } catch { return { amount: 10000, monthly: 200, rate: 10, years: 10 }; } });
   const [newGoal, setNewGoal] = useState({ label: "", category: "", color: "#CC2936", sourceId: "manual", target: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reverse: false, manualProgress: 0 });
   const [renamingPoche, setRenamingPoche] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -2567,9 +2567,21 @@ export default function App() {
   // Legacy compat (used by radar score + a few display checks)
   const nutritionGoalConflict = contradictions.find(a => a.suggestGoal) || null;
 
+  useEffect(() => { localStorage.setItem("simData", JSON.stringify(sim)); }, [sim]);
+
   const simResult = useMemo(() => {
-    let total = Number(sim.amount) || 0; const data = [{ year: 0, value: Math.round(total) }];
-    for (let y = 1; y <= sim.years; y++) { total = total * (1 + sim.rate / 100) + sim.monthly * 12; data.push({ year: y, value: Math.round(total) }); }
+    const initAmount = Number(sim.amount) || 0;
+    const monthly = Number(sim.monthly) || 0;
+    const rate = Number(sim.rate) || 0;
+    const years = Number(sim.years) || 1;
+    let total = initAmount;
+    const data = [{ year: 0, invested: initAmount, interests: 0 }];
+    for (let y = 1; y <= years; y++) {
+      total = total * (1 + rate / 100) + monthly * 12;
+      const invested = Math.round(initAmount + monthly * 12 * y);
+      const rounded = Math.round(total);
+      data.push({ year: y, invested: Math.min(invested, rounded), interests: Math.max(0, rounded - Math.min(invested, rounded)) });
+    }
     return data;
   }, [sim]);
 
@@ -3668,23 +3680,43 @@ export default function App() {
               <Card>
                 <ST>Simulateur</ST>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-                  <Field label="Capital (€)"><input type="number" value={sim.amount} onChange={e => setSim(s => ({ ...s, amount: +e.target.value }))} style={inp} /></Field>
-                  <Field label="Versement/mois (€)"><input type="number" value={sim.monthly} onChange={e => setSim(s => ({ ...s, monthly: +e.target.value }))} style={inp} /></Field>
-                  <Field label="Rendement/an (%)"><input type="number" value={sim.rate} step={0.5} onChange={e => setSim(s => ({ ...s, rate: +e.target.value }))} style={inp} /></Field>
-                  <Field label="Duree (ans)"><input type="number" value={sim.years} min={1} max={50} onChange={e => setSim(s => ({ ...s, years: +e.target.value }))} style={inp} /></Field>
+                  <Field label="Capital (€)"><input type="number" value={sim.amount === 0 ? "" : sim.amount} placeholder="0" onFocus={e => e.target.select()} onChange={e => setSim(s => ({ ...s, amount: e.target.value === "" ? 0 : +e.target.value }))} style={inp} /></Field>
+                  <Field label="Versement/mois (€)"><input type="number" value={sim.monthly === 0 ? "" : sim.monthly} placeholder="0" onFocus={e => e.target.select()} onChange={e => setSim(s => ({ ...s, monthly: e.target.value === "" ? 0 : +e.target.value }))} style={inp} /></Field>
+                  <Field label="Rendement/an (%)"><input type="number" value={sim.rate === 0 ? "" : sim.rate} placeholder="0" step={0.5} onFocus={e => e.target.select()} onChange={e => setSim(s => ({ ...s, rate: e.target.value === "" ? 0 : +e.target.value }))} style={inp} /></Field>
+                  <Field label="Duree (ans)"><input type="number" value={sim.years === 0 ? "" : sim.years} placeholder="1" min={1} max={50} onFocus={e => e.target.select()} onChange={e => setSim(s => ({ ...s, years: e.target.value === "" ? 1 : +e.target.value }))} style={inp} /></Field>
                 </div>
-                <div style={{ textAlign: "center", padding: 20, background: `${C.green10}`, border: `1.5px solid ${C.green22}`, borderRadius: 16, marginBottom: 16 }}>
-                  <p style={{ fontSize: 11, color: C.muted, margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}>Dans {sim.years} ans</p>
-                  <p style={{ fontSize: 38, fontWeight: 900, color: C.green, margin: 0, letterSpacing: -0.5 }}>{simResult[simResult.length-1]?.value.toLocaleString("fr-FR")} €</p>
-                </div>
-                <ResponsiveContainer width="100%" height={130}>
-                  <AreaChart data={simResult}>
-                    <defs><linearGradient id="simGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={C.green} stopOpacity={0.25}/><stop offset="95%" stopColor={C.green} stopOpacity={0}/></linearGradient></defs>
+                {(() => {
+                  const last = simResult[simResult.length - 1] || { invested: 0, interests: 0 };
+                  const total = last.invested + last.interests;
+                  return (
+                    <div style={{ textAlign: "center", padding: "18px 20px", background: `${C.green10}`, border: `1.5px solid ${C.green22}`, borderRadius: 16, marginBottom: 16 }}>
+                      <p style={{ fontSize: 11, color: C.muted, margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}>Dans {sim.years} ans</p>
+                      <p style={{ fontSize: 38, fontWeight: 900, color: C.green, margin: "0 0 12px", letterSpacing: -0.5 }}>{total.toLocaleString("fr-FR")} €</p>
+                      <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(59,130,246,0.12)", borderRadius: 8, padding: "4px 10px" }}>
+                          <div style={{ width: 8, height: 8, borderRadius: 2, background: "#3B82F6", flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "#3B82F6" }}>{last.invested.toLocaleString("fr-FR")} € versés</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, background: `${C.green10}`, border: `1px solid ${C.green22}`, borderRadius: 8, padding: "4px 10px" }}>
+                          <div style={{ width: 8, height: 8, borderRadius: 2, background: C.green, flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, fontWeight: 700, color: C.green }}>{last.interests.toLocaleString("fr-FR")} € interets</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+                <ResponsiveContainer width="100%" height={155}>
+                  <AreaChart data={simResult} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="simGradInvested" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3B82F6" stopOpacity={0.7}/><stop offset="95%" stopColor="#3B82F6" stopOpacity={0.2}/></linearGradient>
+                      <linearGradient id="simGradInterests" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22C55E" stopOpacity={0.8}/><stop offset="95%" stopColor="#22C55E" stopOpacity={0.25}/></linearGradient>
+                    </defs>
                     <CartesianGrid stroke={C.border} vertical={false} strokeDasharray="3 3"/>
                     <XAxis dataKey="year" tick={{ fill: C.muted, fontSize: 9 }} tickFormatter={y => `${y}a`} axisLine={false} tickLine={false}/>
-                    <YAxis tick={{ fill: C.muted, fontSize: 9 }} width={38} tickFormatter={v => `${Math.round(v/1000)}k`} axisLine={false} tickLine={false}/>
-                    <Tooltip contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 12, color: C.text }} formatter={v => [`${v.toLocaleString("fr-FR")}€`, "Valeur"]}/>
-                    <Area type="monotone" dataKey="value" stroke={C.green} strokeWidth={2.5} fill="url(#simGrad)" dot={false}/>
+                    <YAxis tick={{ fill: C.muted, fontSize: 9 }} width={38} tickFormatter={v => v >= 1000 ? `${Math.round(v/1000)}k` : v} axisLine={false} tickLine={false}/>
+                    <Tooltip contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 12, color: C.text }} formatter={(v, name) => [`${Math.round(v).toLocaleString("fr-FR")} €`, name === "invested" ? "Versements" : "Interets"]}/>
+                    <Area type="monotone" dataKey="invested" stackId="a" stroke="#3B82F6" strokeWidth={2} fill="url(#simGradInvested)" dot={false}/>
+                    <Area type="monotone" dataKey="interests" stackId="a" stroke="#22C55E" strokeWidth={2} fill="url(#simGradInterests)" dot={false}/>
                   </AreaChart>
                 </ResponsiveContainer>
               </Card>
