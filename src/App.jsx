@@ -1962,6 +1962,17 @@ const MealCarousel = ({ meals, categoryLabel, categoryIcon, activeGoalColor, onA
   );
 };
 
+const TARGET_META = {
+  sport:     { label: "minutes par seance", placeholder: "Ex: 45" },
+  finance:   { label: "euros d'epargne cible", placeholder: "Ex: 100000" },
+  mental:    { label: "pages par jour", placeholder: "Ex: 20" },
+  nutrition: { label: "grammes de proteines", placeholder: "Ex: 150" },
+  business:  { label: "score focus /5", placeholder: "Ex: 4" },
+  running:   { label: "km par seance", placeholder: "Ex: 5" },
+  body:      { label: "kg cible", placeholder: "Ex: 70" },
+  sleep:     { label: "score sommeil /100", placeholder: "Ex: 70" },
+};
+
 const Onboarding = ({ onComplete }) => {
   const C = useC();
   const [step, setStep] = useState(0);
@@ -1973,24 +1984,27 @@ const Onboarding = ({ onComplete }) => {
   const [bodyWeightTarget, setBodyWeightTarget] = useState("");
   const [bodyActivityLevel, setBodyActivityLevel] = useState("moderate");
   const [nutritionGoalType, setNutritionGoalType] = useState("maintenance");
-  // Priorités
-  const [priorities, setPriorities] = useState([]); const [goalTarget, setGoalTarget] = useState(""); const [goalEnd, setGoalEnd] = useState("");
+  // Priorites
+  const [priorities, setPriorities] = useState([]); const [mainPriority, setMainPriority] = useState(null); const [goalTarget, setGoalTarget] = useState(""); const [goalEnd, setGoalEnd] = useState("");
   const photoRef = useRef();
   const handlePhoto = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => setPhoto(ev.target.result); r.readAsDataURL(f); };
   const togglePriority = id => setPriorities(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
+  const selectAll = () => setPriorities(priorities.length === PRIORITIES.length ? [] : PRIORITIES.map(p => p.id));
   const handleComplete = () => {
     const today = new Date().toISOString().split("T")[0];
     const templates = {
-      sport: { label: "Seances sport (45min+)", sourceId: "sport_duree", target: 45, category: "Sport", color: "#CC2936" },
-      finance: { label: "Objectif patrimoine", sourceId: "patrimoine", target: Number(goalTarget) || 50000, category: "Finance", color: "#1A7A4A" },
-      mental: { label: "Lecture quotidienne (20p)", sourceId: "lecture", target: 20, category: "Mental", color: "#6B35C8" },
+      sport:     { label: "Seances sport (45min+)", sourceId: "sport_duree", target: 45, category: "Sport", color: "#CC2936" },
+      finance:   { label: "Objectif patrimoine", sourceId: "patrimoine", target: 50000, category: "Finance", color: "#1A7A4A" },
+      mental:    { label: "Lecture quotidienne (20p)", sourceId: "lecture", target: 20, category: "Mental", color: "#6B35C8" },
       nutrition: { label: "Proteines quotidiennes", sourceId: "proteines", target: 150, category: "Nutrition", color: "#D4580A" },
-      business: { label: "Focus quotidien (4/5)", sourceId: "focus", target: 4, category: "Travail", color: "#1E5FCC" },
-      running: { label: "Distance running (5km)", sourceId: "running_dist", target: 5, category: "Running", color: "#0891b2" },
-      body: { label: "Objectif poids", sourceId: "poids", target: Number(bodyWeightTarget) || Number(goalTarget) || 75, category: "Corps", color: "#D4580A" },
-      sleep: { label: "Sommeil optimal (score 70)", sourceId: "score", target: 70, category: "Sommeil", color: "#6B35C8" },
+      business:  { label: "Focus quotidien (4/5)", sourceId: "focus", target: 4, category: "Travail", color: "#1E5FCC" },
+      running:   { label: "Distance running (5km)", sourceId: "running_dist", target: 5, category: "Running", color: "#0891b2" },
+      body:      { label: "Objectif poids", sourceId: "poids", target: Number(bodyWeightTarget) || 75, category: "Corps", color: "#D4580A" },
+      sleep:     { label: "Sommeil optimal (score 70)", sourceId: "score", target: 70, category: "Sommeil", color: "#6B35C8" },
     };
-    const createdGoals = priorities.map((pid, i) => ({ ...(templates[pid] || { label: pid, sourceId: "manual", target: 100, category: pid, color: "#CC2936" }), id: Date.now() + i, startDate: today, endDate: goalEnd || new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0], reverse: false, manualProgress: 0, target: i === 0 && goalTarget ? Number(goalTarget) : (templates[pid]?.target || 100) }));
+    const main = mainPriority || priorities[0];
+    const ordered = [main, ...priorities.filter(p => p !== main)];
+    const createdGoals = ordered.map((pid, i) => ({ ...(templates[pid] || { label: pid, sourceId: "manual", target: 100, category: pid, color: "#CC2936" }), id: Date.now() + i, startDate: today, endDate: goalEnd || new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0], reverse: false, manualProgress: 0, target: i === 0 && goalTarget ? Number(goalTarget) : (templates[pid]?.target || 100) }));
     const bodyProfileData = {
       sex: sex || null,
       height: Number(bodyHeight) || null,
@@ -2007,11 +2021,12 @@ const Onboarding = ({ onComplete }) => {
   const STEPS = 4;
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "inherit" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{`* { font-family: 'DM Sans', sans-serif !important; } input, select, textarea { font-family: 'DM Sans', sans-serif !important; font-size: 16px !important; }`}</style>
       <div style={{ width: "100%", maxWidth: 420 }}>
         {step === 0 && (
           <div style={{ textAlign: "center" }}>
-            <div style={{ width: 100, height: 100, borderRadius: 28, margin: "0 auto 28px", boxShadow: "0 16px 48px rgba(204,41,54,0.4)", overflow: "hidden", flexShrink: 0 }}><img src={kojihLogo} alt="Mylide" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} /></div>
+            <img src={kojihLogo} alt="Mylide" style={{ width: 100, height: 100, objectFit: "contain", display: "block", margin: "0 auto 28px", filter: "drop-shadow(0 16px 40px rgba(204,41,54,0.45))" }} />
             <h1 style={{ fontSize: 32, fontWeight: 900, color: C.black, margin: "0 0 10px", lineHeight: 1.1, letterSpacing: -0.5 }}>Bienvenue sur<br /><span style={{ color: C.red }}>Mylide</span></h1>
             <p style={{ fontSize: 16, color: C.muted, lineHeight: 1.7, margin: "0 0 40px" }}>Ton tracker de vie intelligent.<br />Configure en 3 minutes.</p>
             <button onClick={() => setStep(1)} style={btnPrimary}>Commencer →</button>
@@ -2096,7 +2111,12 @@ const Onboarding = ({ onComplete }) => {
         {step === 3 && (
           <div style={{ background: C.surface, borderRadius: 24, padding: 28, boxShadow: "0 24px 64px rgba(0,0,0,0.1)", border: `1px solid ${C.border}` }}>
             <div style={{ display: "flex", gap: 6, marginBottom: 28 }}>{Array.from({length: STEPS}, (_, i) => <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i < 3 ? C.red : C.surfaceAlt }} />)}</div>
-            <h2 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 6px", color: C.black }}>Tes priorites</h2>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <h2 style={{ fontSize: 24, fontWeight: 800, margin: 0, color: C.black }}>Tes priorites</h2>
+              <button onClick={selectAll} style={{ background: priorities.length === PRIORITIES.length ? C.redLight : C.surfaceAlt, border: `1px solid ${priorities.length === PRIORITIES.length ? C.redBorder : C.border}`, borderRadius: 10, padding: "6px 12px", fontSize: 12, fontWeight: 700, color: priorities.length === PRIORITIES.length ? C.red : C.muted, cursor: "pointer" }}>
+                {priorities.length === PRIORITIES.length ? "Tout deselectionner" : "Tout selectionner"}
+              </button>
+            </div>
             <p style={{ fontSize: 14, color: C.muted, margin: "0 0 18px" }}>Selectionne tout ce que tu veux ameliorer.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 340, overflowY: "auto" }}>
               {PRIORITIES.map(p => { const selected = priorities.includes(p.id); return (
@@ -2109,7 +2129,7 @@ const Onboarding = ({ onComplete }) => {
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
               <button onClick={() => setStep(2)} style={btnSecondary}>← Retour</button>
-              <button onClick={() => priorities.length > 0 && setStep(4)} style={{ ...btnPrimary, flex: 2, opacity: priorities.length > 0 ? 1 : 0.5 }}>Continuer →</button>
+              <button onClick={() => { if (priorities.length > 0) { setMainPriority(priorities[0]); setStep(4); } }} style={{ ...btnPrimary, flex: 2, opacity: priorities.length > 0 ? 1 : 0.5 }}>Continuer →</button>
             </div>
           </div>
         )}
@@ -2117,15 +2137,28 @@ const Onboarding = ({ onComplete }) => {
           <div style={{ background: C.surface, borderRadius: 24, padding: 28, boxShadow: "0 24px 64px rgba(0,0,0,0.1)", border: `1px solid ${C.border}` }}>
             <div style={{ display: "flex", gap: 6, marginBottom: 28 }}>{Array.from({length: STEPS}, (_, i) => <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: C.red }} />)}</div>
             <h2 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 6px", color: C.black }}>Objectif principal</h2>
-            <p style={{ fontSize: 14, color: C.muted, margin: "0 0 16px" }}>{priorities.length} objectif{priorities.length > 1 ? "s" : ""} crees automatiquement.</p>
-            <div style={{ background: C.surfaceAlt, borderRadius: 14, padding: 16, marginBottom: 18, display: "flex", alignItems: "center", gap: 14, border: `1px solid ${C.border}` }}>
-              <span style={{ fontSize: 30 }}>{PRIORITIES.find(p => p.id === priorities[0])?.icon}</span>
-              <span style={{ fontSize: 15, fontWeight: 700, color: C.black }}>{PRIORITIES.find(p => p.id === priorities[0])?.label}</span>
+            <p style={{ fontSize: 14, color: C.muted, margin: "0 0 14px" }}>Choisis ton objectif prioritaire et affine la valeur cible.</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
+              {priorities.map(pid => {
+                const pr = PRIORITIES.find(p => p.id === pid);
+                const isMain = (mainPriority || priorities[0]) === pid;
+                return (
+                  <div key={pid} onClick={() => { setMainPriority(pid); setGoalTarget(""); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", borderRadius: 14, border: `2px solid ${isMain ? pr.color : C.border}`, background: isMain ? `${pr.color}12` : C.surfaceAlt, cursor: "pointer", transition: "all 0.15s" }}>
+                    <span style={{ fontSize: 22 }}>{pr.icon}</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: isMain ? pr.color : C.text, flex: 1 }}>{pr.label}</span>
+                    {isMain && <div style={{ width: 22, height: 22, borderRadius: "50%", background: pr.color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, flexShrink: 0, fontWeight: 800 }}>★</div>}
+                  </div>
+                );
+              })}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 22 }}>
-              <Field label="Valeur cible (vide = valeur par defaut)"><input type="number" value={goalTarget} onChange={e => setGoalTarget(e.target.value)} placeholder="Ex: 100000 pour patrimoine..." style={inp} /></Field>
-              <Field label="Date limite"><input type="date" value={goalEnd} onChange={e => setGoalEnd(e.target.value)} style={inp} /></Field>
-            </div>
+            {(() => { const mid = mainPriority || priorities[0]; const meta = TARGET_META[mid]; return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 22 }}>
+                <Field label={`Valeur cible${meta ? ` (${meta.label})` : ""}`}>
+                  <input type="number" value={goalTarget} onChange={e => setGoalTarget(e.target.value)} placeholder={meta?.placeholder || "Ex: 100"} style={inp} />
+                </Field>
+                <Field label="Date limite"><input type="date" value={goalEnd} onChange={e => setGoalEnd(e.target.value)} style={inp} /></Field>
+              </div>
+            ); })()}
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setStep(3)} style={btnSecondary}>← Retour</button>
               <button onClick={handleComplete} style={{ ...btnPrimary, flex: 2 }}>Lancer l'app !</button>
@@ -2417,9 +2450,10 @@ export default function App() {
   }, []);
 
   const handleOnboardingComplete = async (profileData, createdGoals, bodyProfileData) => {
+    // Afficher l'app immédiatement, sans attendre les saves réseau
+    setProfile(profileData); setGoals(createdGoals); setOnboarded(true);
     const { data: { session } } = await supabase.auth.getSession(); const user = session?.user; if (!user) return;
     await supabase.from("profiles").upsert({ id: user.id, name: profileData.name, dob: profileData.dob, photo: profileData.photo });
-    setProfile(profileData); setGoals(createdGoals); setOnboarded(true);
 
     // Sauvegarder le profil physique dans nutritionGoals
     if (bodyProfileData) {
