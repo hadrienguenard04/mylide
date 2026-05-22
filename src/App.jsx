@@ -313,18 +313,18 @@ const NUTRITION_TIPS = {
 };
 
 const DATA_SOURCES = [
-  { id: "manual",       label: "Manuel",              unit: "",    path: null,                        example: "Ex: 100 (progression %)" },
-  { id: "patrimoine",   label: "Patrimoine total",    unit: "€",   path: "patrimoine_total",          example: "Ex: 50000 (euros)" },
-  { id: "poids",        label: "Poids",               unit: "kg",  path: "body.weight",               example: "Ex: 75 (kg cible)" },
-  { id: "proteines",    label: "Proteines/jour",      unit: "g",   path: "nutrition.protein",  isDaily: true, example: "Ex: 150 (grammes/jour)" },
-  { id: "eau",          label: "Eau/jour",            unit: "L",   path: "nutrition.water",    isDaily: true, example: "Ex: 2.5 (litres/jour)" },
-  { id: "sport_duree",  label: "Duree sport/seance",  unit: "min", path: "sport.duration",     isDaily: true, example: "Ex: 45 (minutes/seance)" },
-  { id: "running_dist", label: "Distance running",    unit: "km",  path: "sport.running.distance", isDaily: true, example: "Ex: 5 (km/seance)" },
-  { id: "score",        label: "Score global/jour",   unit: "",    path: "score",              isDaily: true, example: "Ex: 80 (score /100)" },
-  { id: "humeur",       label: "Humeur/jour",         unit: "/5",  path: "mind.mood",          isDaily: true, example: "Ex: 4 (humeur /5)" },
-  { id: "lecture",      label: "Lecture/jour",        unit: "p",   path: "mind.reading",       isDaily: true, example: "Ex: 20 (pages/jour)" },
-  { id: "screen",       label: "Temps ecran/jour",    unit: "h",   path: "work.screenTime",    isDaily: true, reverse: true, example: "Ex: 2 (heures max/jour)" },
-  { id: "focus",        label: "Focus/jour",          unit: "/5",  path: "work.focus",         isDaily: true, example: "Ex: 4 (focus /5)" },
+  { id: "manual",       label: "Manuel",              unit: "",    path: null,                            labelEx: "Ex: Mediter 10 min/jour",       example: "Ex: 100" },
+  { id: "patrimoine",   label: "Patrimoine total",    unit: "€",   path: "patrimoine_total",              labelEx: "Ex: Atteindre 50 000€",         example: "Ex: 50000" },
+  { id: "poids",        label: "Poids",               unit: "kg",  path: "body.weight",                   labelEx: "Ex: Atteindre 75kg",            example: "Ex: 75" },
+  { id: "proteines",    label: "Proteines/jour",      unit: "g",   path: "nutrition.protein",  isDaily: true, labelEx: "Ex: 150g de proteines/jour", example: "Ex: 150" },
+  { id: "eau",          label: "Eau/jour",            unit: "L",   path: "nutrition.water",    isDaily: true, labelEx: "Ex: Boire 2.5L/jour",        example: "Ex: 2.5" },
+  { id: "sport_duree",  label: "Duree sport/seance",  unit: "min", path: "sport.duration",     isDaily: true, labelEx: "Ex: 45 min de sport/seance", example: "Ex: 45" },
+  { id: "running_dist", label: "Distance running",    unit: "km",  path: "sport.running.distance", isDaily: true, labelEx: "Ex: Courir 5km/seance",  example: "Ex: 5" },
+  { id: "score",        label: "Score global/jour",   unit: "",    path: "score",              isDaily: true, labelEx: "Ex: Score de vie > 80",      example: "Ex: 80" },
+  { id: "humeur",       label: "Humeur/jour",         unit: "/5",  path: "mind.mood",          isDaily: true, labelEx: "Ex: Humeur positive (4/5)",  example: "Ex: 4" },
+  { id: "lecture",      label: "Lecture/jour",        unit: "p",   path: "mind.reading",       isDaily: true, labelEx: "Ex: Lire 20 pages/jour",     example: "Ex: 20" },
+  { id: "screen",       label: "Temps ecran/jour",    unit: "h",   path: "work.screenTime",    isDaily: true, reverse: true, labelEx: "Ex: Moins de 2h d'ecran", example: "Ex: 2" },
+  { id: "focus",        label: "Focus/jour",          unit: "/5",  path: "work.focus",         isDaily: true, labelEx: "Ex: Focus a 4/5 chaque jour", example: "Ex: 4" },
 ];
 
 const getNestedVal = (obj, path) => path?.split(".").reduce((o, k) => o?.[k] ?? 0, obj) ?? 0;
@@ -3773,10 +3773,10 @@ export default function App() {
               <Card>
                 <ST>Nouvel objectif</ST>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <input value={newGoal.label} onChange={e => setNewGoal(p => ({ ...p, label: e.target.value }))} placeholder="Ex: 170g de proteines/jour" style={inp} />
+                  <input value={newGoal.label} onChange={e => setNewGoal(p => ({ ...p, label: e.target.value }))} placeholder={DATA_SOURCES.find(s => s.id === newGoal.sourceId)?.labelEx || "Ex: Mon objectif"} style={inp} />
                   <input value={newGoal.category} onChange={e => setNewGoal(p => ({ ...p, category: e.target.value }))} placeholder="Categorie" style={inp} />
                   <Field label="Source de donnees">
-                    <select value={newGoal.sourceId} onChange={e => setNewGoal(p => ({ ...p, sourceId: e.target.value, target: "" }))} style={{ ...inp, color: C.text, background: C.surfaceAlt }}>
+                    <select value={newGoal.sourceId} onChange={e => setNewGoal(p => ({ ...p, sourceId: e.target.value, target: "", label: "" }))} style={{ ...inp, color: C.text, background: C.surfaceAlt }}>
                       {DATA_SOURCES.map(s => <option key={s.id} value={s.id} style={{ background: C.surfaceAlt, color: C.text }}>{s.label}</option>)}
                     </select>
                   </Field>
