@@ -2897,8 +2897,10 @@ export default function App() {
               <Card>
                 <ST>To-Do du jour</ST>
                 {todos.filter(t => t.date === today.date).slice(0, 5).map(t => (
-                  <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, padding: "10px 12px", background: t.done ? C.surfaceAlt : C.surface, borderRadius: 12, border: `1px solid ${C.border}` }}>
-                    <span onClick={() => toggleTodo(t.id)} style={{ fontSize: 18, cursor: "pointer", flexShrink: 0 }}>{t.done ? "✅" : "⬜"}</span>
+                  <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, padding: "10px 12px", background: t.done ? C.redLight : C.surface, borderRadius: 14, border: `1px solid ${t.done ? C.redBorder : C.border}`, transition: "background 0.2s, border 0.2s" }}>
+                    <button onClick={() => toggleTodo(t.id)} style={{ flexShrink: 0, width: 24, height: 24, borderRadius: "50%", border: t.done ? "none" : `2px solid ${C.border}`, background: t.done ? C.red : C.surface, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.18s", boxShadow: t.done ? "0 2px 8px rgba(204,41,54,0.35)" : "none" }}>
+                      {t.done && <svg width="12" height="9" viewBox="0 0 13 10" fill="none"><path d="M1.5 5L5 8.5L11.5 1.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </button>
                     <span style={{ fontSize: 14, color: t.done ? C.muted : C.text, textDecoration: t.done ? "line-through" : "none", flex: 1 }}>{t.text}</span>
                   </div>
                 ))}
@@ -3556,10 +3558,12 @@ export default function App() {
                       <Card key={group}>
                         <ST>{group === "today" ? tr("todo_today") : tr("todo_older")}</ST>
                         {items.map(t => (
-                          <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, padding: "12px 14px", background: t.done ? C.surfaceAlt : C.surface, borderRadius: 12, border: `1px solid ${C.border}` }}>
-                            <span onClick={() => toggleTodo(t.id)} style={{ fontSize: 20, cursor: "pointer", flexShrink: 0 }}>{t.done ? "✅" : "⬜"}</span>
-                            <span style={{ fontSize: 14, color: t.done ? C.muted : C.text, textDecoration: t.done ? "line-through" : "none", flex: 1 }}>{t.text}</span>
-                            <span onClick={() => deleteTodo(t.id)} style={{ fontSize: 14, color: C.subtle, cursor: "pointer", padding: 4 }}>✕</span>
+                          <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, padding: "12px 14px", background: t.done ? C.redLight : C.surface, borderRadius: 14, border: `1px solid ${t.done ? C.redBorder : C.border}`, transition: "background 0.2s, border 0.2s" }}>
+                            <button onClick={() => toggleTodo(t.id)} style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", border: t.done ? "none" : `2px solid ${C.border}`, background: t.done ? C.red : C.surface, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.18s", boxShadow: t.done ? "0 2px 8px rgba(204,41,54,0.35)" : "none" }}>
+                              {t.done && <svg width="13" height="10" viewBox="0 0 13 10" fill="none"><path d="M1.5 5L5 8.5L11.5 1.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </button>
+                            <span style={{ fontSize: 14, color: t.done ? C.muted : C.text, textDecoration: t.done ? "line-through" : "none", flex: 1, transition: "color 0.2s" }}>{t.text}</span>
+                            <button onClick={() => deleteTodo(t.id)} style={{ background: "none", border: "none", color: C.subtle, cursor: "pointer", padding: 4, fontSize: 14, lineHeight: 1 }}>✕</button>
                           </div>
                         ))}
                       </Card>
