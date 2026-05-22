@@ -3776,7 +3776,7 @@ export default function App() {
                   <input value={newGoal.label} onChange={e => setNewGoal(p => ({ ...p, label: e.target.value }))} placeholder="Ex: 170g de proteines/jour" style={inp} />
                   <input value={newGoal.category} onChange={e => setNewGoal(p => ({ ...p, category: e.target.value }))} placeholder="Categorie" style={inp} />
                   <Field label="Source de donnees">
-                    <select value={newGoal.sourceId} onChange={e => setNewGoal(p => ({ ...p, sourceId: e.target.value }))} style={{ ...inp, color: C.text, background: C.surfaceAlt }}>
+                    <select value={newGoal.sourceId} onChange={e => setNewGoal(p => ({ ...p, sourceId: e.target.value, target: "" }))} style={{ ...inp, color: C.text, background: C.surfaceAlt }}>
                       {DATA_SOURCES.map(s => <option key={s.id} value={s.id} style={{ background: C.surfaceAlt, color: C.text }}>{s.label}</option>)}
                     </select>
                   </Field>
