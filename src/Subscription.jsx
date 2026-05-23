@@ -221,7 +221,7 @@ function SuccessScreen({ plan, onClose }) {
 }
 
 // ─── MANAGE SUBSCRIPTION ─────────────────────────────────────────────────────
-function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel }) {
+function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel, onReactivate }) {
   const C = useC();
   const [loading, setLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
@@ -303,7 +303,24 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel 
         {loading ? "Chargement..." : "Gérer mon abonnement"}
       </button>
 
-      {!showConfirm ? (
+      {isCancelAtPeriodEnd ? (
+        <div style={{ background: "linear-gradient(135deg, #CC293608, #CC293615)", border: "1.5px solid #CC293630", borderRadius: 14, padding: "16px", textAlign: "center" }}>
+          <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 800, color: "#CC2936" }}>
+            😢 Tu vas nous manquer...
+          </p>
+          <p style={{ margin: "0 0 14px", fontSize: 12, color: "#888", lineHeight: 1.6 }}>
+            Tes progrès, tes stats, tes insights — tout disparaîtra le jour J.<br />
+            Tu es sûr(e) de vouloir perdre ça ?
+          </p>
+          <button onClick={onReactivate} style={{
+            width: "100%", padding: "13px", borderRadius: 12, fontWeight: 800, fontSize: 14,
+            background: "linear-gradient(135deg, #CC2936, #8B1A22)", color: "#fff",
+            border: "none", cursor: "pointer", boxShadow: "0 4px 14px rgba(204,41,54,0.3)",
+          }}>
+            🔥 Rester Premium — Ne pas perdre mes données
+          </button>
+        </div>
+      ) : !showConfirm ? (
         <button onClick={() => setShowConfirm(true)} style={{ width: "100%", padding: "12px", background: "none", border: `1.5px solid #CC293630`, borderRadius: 12, color: "#CC2936", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
           Résilier mon abonnement
         </button>
@@ -481,6 +498,25 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
     }
   };
 
+  const handleReactivate = async () => {
+    try {
+      const token = await getAuthToken();
+      const r = await fetch("/api/reactivate-subscription", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ userId }),
+      });
+      const { success, error: e } = await r.json();
+      if (e) throw new Error(e);
+      if (success) window.location.reload();
+    } catch (e) {
+      setError(e.message || "Erreur lors de la réactivation. Reessaie.");
+    }
+  };
+
   const handleCancel = async () => {
     try {
       const token = await getAuthToken();
@@ -559,7 +595,7 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
                 Tu beneficies de toutes les fonctionnalites premium.
               </p>
             </div>
-            <ManageSubscription subscriptionData={subscriptionData} currentPlan={userPlan} onManage={handleManage} onCancel={handleCancel} />
+            <ManageSubscription subscriptionData={subscriptionData} currentPlan={userPlan} onManage={handleManage} onCancel={handleCancel} onReactivate={handleReactivate} />
           </>
         ) : (
           <>
