@@ -201,8 +201,8 @@ function SuccessScreen({ plan, onClose }) {
         borderRadius: 16, padding: "16px 20px", marginBottom: 28,
         width: "100%", maxWidth: 340,
       }}>
-        {["Toutes les statistiques avancees","Insights et predictions intelligents","Export PDF + Excel","Radar historique illimite"].map((f, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: i < 3 ? 8 : 0 }}>
+        {(PLANS.find(p => p.id === plan)?.features || []).slice(0, 4).map((f, i, arr) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: i < arr.length - 1 ? 8 : 0 }}>
             <span style={{ color: "#10B981", fontSize: 15, fontWeight: 700 }}>✓</span>
             <span style={{ fontSize: 13, color: C.text }}>{f}</span>
           </div>
