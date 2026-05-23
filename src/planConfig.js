@@ -14,7 +14,6 @@ export const PLANS = [
     features: [
       "Statistiques sur 30 jours",
       "Radar historique (4 semaines)",
-      "Export PDF de tes données",
       "Objectifs illimités",
       "5 poches patrimoniales",
       "Mensurations corporelles",
@@ -33,7 +32,6 @@ export const PLANS = [
       "Poches patrimoniales illimitées",
       "Guide nutrition avancé (100+ conseils)",
       "Corrélations entre domaines de vie",
-      "Export Excel / CSV complet",
     ],
   },
   {
@@ -49,7 +47,7 @@ export const PLANS = [
       "Poches patrimoniales illimitées",
       "Guide nutrition avancé (100+ conseils)",
       "Corrélations entre domaines de vie",
-      "Export Excel / CSV + PDF",
+      "Export PDF + Excel / CSV complet",
       "Support prioritaire par email",
       "Accès anticipé aux nouvelles fonctionnalités",
       "Participation aux bêtas exclusives",
@@ -75,7 +73,7 @@ export const FEATURE_PLAN_MAP = {
   // ── STARTER ──
   stats_30d:           "starter",
   radar_history_4w:    "starter",
-  export_pdf:          "starter",
+  export_pdf:          "premium",
   goals_unlimited:     "starter",
   patrimoine_5:        "starter",
   body_mensuration:    "starter",
@@ -87,7 +85,7 @@ export const FEATURE_PLAN_MAP = {
   radar_unlimited:     "pro",
   patrimoine_unlimited:"pro",
   nutrition_tips:      "pro",
-  export_csv:          "pro",
+  export_csv:          "premium",
   correlations:        "pro",
 
   // ── PREMIUM ──
