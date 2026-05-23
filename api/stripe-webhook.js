@@ -1,15 +1,22 @@
 // api/stripe-webhook.js — Vercel Serverless Function
-// Gère les événements Stripe et met à jour Supabase
+// Gère tous les événements Stripe → met à jour Supabase + envoie les emails.
+// CRITIQUE : bodyParser désactivé pour valider la signature Stripe.
 
 const Stripe = require("stripe");
 const { createClient } = require("@supabase/supabase-js");
+const {
+  sendEmail,
+  emailWelcome,
+  emailTrialEnding,
+  emailPaymentConfirmed,
+  emailPaymentFailed,
+  emailCancelled,
+} = require("./_lib/email");
 
-// IMPORTANT: désactiver le bodyParser pour lire le raw body (nécessaire pour la signature Stripe)
 module.exports.config = {
   api: { bodyParser: false },
 };
 
-// Lire le body brut
 function getRawBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -19,14 +26,41 @@ function getRawBody(req) {
   });
 }
 
-// Map price ID → plan name
 function priceIdToPlan(priceId) {
   const map = {
     [process.env.STRIPE_PRICE_STARTER]: "starter",
-    [process.env.STRIPE_PRICE_PRO]: "pro",
+    [process.env.STRIPE_PRICE_PRO]:     "pro",
     [process.env.STRIPE_PRICE_PREMIUM]: "premium",
   };
   return map[priceId] || null;
+}
+
+const PLAN_LABELS = { starter: "Starter", pro: "Pro", premium: "Premium" };
+const PLAN_PRICES = { starter: "3,99", pro: "6,99", premium: "12,99" };
+
+// Résoudre l'userId depuis les metadata (subscription ou customer)
+async function resolveUserId(stripe, obj) {
+  if (obj.metadata?.userId) return obj.metadata.userId;
+  try {
+    const customer = await stripe.customers.retrieve(obj.customer);
+    return customer.metadata?.userId || null;
+  } catch { return null; }
+}
+
+// Récupérer le profil Supabase (nom + email)
+async function getProfile(supabase, userId) {
+  const { data } = await supabase
+    .from("profiles")
+    .select("name")
+    .eq("id", userId)
+    .single();
+  return data;
+}
+
+// Récupérer l'email Supabase Auth
+async function getUserEmail(supabase, userId) {
+  const { data } = await supabase.auth.admin.getUserById(userId);
+  return data?.user?.email || null;
 }
 
 module.exports = async function handler(req, res) {
@@ -38,16 +72,12 @@ module.exports = async function handler(req, res) {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  // Vérifier la signature Stripe
+  // ── Vérification de la signature Stripe ──────────────────────────────────
   const sig = req.headers["stripe-signature"];
   let event;
   try {
     const rawBody = await getRawBody(req);
-    event = stripe.webhooks.constructEvent(
-      rawBody,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
     console.error("Webhook signature error:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -55,64 +85,69 @@ module.exports = async function handler(req, res) {
 
   try {
     switch (event.type) {
-      // ── Checkout completé → activer l'essai ──────────────────────────────
+
+      // ── Checkout complété → activer l'essai + email bienvenue ─────────────
       case "checkout.session.completed": {
         const session = event.data.object;
         const { userId, plan } = session.metadata || {};
         if (!userId) break;
 
+        const trialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
         await supabase.from("profiles").update({
           plan: plan || "pro",
           subscription_status: "trialing",
           stripe_subscription_id: session.subscription,
-          trial_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          trial_end: trialEnd,
         }).eq("id", userId);
+
+        // Email de bienvenue
+        const [profile, email] = await Promise.all([
+          getProfile(supabase, userId),
+          getUserEmail(supabase, userId),
+        ]);
+
+        if (email) {
+          const planName = PLAN_LABELS[plan] || plan;
+          await sendEmail({
+            to: email,
+            subject: `Bienvenue dans MYLIDE ${planName} ! 🎉`,
+            html: emailWelcome({ name: profile?.name, planName, trialEnd }),
+          });
+        }
 
         console.log(`✅ Checkout completed: user ${userId} → ${plan}`);
         break;
       }
 
-      // ── Abonnement mis à jour (actif, trial terminé, etc.) ───────────────
+      // ── Abonnement mis à jour (actif, trial terminé, changement de plan) ──
       case "customer.subscription.updated": {
         const sub = event.data.object;
-        const { userId } = sub.metadata || {};
+        const userId = await resolveUserId(stripe, sub);
+        if (!userId) break;
 
-        if (!userId) {
-          // Essayer de retrouver userId via le customer
-          const customer = await stripe.customers.retrieve(sub.customer);
-          const uid = customer.metadata?.userId;
-          if (!uid) break;
+        const priceId = sub.items.data[0]?.price?.id;
+        const plan = priceIdToPlan(priceId);
+        const isActive = sub.status === "active" || sub.status === "trialing";
 
-          const priceId = sub.items.data[0]?.price?.id;
-          const plan = priceIdToPlan(priceId);
-
-          await supabase.from("profiles").update({
-            plan: (sub.status === "active" || sub.status === "trialing") && plan ? plan : "free",
-            subscription_status: sub.status,
-            subscription_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-          }).eq("id", uid);
-        } else {
-          const priceId = sub.items.data[0]?.price?.id;
-          const plan = priceIdToPlan(priceId);
-
-          await supabase.from("profiles").update({
-            plan: (sub.status === "active" || sub.status === "trialing") && plan ? plan : "free",
-            subscription_status: sub.status,
-            subscription_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-          }).eq("id", userId);
-        }
+        await supabase.from("profiles").update({
+          plan: isActive && plan ? plan : "free",
+          subscription_status: sub.status,
+          subscription_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+        }).eq("id", userId);
 
         console.log(`🔄 Subscription updated: ${sub.id} → ${sub.status}`);
         break;
       }
 
-      // ── Abonnement annulé → repasser en free ─────────────────────────────
+      // ── Abonnement annulé → repasser en free + email ──────────────────────
       case "customer.subscription.deleted": {
         const sub = event.data.object;
-        const { userId } = sub.metadata || {};
+        const userId = await resolveUserId(stripe, sub);
+        if (!userId) break;
 
-        const uid = userId || (await stripe.customers.retrieve(sub.customer)).metadata?.userId;
-        if (!uid) break;
+        const priceId = sub.items.data[0]?.price?.id;
+        const plan = priceIdToPlan(priceId);
 
         await supabase.from("profiles").update({
           plan: "free",
@@ -120,25 +155,142 @@ module.exports = async function handler(req, res) {
           stripe_subscription_id: null,
           subscription_period_end: null,
           trial_end: null,
-        }).eq("id", uid);
+        }).eq("id", userId);
 
-        console.log(`❌ Subscription cancelled: user ${uid} → free`);
+        // Email annulation (si pas déjà envoyé par cancel-subscription.js)
+        // On l'envoie seulement si ce n'est pas une annulation programmée déjà gérée
+        const [profile, email] = await Promise.all([
+          getProfile(supabase, userId),
+          getUserEmail(supabase, userId),
+        ]);
+        if (email) {
+          const planName = PLAN_LABELS[plan] || plan || "Premium";
+          await sendEmail({
+            to: email,
+            subject: "Ton abonnement MYLIDE est terminé",
+            html: emailCancelled({ name: profile?.name, planName, accessUntil: null }),
+          }).catch(() => {}); // silencieux si déjà envoyé
+        }
+
+        console.log(`❌ Subscription deleted: user ${userId} → free`);
         break;
       }
 
-      // ── Paiement échoué ───────────────────────────────────────────────────
+      // ── Paiement réussi (renouvellement mensuel) → email facture ─────────
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object;
+        // Ne traiter que les renouvellements (billing_reason = subscription_cycle)
+        if (invoice.billing_reason !== "subscription_cycle") break;
+
+        const sub = invoice.subscription
+          ? await stripe.subscriptions.retrieve(invoice.subscription)
+          : null;
+        if (!sub) break;
+
+        const userId = await resolveUserId(stripe, sub);
+        if (!userId) break;
+
+        const priceId = sub.items.data[0]?.price?.id;
+        const plan = priceIdToPlan(priceId);
+
+        // S'assurer que le statut est bien actif dans Supabase
+        await supabase.from("profiles").update({
+          subscription_status: "active",
+          plan: plan || undefined,
+        }).eq("id", userId);
+
+        // Email confirmation paiement avec lien facture
+        const [profile, email] = await Promise.all([
+          getProfile(supabase, userId),
+          getUserEmail(supabase, userId),
+        ]);
+        if (email) {
+          await sendEmail({
+            to: email,
+            subject: `Confirmation de paiement MYLIDE ${PLAN_LABELS[plan] || ""}`,
+            html: emailPaymentConfirmed({
+              name: profile?.name,
+              planName: PLAN_LABELS[plan] || plan,
+              amount: invoice.amount_paid,
+              currency: invoice.currency,
+              invoiceDate: invoice.created,
+              invoiceUrl: invoice.hosted_invoice_url,
+            }),
+          });
+        }
+
+        console.log(`💳 Payment succeeded: user ${userId}, ${invoice.amount_paid / 100}€`);
+        break;
+      }
+
+      // ── Paiement échoué → mettre à jour le statut + email alerte ─────────
       case "invoice.payment_failed": {
         const invoice = event.data.object;
-        // Mettre à jour le statut pour indiquer un problème de paiement
-        // Le statut Stripe passera automatiquement à "past_due"
-        console.log(`⚠️ Payment failed: ${invoice.customer_email}`);
+        const sub = invoice.subscription
+          ? await stripe.subscriptions.retrieve(invoice.subscription)
+          : null;
+        if (!sub) break;
+
+        const userId = await resolveUserId(stripe, sub);
+        if (!userId) break;
+
+        // Mettre à jour le statut Supabase → past_due
+        await supabase.from("profiles").update({
+          subscription_status: "past_due",
+        }).eq("id", userId);
+
+        // Récupérer le plan pour l'email
+        const priceId = sub.items.data[0]?.price?.id;
+        const plan = priceIdToPlan(priceId);
+
+        // Email alerte paiement échoué
+        const [profile, email] = await Promise.all([
+          getProfile(supabase, userId),
+          getUserEmail(supabase, userId),
+        ]);
+        if (email) {
+          await sendEmail({
+            to: email,
+            subject: "⚠️ Échec de paiement MYLIDE",
+            html: emailPaymentFailed({
+              name: profile?.name,
+              planName: PLAN_LABELS[plan] || plan,
+              nextAttempt: invoice.next_payment_attempt,
+            }),
+          });
+        }
+
+        console.log(`⚠️ Payment failed: user ${userId} → past_due`);
         break;
       }
 
-      // ── Essai terminé ─────────────────────────────────────────────────────
+      // ── Essai se terminant dans 3 jours → email rappel ───────────────────
       case "customer.subscription.trial_will_end": {
-        // Optionnel: envoyer une notification 3 jours avant la fin de l'essai
-        console.log(`⏰ Trial ending soon: ${event.data.object.id}`);
+        const sub = event.data.object;
+        const userId = await resolveUserId(stripe, sub);
+        if (!userId) break;
+
+        const priceId = sub.items.data[0]?.price?.id;
+        const plan = priceIdToPlan(priceId);
+
+        const [profile, email] = await Promise.all([
+          getProfile(supabase, userId),
+          getUserEmail(supabase, userId),
+        ]);
+        if (email) {
+          await sendEmail({
+            to: email,
+            subject: "⏰ Ton essai MYLIDE se termine dans 3 jours",
+            html: emailTrialEnding({
+              name: profile?.name,
+              planName: PLAN_LABELS[plan] || plan,
+              planPrice: PLAN_PRICES[plan] || "?",
+              trialEnd: sub.trial_end,
+            }),
+          });
+        }
+
+        console.log(`⏰ Trial ending soon for user ${userId}`);
         break;
       }
 

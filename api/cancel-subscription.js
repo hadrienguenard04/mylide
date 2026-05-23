@@ -1,16 +1,27 @@
 // api/cancel-subscription.js — Vercel Serverless Function
-// Programme la résiliation à la fin de la période (pas immédiate)
-// Exception : si encore en période d'essai → résiliation immédiate (pas de débit)
+// Programme la résiliation à la fin de la période (pas immédiate).
+// Exception : si encore en période d'essai → résiliation immédiate (pas de débit).
+// Requiert un JWT Supabase valide dans le header Authorization.
 
 const Stripe = require("stripe");
 const { createClient } = require("@supabase/supabase-js");
+const { verifyAndAuthorize } = require("./_lib/auth");
+const { sendEmail, emailCancelled } = require("./_lib/email");
 
 module.exports = async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  const appUrl = process.env.APP_URL || `https://${req.headers.host}`;
+  res.setHeader("Access-Control-Allow-Origin", appUrl);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ error: "userId requis" });
+
+  // Vérifier l'identité de l'utilisateur
+  const { user, error: authError } = await verifyAndAuthorize(req, userId);
+  if (authError) return res.status(authError.includes("interdit") ? 403 : 401).json({ error: authError });
 
   const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
   const supabase = createClient(
@@ -18,13 +29,10 @@ module.exports = async function handler(req, res) {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  const { userId } = req.body;
-  if (!userId) return res.status(400).json({ error: "userId requis" });
-
   try {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("stripe_subscription_id, subscription_status")
+      .select("stripe_subscription_id, subscription_status, plan, name")
       .eq("id", userId)
       .single();
 
@@ -33,6 +41,8 @@ module.exports = async function handler(req, res) {
     }
 
     const isTrialing = profile.subscription_status === "trialing";
+    const planLabels = { starter: "Starter", pro: "Pro", premium: "Premium" };
+    const planName = planLabels[profile.plan] || profile.plan;
 
     if (isTrialing) {
       // Encore en essai gratuit → résiliation immédiate (pas de débit)
@@ -45,23 +55,43 @@ module.exports = async function handler(req, res) {
         trial_end: null,
       }).eq("id", userId);
 
+      // Email de confirmation
+      if (user?.email) {
+        await sendEmail({
+          to: user.email,
+          subject: "Résiliation MYLIDE confirmée",
+          html: emailCancelled({ name: profile.name, planName, accessUntil: null }),
+        });
+      }
+
       return res.json({ success: true, immediate: true });
+
     } else {
       // Abonnement payé → accès conservé jusqu'à la fin de la période
       const sub = await stripe.subscriptions.update(profile.stripe_subscription_id, {
         cancel_at_period_end: true,
       });
 
-      // Juste noter que la résiliation est programmée, pas de changement de plan
+      const periodEnd = new Date(sub.current_period_end * 1000).toISOString();
+
       await supabase.from("profiles").update({
         subscription_status: "cancel_at_period_end",
-        subscription_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+        subscription_period_end: periodEnd,
       }).eq("id", userId);
+
+      // Email de confirmation avec date d'accès
+      if (user?.email) {
+        await sendEmail({
+          to: user.email,
+          subject: "Résiliation MYLIDE programmée",
+          html: emailCancelled({ name: profile.name, planName, accessUntil: periodEnd }),
+        });
+      }
 
       return res.json({
         success: true,
         immediate: false,
-        period_end: new Date(sub.current_period_end * 1000).toISOString(),
+        period_end: periodEnd,
       });
     }
   } catch (err) {

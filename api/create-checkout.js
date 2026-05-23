@@ -1,27 +1,33 @@
 // api/create-checkout.js — Vercel Serverless Function
-// Crée une session Stripe Checkout avec 30 jours d'essai gratuit
+// Crée une session Stripe Checkout avec 30 jours d'essai gratuit.
+// Requiert un JWT Supabase valide dans le header Authorization.
 
 const Stripe = require("stripe");
 const { createClient } = require("@supabase/supabase-js");
+const { verifyAndAuthorize } = require("./_lib/auth");
 
 module.exports = async function handler(req, res) {
-  // CORS
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  const appUrl = process.env.APP_URL || `https://${req.headers.host}`;
+  res.setHeader("Access-Control-Allow-Origin", appUrl);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  const { priceId, userId, userEmail, plan } = req.body;
+  if (!priceId || !userId) {
+    return res.status(400).json({ error: "priceId et userId sont requis" });
+  }
+
+  // Vérifier l'identité de l'utilisateur
+  const { error: authError } = await verifyAndAuthorize(req, userId);
+  if (authError) return res.status(authError.includes("interdit") ? 403 : 401).json({ error: authError });
 
   const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
   const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
-
-  const { priceId, userId, userEmail, plan } = req.body;
-  if (!priceId || !userId) {
-    return res.status(400).json({ error: "priceId et userId sont requis" });
-  }
 
   try {
     // Récupérer ou créer le customer Stripe
@@ -45,9 +51,7 @@ module.exports = async function handler(req, res) {
         .eq("id", userId);
     }
 
-    const appUrl = process.env.APP_URL || `https://${req.headers.host}`;
-
-    // Créer la session Checkout
+    // Créer la session Checkout avec 30 jours d'essai
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],

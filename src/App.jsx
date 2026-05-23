@@ -1079,7 +1079,7 @@ const SubPageLegal = ({ onBack, title, sections }) => {
         <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.black, flex: 1 }}>{title}</p>
       </div>
       <div style={{ padding: "20px 20px 48px" }}>
-        <p style={{ fontSize: 11, color: C.muted, margin: "0 0 20px" }}>Dernière mise à jour : mai 2025 · Kojihsports</p>
+        <p style={{ fontSize: 11, color: C.muted, margin: "0 0 20px" }}>Dernière mise à jour : mai 2026 · MYLIDE</p>
         {sections.map((sec, i) => (
           <div key={i} style={{ marginBottom: 24 }}>
             <p style={{ fontSize: 13, fontWeight: 800, color: C.black, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: 0.6 }}>{sec.heading}</p>
@@ -1087,7 +1087,7 @@ const SubPageLegal = ({ onBack, title, sections }) => {
           </div>
         ))}
         <div style={{ marginTop: 32, padding: "16px", background: C.surfaceAlt, borderRadius: 14 }}>
-          <p style={{ margin: 0, fontSize: 13, color: C.muted, textAlign: "center" }}>Questions ? <span style={{ color: C.red, fontWeight: 700 }}>support@kojihsports.com</span></p>
+          <p style={{ margin: 0, fontSize: 13, color: C.muted, textAlign: "center" }}>Questions ? <span style={{ color: C.red, fontWeight: 700 }}>contact@mylide.app</span></p>
         </div>
       </div>
     </div>
@@ -1095,27 +1095,27 @@ const SubPageLegal = ({ onBack, title, sections }) => {
 };
 
 const CGU_SECTIONS = [
-  { heading: "1. Présentation", body: "Mylide est une application de suivi de santé et de bien-être développée par Kojihsports. Elle permet aux utilisateurs de suivre leur sommeil, leur activité physique, leur nutrition, leur état mental et leurs finances personnelles." },
+  { heading: "1. Présentation", body: "MYLIDE est une application de bien-être et de suivi de vie développée en France. Elle permet aux utilisateurs de suivre leur sommeil, leur activité physique, leur nutrition, leur état mental et leurs finances personnelles." },
   { heading: "2. Acceptation des conditions", body: "En utilisant Mylide, vous acceptez l'intégralité des présentes conditions d'utilisation. Si vous n'acceptez pas ces conditions, veuillez ne pas utiliser l'application." },
   { heading: "3. Utilisation de l'application", body: "Mylide est destinée à un usage strictement personnel. Elle ne remplace en aucun cas un avis médical professionnel. Les analyses et recommandations fournies sont à titre informatif uniquement. En cas de doute sur votre santé, consultez un professionnel de santé qualifié." },
-  { heading: "4. Compte utilisateur", body: "Vous êtes responsable de la confidentialité de vos identifiants de connexion et de l'ensemble des activités effectuées depuis votre compte. Toute utilisation frauduleuse doit être signalée immédiatement à support@kojihsports.com." },
+  { heading: "4. Compte utilisateur", body: "Vous êtes responsable de la confidentialité de vos identifiants de connexion et de l'ensemble des activités effectuées depuis votre compte. Toute utilisation frauduleuse doit être signalée immédiatement à contact@mylide.app." },
   { heading: "5. Abonnement et paiement", body: "Mylide propose un abonnement Pro donnant accès à des fonctionnalités avancées. L'abonnement se renouvelle automatiquement chaque mois. Vous pouvez annuler à tout moment depuis les paramètres de votre compte ou via les stores (App Store / Google Play). Aucun remboursement n'est accordé pour les périodes entamées." },
-  { heading: "6. Propriété intellectuelle", body: "L'ensemble des contenus de l'application (textes, graphiques, logo, algorithmes, code source) est la propriété exclusive de Kojihsports. Toute reproduction, distribution ou modification est interdite sans autorisation écrite préalable." },
-  { heading: "7. Limitation de responsabilité", body: "Kojihsports ne saurait être tenu responsable des décisions prises sur la base des informations affichées dans l'application, ni des dommages directs ou indirects résultant de son utilisation. L'application est fournie « en l'état »." },
-  { heading: "8. Résiliation", body: "Vous pouvez demander la suppression de votre compte à tout moment en écrivant à support@kojihsports.com. Kojihsports se réserve le droit de suspendre ou supprimer tout compte en cas de violation des présentes conditions." },
+  { heading: "6. Propriété intellectuelle", body: "L'ensemble des contenus de l'application (textes, graphiques, logo, algorithmes, code source) est la propriété exclusive de MYLIDE. Toute reproduction, distribution ou modification est interdite sans autorisation écrite préalable." },
+  { heading: "7. Limitation de responsabilité", body: "MYLIDE ne saurait être tenu responsable des décisions prises sur la base des informations affichées dans l'application, ni des dommages directs ou indirects résultant de son utilisation. L'application est fournie « en l'état »." },
+  { heading: "8. Résiliation", body: "Vous pouvez supprimer votre compte à tout moment depuis Paramètres → Supprimer mon compte. MYLIDE se réserve le droit de suspendre ou supprimer tout compte en cas de violation des présentes conditions." },
   { heading: "9. Droit applicable", body: "Les présentes conditions générales d'utilisation sont régies par le droit français. Tout litige sera soumis à la compétence exclusive des tribunaux de Paris." },
 ];
 
 const PRIVACY_SECTIONS = [
-  { heading: "1. Responsable du traitement", body: "Kojihsports, éditeur de l'application Mylide, est responsable du traitement de vos données personnelles au sens du Règlement Général sur la Protection des Données (RGPD, UE 2016/679)." },
+  { heading: "1. Responsable du traitement", body: "MYLIDE est responsable du traitement de vos données personnelles au sens du Règlement Général sur la Protection des Données (RGPD, UE 2016/679)." },
   { heading: "2. Données collectées", body: "Nous collectons les données que vous saisissez dans l'application : informations de profil (nom, date de naissance, photo), données de santé (sommeil, activité physique, nutrition, poids, humeur), données financières (objectifs patrimoniaux, transactions), et données techniques (adresse e-mail, identifiant d'appareil pour les notifications push)." },
   { heading: "3. Finalité du traitement", body: "Vos données sont utilisées pour personnaliser votre expérience, générer vos analyses de santé, vous envoyer des notifications pertinentes et améliorer l'application. Elles ne sont utilisées à aucune fin publicitaire." },
   { heading: "4. Stockage et sécurité", body: "Vos données sont stockées de manière sécurisée via Supabase, hébergé sur des serveurs conformes au RGPD situés en Europe. Les communications sont chiffrées (TLS). Vos données de santé ne transitent jamais en clair." },
-  { heading: "5. Partage des données", body: "Kojihsports ne vend jamais vos données personnelles. Seuls nos prestataires techniques strictement nécessaires au fonctionnement du service (Supabase pour la base de données, services de notification) y ont accès, dans le cadre de contrats de sous-traitance conformes au RGPD." },
-  { heading: "6. Vos droits", body: "Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement (« droit à l'oubli »), de limitation du traitement, de portabilité et d'opposition. L'export de vos données est disponible dans Paramètres → Confidentialité. Pour toute autre demande, écrivez à support@kojihsports.com. Réponse garantie sous 30 jours." },
+  { heading: "5. Partage des données", body: "MYLIDE ne vend jamais vos données personnelles. Seuls nos prestataires techniques strictement nécessaires au fonctionnement du service (Supabase pour la base de données, Stripe pour les paiements, Vercel pour l'hébergement) y ont accès, dans le cadre de contrats de sous-traitance conformes au RGPD." },
+  { heading: "6. Vos droits", body: "Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement (« droit à l'oubli »), de limitation du traitement, de portabilité et d'opposition. L'export de vos données est disponible dans Paramètres → Confidentialité. Pour toute autre demande, écrivez à contact@mylide.app. Réponse garantie sous 30 jours." },
   { heading: "7. Durée de conservation", body: "Vos données sont conservées tant que votre compte est actif. En cas de suppression de compte, l'ensemble de vos données personnelles est supprimé dans un délai maximum de 30 jours, sauf obligation légale contraire." },
   { heading: "8. Cookies et traceurs", body: "Mylide n'utilise pas de cookies publicitaires ou de traceurs tiers. Des cookies techniques strictement nécessaires au bon fonctionnement de l'authentification et de la session sont utilisés." },
-  { heading: "9. Modifications", body: "Kojihsports se réserve le droit de modifier la présente politique. Toute modification substantielle vous sera notifiée dans l'application. La version en vigueur est celle affichée dans les paramètres." },
+  { heading: "9. Modifications", body: "MYLIDE se réserve le droit de modifier la présente politique. Toute modification substantielle vous sera notifiée dans l'application. La version en vigueur est celle affichée dans les paramètres." },
 ];
 
 // ── NUTRITION TIPS BLOCK ───────────────────────────────────────────────────
@@ -1285,7 +1285,7 @@ const DeleteAccountModal = ({ profile, onClose, onConfirmDelete }) => {
             <div style={{ fontSize: 52, marginBottom: 12 }}>💙</div>
             <p style={{ fontSize: 18, fontWeight: 900, color: C.black, marginBottom: 10 }}>Désolé de ne pas t'avoir satisfait</p>
             <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.7, marginBottom: 8 }}>Courage à toi dans tout ce que tu entreprends. N'abandonne en aucun cas tes envies et tes ambitions.</p>
-            <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>Ne t'inquiète pas, la suppression est rapide. Tu peux récupérer ton compte dans les 30 jours en nous contactant à <strong>support@kojihsports.com</strong>.</p>
+            <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>Ne t'inquiète pas, la suppression est rapide. Tu peux récupérer ton compte dans les 30 jours en nous contactant à <strong>contact@mylide.app</strong>.</p>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={onClose} style={{ flex: 1, padding: "14px", borderRadius: 14, border: `1.5px solid ${C.border}`, background: C.surfaceAlt, color: C.black, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>← Retour</button>
@@ -2837,7 +2837,28 @@ export default function App() {
       {showSettings && <SettingsPage onClose={() => setShowSettings(false)} darkMode={darkMode} themeMode={themeMode} setThemeMode={setThemeMode} profile={profile} isPro={isPro} userPlan={userPlan} setShowSubscription={setShowSubscription} nutritionGoals={nutritionGoals} setNutritionGoals={setNutritionGoals} onSignOut={handleSignOut} updateProfile={updateProfile} setLang={setLang} setShowDataExport={setShowDataExport} setShowDeleteAccount={setShowDeleteAccount} setShowFAQ={setShowFAQ} setShowLegal={setShowLegal} />}
       {showLegal && <LegalPage onBack={() => setShowLegal(false)} />}
       {showDataExport && <DataExportModal history={history} profile={profile} nutritionGoals={nutritionGoals} goals={goals} patrimoine={patrimoine} onClose={() => setShowDataExport(false)} />}
-      {showDeleteAccount && <DeleteAccountModal profile={profile} onClose={() => setShowDeleteAccount(false)} onConfirmDelete={async () => { const { data: { user } } = await supabase.auth.getUser(); if (user) { await supabase.from("daily_logs").delete().eq("user_id", user.id); await supabase.from("goals").delete().eq("user_id", user.id); await supabase.from("patrimoine").delete().eq("user_id", user.id); await supabase.from("todos").delete().eq("user_id", user.id); await supabase.from("profiles").delete().eq("id", user.id); await supabase.auth.signOut(); } setShowDeleteAccount(false); }} />}
+      {showDeleteAccount && <DeleteAccountModal profile={profile} onClose={() => setShowDeleteAccount(false)} onConfirmDelete={async () => {
+        // Utiliser l'API serveur sécurisée pour la suppression RGPD complète
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session?.user?.id;
+        const token = session?.access_token;
+        if (!userId) return;
+        try {
+          await fetch("/api/delete-account", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ userId }),
+          });
+        } catch {}
+        // Déconnecter côté client dans tous les cas
+        await supabase.auth.signOut();
+        localStorage.removeItem("kojihlife_v9");
+        setOnboarded(false);
+        setShowDeleteAccount(false);
+      }} />}
       {showFAQ && <FAQPage onBack={() => setShowFAQ(false)} />}
 
       {/* POPUP 7 JOURS - argument 0€ premier mois */}

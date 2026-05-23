@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 import { useC } from "./theme.jsx";
 import { PLANS, FREE_FEATURES, getPlanName } from "./planConfig.js";
+import { supabase } from "./supabase.js";
+
+// Helper : récupère le token JWT de la session Supabase courante
+async function getAuthToken() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
+}
 
 // ─── ICONS ────────────────────────────────────────────────────────────────────
 function CheckIcon({ color, size = 16 }) {
@@ -436,9 +443,13 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
     setLoading(plan.id);
     setError(null);
     try {
+      const token = await getAuthToken();
       const r = await fetch("/api/create-checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ priceId, userId, userEmail, plan: plan.id }),
       });
       const { url, error: apiErr } = await r.json();
@@ -452,9 +463,13 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
 
   const handleManage = async () => {
     try {
+      const token = await getAuthToken();
       const r = await fetch("/api/portal", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ userId }),
       });
       const { url, error: e } = await r.json();
@@ -467,9 +482,13 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
 
   const handleCancel = async () => {
     try {
+      const token = await getAuthToken();
       const r = await fetch("/api/cancel-subscription", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ userId }),
       });
       const { success, immediate, period_end, error: e } = await r.json();
