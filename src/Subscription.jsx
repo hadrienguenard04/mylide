@@ -535,7 +535,7 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
           onClose(); window.location.reload();
         } else {
           const dateStr = period_end ? new Date(period_end).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "";
-          setError(`✅ Résiliation programmée. Ton accès reste actif jusqu'au ${dateStr}.`);
+          window.location.reload();
         }
       }
     } catch (e) {
