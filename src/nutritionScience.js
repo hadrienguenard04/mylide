@@ -1,5 +1,5 @@
-// ─── MYLIDE - Scientific Nutrition & Body Engine v2 ───────────────────────────
-// References scientifiques :
+// ─── MYLIDE - Scientific Nutrition & Body Engine v3 ───────────────────────────
+// Références scientifiques :
 //   · Mifflin-St Jeor 1990          → BMR, la plus validée en population générale
 //   · ISSN Position Stand 2017       → protéines, timing nutritionnel
 //   · Helms et al. 2014             → protéines en déficit calorique
@@ -8,97 +8,110 @@
 //   · ACSM/ADA/DC 2016              → nutrition et performance sportive
 //   · Slater & Phillips 2011        → surplus calorique lean bulk
 //   · Stachenfeld 2014              → différences physiologiques femme/homme
+//
+// v3 — Changements clés :
+//   · Déficits/surplus en % du TDEE (pas ajustement fixe)
+//   · Suppression de la double-comptabilisation du sport dans calcMacros
+//     (le facteur d'activité du TDEE couvre déjà la dépense sportive habituelle)
+//   · Protéines plafonnées à 2.2 g/kg pour sèche/perte (2.6 était excessif)
+//   · Plancher lipides : max(g/kg, 20% calories, 50g absolu) — santé hormonale
+//   · Protéines clampées 1.4–2.5 g/kg (garde-fous)
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── NIVEAUX D'ACTIVITÉ ────────────────────────────────────────────────────────
 export const ACTIVITY_LEVELS = {
-  sedentary:   { label: "Sédentaire",       desc: "Travail de bureau, peu de marche",         factor: 1.2   },
-  light:       { label: "Légèrement actif", desc: "1 à 2 séances par semaine",                factor: 1.375 },
-  moderate:    { label: "Modérément actif", desc: "3 à 4 séances par semaine",                factor: 1.55  },
-  active:      { label: "Très actif",       desc: "5 à 6 séances par semaine",                factor: 1.725 },
+  sedentary:   { label: "Sédentaire",       desc: "Travail de bureau, peu de marche",           factor: 1.2   },
+  light:       { label: "Légèrement actif", desc: "1 à 2 séances par semaine",                  factor: 1.375 },
+  moderate:    { label: "Modérément actif", desc: "3 à 4 séances par semaine",                  factor: 1.55  },
+  active:      { label: "Très actif",       desc: "5 à 6 séances par semaine",                  factor: 1.725 },
   very_active: { label: "Athlétique",       desc: "Entraînement quotidien ou travail physique", factor: 1.9   },
 };
 
 // ── CONFIGURATION DES OBJECTIFS ───────────────────────────────────────────────
+// deficitPct / surplusPct : % du TDEE à retrancher / ajouter
+// maxDeltaCal : plafond absolu en kcal (évite les extrêmes sur de forts TDEE)
 export const GOAL_CONFIG = {
   perte: {
-    label:             "Perte de poids",
-    emoji:             "⚖️",
-    color:             "#3B82F6",
-    // Hall et al. : déficit modéré 300-500 kcal/j = plus durable que la restriction agressive
-    caloricAdjustment: -400,
-    // Helms 2014 meta-analyse : 2,3 à 3,1 g/kg en déficit pour préserver la masse musculaire
-    proteinPerKg:      2.4,
+    label:          "Perte de poids",
+    emoji:          "⚖️",
+    color:          "#3B82F6",
+    // Hall 2012 : déficit 15-20% du TDEE = perte saine sans ralentissement métabolique
+    deficitPct:     0.18,
+    maxDeltaCal:    600,   // plafond : jamais plus de 600 kcal de déficit
+    // Helms 2014 : 2.0-2.4 g/kg préserve le muscle en déficit modéré
+    proteinPerKg:   2.2,
     // Minimum lipides : santé hormonale (testostérone, estrogènes)
-    fatPerKgMale:      0.75,
-    fatPerKgFemale:    0.90, // Stachenfeld 2014 : les femmes ont des besoins lipidiques plus élevés
-    // Vitesse de perte saine : 0,5 à 1% du poids corporel par semaine (Hall 2012)
-    weeklyRateMin:     0.005,
-    weeklyRateMax:     0.010,
-    minCalMale:        1500,
-    minCalFemale:      1200, // Seuil clinique accepté pour les femmes
-    maxDeficit:        700,
-    tagline:           "Déficit modéré, conservation musculaire prioritaire",
-    description:       "Une perte progressive préserve ta masse musculaire et facilite l'adhérence à long terme.",
+    fatPerKgMale:   0.80,
+    fatPerKgFemale: 0.90, // Stachenfeld 2014 : besoins lipidiques plus élevés chez les femmes
+    // Vitesse de perte saine : 0.5 à 1% du poids corporel par semaine
+    weeklyRateMin:  0.005,
+    weeklyRateMax:  0.010,
+    minCalMale:     1500,
+    minCalFemale:   1200,
+    tagline:        "Déficit modéré, conservation musculaire prioritaire",
+    description:    "Une perte progressive préserve ta masse musculaire et facilite l'adhérence à long terme.",
   },
   masse: {
-    label:             "Prise de masse",
-    emoji:             "💪",
-    color:             "#CC2936",
-    // Slater 2019 : lean bulk +200 à +350 kcal. Au-delà de +500 kcal, c'est principalement de la graisse
-    caloricAdjustment: 280,
-    // ISSN 2017 : 1,6 à 2,2 g/kg suffit pour la synthèse musculaire en surplus
-    proteinPerKg:      2.0,
-    fatPerKgMale:      0.90,
-    fatPerKgFemale:    1.00, // Besoins légèrement supérieurs pour la santé hormonale
-    // Rythme naturel : 0,25 à 0,5% du poids par semaine (Helms 2015 natural bodybuilding)
-    weeklyRateMin:     0.0025,
-    weeklyRateMax:     0.005,
-    minCalMale:        1800,
-    minCalFemale:      1500,
-    maxSurplus:        500,
-    tagline:           "Surplus modéré, qualité musculaire prioritaire",
-    description:       "Un surplus trop important augmente principalement la masse grasse. La progression lente est la plus efficace.",
+    label:          "Prise de masse",
+    emoji:          "💪",
+    color:          "#CC2936",
+    // Slater 2019 : lean bulk +200 à +350 kcal. Au-delà, c'est principalement de la graisse
+    surplusPct:     0.08,
+    maxDeltaCal:    350,   // plafond : jamais plus de 350 kcal de surplus
+    // ISSN 2017 : 1.6-2.2 g/kg suffit pour la synthèse musculaire en surplus
+    proteinPerKg:   2.0,
+    fatPerKgMale:   0.90,
+    fatPerKgFemale: 1.00,
+    // Rythme naturel : 0.25 à 0.5% du poids par semaine
+    weeklyRateMin:  0.0025,
+    weeklyRateMax:  0.005,
+    minCalMale:     1800,
+    minCalFemale:   1500,
+    tagline:        "Surplus modéré, qualité musculaire prioritaire",
+    description:    "Un surplus trop important augmente principalement la masse grasse. La progression lente est la plus efficace.",
   },
   maintenance: {
-    label:             "Maintien",
-    emoji:             "🎯",
-    color:             "#16a34a",
-    caloricAdjustment: 0,
-    // 1,6 à 2,0 g/kg suffit pour les personnes actives en maintien
-    proteinPerKg:      1.8,
-    fatPerKgMale:      0.90,
-    fatPerKgFemale:    0.95,
-    weeklyRateMin:     0,
-    weeklyRateMax:     0,
-    minCalMale:        1500,
-    minCalFemale:      1300,
-    tagline:           "Équilibre énergétique, performance et récupération",
-    description:       "Le maintien est la phase idéale pour consolider tes habitudes et optimiser tes performances.",
+    label:          "Maintien",
+    emoji:          "🎯",
+    color:          "#16a34a",
+    // Pas de delta : équilibre calorique
+    deficitPct:     0,
+    maxDeltaCal:    0,
+    // 1.6-2.0 g/kg suffit pour les personnes actives en maintien
+    proteinPerKg:   1.8,
+    fatPerKgMale:   0.90,
+    fatPerKgFemale: 0.95,
+    weeklyRateMin:  0,
+    weeklyRateMax:  0,
+    minCalMale:     1500,
+    minCalFemale:   1300,
+    tagline:        "Équilibre énergétique, performance et récupération",
+    description:    "Le maintien est la phase idéale pour consolider tes habitudes et optimiser tes performances.",
   },
   seche: {
-    label:             "Sèche et Recompo",
-    emoji:             "🔥",
-    color:             "#7C3AED",
-    // Barakat 2020 : la recomposition fonctionne mieux près de la maintenance ou en léger déficit
-    caloricAdjustment: -150,
-    // Protéines les plus élevées : 2,3 à 2,8 g/kg (Helms 2014, Barakat 2020)
-    proteinPerKg:      2.6,
-    fatPerKgMale:      0.75,
-    fatPerKgFemale:    0.90,
-    // Rythme de recompo : 0,1 à 0,3% du poids par semaine - les changements sont surtout compositionnels
-    weeklyRateMin:     0.001,
-    weeklyRateMax:     0.003,
-    minCalMale:        1500,
-    minCalFemale:      1200,
-    tagline:           "Déficit léger, recomposition progressive",
-    description:       "Le poids peut peu bouger - les vrais progrès se voient aux mensurations et aux performances.",
+    label:          "Sèche et Recompo",
+    emoji:          "🔥",
+    color:          "#7C3AED",
+    // Barakat 2020 : la recomposition fonctionne mieux avec un léger déficit (5-10%)
+    // Un déficit de 8% sur un TDEE de 3172 = ~254 kcal → très progressif, idéal pour la recompo
+    deficitPct:     0.08,
+    maxDeltaCal:    350,   // plafond : jamais plus de 350 kcal de déficit
+    // Helms 2014 / Barakat 2020 : 2.0-2.4 g/kg en sèche (2.6 était excessif et non prouvé)
+    proteinPerKg:   2.2,
+    fatPerKgMale:   0.85,
+    fatPerKgFemale: 0.95,
+    // Rythme recompo : 0.1 à 0.3% par semaine — mesurable aux mensurations, pas à la balance
+    weeklyRateMin:  0.001,
+    weeklyRateMax:  0.003,
+    minCalMale:     1500,
+    minCalFemale:   1200,
+    tagline:        "Déficit léger, recomposition progressive",
+    description:    "Le poids peut peu bouger - les vrais progrès se voient aux mensurations et aux performances.",
   },
 };
 
 // ── BMR - Mifflin-St Jeor (1990) ──────────────────────────────────────────────
 // Validée contre la calorimétrie indirecte. Précision ±10% en population générale.
-// Prend en compte les différences métaboliques homme/femme.
 export function calcBMR(weight, height, age, sex) {
   if (!weight || !height || !age || age < 1) return 0;
   const base = 10 * weight + 6.25 * height - 5 * age;
@@ -107,6 +120,8 @@ export function calcBMR(weight, height, age, sex) {
 }
 
 // ── TDEE - Dépense Énergétique Totale ─────────────────────────────────────────
+// Le facteur d'activité intègre déjà la dépense sportive hebdomadaire habituelle.
+// Exemple : facteur 1.725 ("très actif") = 5-6 séances/semaine déjà comptées.
 export function calcTDEE(weight, height, age, sex, activityLevel) {
   const bmr = calcBMR(weight, height, age, sex);
   if (!bmr) return 0;
@@ -114,13 +129,15 @@ export function calcTDEE(weight, height, age, sex, activityLevel) {
   return Math.round(bmr * factor);
 }
 
-// ── CALORIES BRÛLÉES PAR LE SPORT (méthode MET, ACSM) ────────────────────────
+// ── CALORIES BRÛLÉES PAR UNE SÉANCE (méthode MET, ACSM) ──────────────────────
+// NB : cette valeur est informative uniquement. Elle n'est PAS ajoutée à calTarget
+// car le TDEE via le facteur d'activité couvre déjà la dépense sportive habituelle.
 const MET_VALUES = {
-  Musculation: 5.5,  Running: 9.5,     Football: 8.0,    Tennis: 7.0,
-  Boxe: 10.5,        Natation: 8.0,    Vélo: 7.5,        HIIT: 9.0,
-  Yoga: 3.2,         Marche: 3.5,      Crossfit: 10.0,   Cyclisme: 7.5,
-  "Arts martiaux": 9.0, Basketball: 7.5, Escalade: 7.5,  Padel: 6.5,
-  Pilates: 3.8,      Danse: 5.5,       Golf: 4.3,        Ski: 7.0,
+  Musculation: 5.5,  Running: 9.5,       Football: 8.0,   Tennis: 7.0,
+  Boxe: 10.5,        Natation: 8.0,      Vélo: 7.5,       HIIT: 9.0,
+  Yoga: 3.2,         Marche: 3.5,        Crossfit: 10.0,  Cyclisme: 7.5,
+  "Arts martiaux": 9.0, Basketball: 7.5, Escalade: 7.5,   Padel: 6.5,
+  Pilates: 3.8,      Danse: 5.5,         Golf: 4.3,       Ski: 7.0,
 };
 
 export function calcSportBurn(weight, sportType, durationMin) {
@@ -130,8 +147,12 @@ export function calcSportBurn(weight, sportType, durationMin) {
 }
 
 // ── CALCUL DES MACROS ──────────────────────────────────────────────────────────
-// Adapte les recommandations au sexe, au poids, au TDEE et à l'objectif.
-// Retourne { calTarget, protTarget, fatTarget, carbsTarget, tdee, deficit, bmr, sexUsed }
+// Adapte les recommandations au sexe, poids, TDEE et objectif.
+// Retourne { calTarget, protTarget, fatTarget, carbsTarget, tdee, deficit, surplus, deltaCal, bmr, sexUsed }
+//
+// IMPORTANT : sportBurnToday est conservé comme paramètre pour la compatibilité ascendante
+// mais N'EST PLUS ajouté à calTarget — le facteur d'activité du TDEE couvre déjà la
+// dépense sportive habituelle. L'ajouter constituerait une double comptabilisation.
 export function calcMacros(weight, tdee, goalType, sportBurnToday = 0, sex = "male") {
   if (!weight || !tdee) return null;
   const cfg = GOAL_CONFIG[goalType];
@@ -139,30 +160,44 @@ export function calcMacros(weight, tdee, goalType, sportBurnToday = 0, sex = "ma
 
   const isFemale = sex === "female";
 
-  // Compensation sport :
-  //   Perte      → +50% (maintient le déficit, évite la surcompensation)
-  //   Sèche      → +60%
-  //   Masse/Maint → +100% (fuel nécessaire pour la construction)
-  const sportFactor = goalType === "perte" ? 0.5 : goalType === "seche" ? 0.6 : 1.0;
-  const sportComp   = Math.round(sportBurnToday * sportFactor);
+  // ── 1. Cible calorique ────────────────────────────────────────────────────
+  // Delta en % du TDEE, plafonné par maxDeltaCal
+  let deltaCal = 0;
+  if (cfg.deficitPct > 0) {
+    // Déficit : min( %TDEE, plafond absolu )
+    deltaCal = -Math.min(Math.round(tdee * cfg.deficitPct), cfg.maxDeltaCal);
+  } else if (cfg.surplusPct > 0) {
+    // Surplus : min( %TDEE, plafond absolu )
+    deltaCal = Math.min(Math.round(tdee * cfg.surplusPct), cfg.maxDeltaCal);
+  }
 
-  const minCal  = isFemale ? cfg.minCalFemale : cfg.minCalMale;
-  const rawCal  = tdee + cfg.caloricAdjustment + sportComp;
+  const minCal    = isFemale ? cfg.minCalFemale : cfg.minCalMale;
+  const rawCal    = tdee + deltaCal;
   const calTarget = Math.max(minCal, Math.round(rawCal));
 
-  // Protéines : même ratio g/kg pour les deux sexes (différence est dans le poids absolu)
-  const prot = Math.round(weight * cfg.proteinPerKg);
+  // ── 2. Protéines ──────────────────────────────────────────────────────────
+  // Clamp 1.4–2.5 g/kg : protège contre les valeurs aberrantes de la config
+  const protPerKg = Math.min(2.5, Math.max(1.4, cfg.proteinPerKg));
+  const prot      = Math.round(weight * protPerKg);
 
-  // Lipides : minimum plus élevé pour les femmes (santé hormonale - Stachenfeld 2014)
-  const fatPerKg = isFemale ? cfg.fatPerKgFemale : cfg.fatPerKgMale;
-  const fat = Math.round(weight * fatPerKg);
+  // ── 3. Lipides ────────────────────────────────────────────────────────────
+  // Plancher triple pour garantir la santé hormonale :
+  //   (a) g/kg selon l'objectif
+  //   (b) ≥ 20% des calories totales (recommandation clinique minimale)
+  //   (c) ≥ 50g absolu (minimum vital)
+  const fatPerKgBase  = isFemale ? cfg.fatPerKgFemale : cfg.fatPerKgMale;
+  const fatFromKg     = Math.round(weight * fatPerKgBase);
+  const fatFrom20pct  = Math.round((calTarget * 0.20) / 9);
+  const fat           = Math.max(fatFromKg, fatFrom20pct, 50);
 
-  // Glucides : calories restantes après protéines et lipides
+  // ── 4. Glucides ───────────────────────────────────────────────────────────
+  // Calories restantes après protéines et lipides
   const carbsCal = calTarget - prot * 4 - fat * 9;
-  const carbs = Math.max(50, Math.round(carbsCal / 4)); // minimum 50g toujours
+  const carbs    = Math.max(50, Math.round(carbsCal / 4)); // minimum 50g
 
-  // Déficit net réel par rapport au TDEE
-  const deficit = tdee - calTarget + sportBurnToday;
+  // ── 5. Bilan ──────────────────────────────────────────────────────────────
+  const deficit = Math.max(0, tdee - calTarget);
+  const surplus = Math.max(0, calTarget - tdee);
 
   return {
     calTarget,
@@ -171,14 +206,14 @@ export function calcMacros(weight, tdee, goalType, sportBurnToday = 0, sex = "ma
     carbsTarget: carbs,
     tdee,
     deficit,
-    surplus:     Math.max(0, calTarget - tdee),
-    bmr:         calcBMR(weight, 175, 30, sex),
-    sexUsed:     sex,
+    surplus,
+    deltaCal,   // delta réel appliqué (négatif = déficit, positif = surplus)
+    bmr:        calcBMR(weight, 175, 30, sex), // estimation si height/age indisponibles
+    sexUsed:    sex,
   };
 }
 
 // ── ESTIMATION DE PROGRESSION ──────────────────────────────────────────────────
-// Retourne null si données insuffisantes, ou un objet de progression réaliste.
 export function estimateProgress(currentWeight, targetWeight, goalType, sex = "male") {
   if (!currentWeight || !targetWeight) return null;
   const diff = Math.abs(targetWeight - currentWeight);
@@ -188,8 +223,8 @@ export function estimateProgress(currentWeight, targetWeight, goalType, sex = "m
   const cfg = GOAL_CONFIG[goalType];
   if (!cfg) return null;
 
-  const direction = targetWeight < currentWeight ? "perte" : "gain";
-  const diffFormatted = Math.round(diff * 10) / 10;
+  const direction      = targetWeight < currentWeight ? "perte" : "gain";
+  const diffFormatted  = Math.round(diff * 10) / 10;
 
   if (goalType === "seche") {
     return {
@@ -262,7 +297,7 @@ export function detectContradictions({
       alerts.push({
         level: "info", icon: "🔥",
         msg:   "Ton apport est au-dessus de tes dépenses totales aujourd'hui.",
-        tip:   "La recomposition fonctionne mieux avec un équilibre énergétique ou un très léger déficit de 100 à 200 kcal.",
+        tip:   "La recomposition fonctionne mieux avec un léger déficit de 150 à 300 kcal. Ça reste très proche de la maintenance.",
       });
     }
   }
@@ -274,19 +309,19 @@ export function detectContradictions({
       alerts.push({
         level: "warning", icon: "🥩",
         msg:   "Ton apport en protéines est nettement en dessous de l'objectif.",
-        tip:   "Des protéines élevées (2,4 à 2,8 g/kg) sont le levier principal de la recomposition corporelle.",
+        tip:   "Vise 2.0 à 2.2 g/kg de protéines en sèche — c'est le levier principal de préservation musculaire.",
       });
     } else if (pct < 0.55 && goalType === "masse") {
       alerts.push({
         level: "warning", icon: "🥩",
         msg:   "Ton apport en protéines est insuffisant pour stimuler la synthèse musculaire.",
-        tip:   "Vise 1,8 à 2,2 g/kg de protéines réparties sur 3 à 4 repas pour optimiser la prise de masse.",
+        tip:   "Vise 1.8 à 2.2 g/kg répartis sur 3 à 4 repas pour optimiser la prise de masse.",
       });
     } else if (pct < 0.55 && goalType === "perte") {
       alerts.push({
         level: "info", icon: "🥩",
         msg:   "Un apport protéique faible peut accélérer la fonte musculaire en déficit.",
-        tip:   "Des protéines élevées (2,2 à 2,6 g/kg) lors d'une perte de poids préservent la masse musculaire.",
+        tip:   "Des protéines autour de 2.0 à 2.2 g/kg en perte de poids préservent efficacement la masse musculaire.",
       });
     }
   }
@@ -314,7 +349,7 @@ export function detectContradictions({
     alerts.push({
       level: "info", icon: "🏋️",
       msg:   "La recomposition corporelle est plus efficace avec une pratique sportive régulière.",
-      tip:   "3 à 5 séances par semaine (musculation en priorité) sont recommandées pour la recomposition.",
+      tip:   "3 à 5 séances par semaine (musculation en priorité) maximisent la recomposition.",
     });
   }
 
@@ -325,7 +360,7 @@ export function detectContradictions({
     if (needsLoss && goalType === "masse") {
       alerts.push({
         level: "warning", icon: "⚖️",
-        msg:   "Ton objectif de poids implique une perte, mais ton objectif nutritionnel est une prise de masse.",
+        msg:   "Ton objectif de poids implique une perte, mais ton mode nutritionnel est une prise de masse.",
         tip:   "Ces deux objectifs sont incompatibles. Bascule sur Perte de poids pour être cohérent.",
         suggestGoal: "perte",
       });
@@ -333,28 +368,22 @@ export function detectContradictions({
     if (needsGain && goalType === "perte") {
       alerts.push({
         level: "warning", icon: "⚖️",
-        msg:   "Ton objectif de poids implique une prise, mais ton objectif nutritionnel est une perte de poids.",
+        msg:   "Ton objectif de poids implique une prise, mais ton mode nutritionnel est une perte de poids.",
         tip:   "Bascule sur Prise de masse ou Maintien pour être cohérent.",
         suggestGoal: "masse",
       });
     }
   }
 
-  // 6. Spécifique femmes : lipides très bas
-  if (sex === "female" && calCurrent > 0) {
-    const fatCurrent = 0; // passed separately if needed - skip for now
-  }
-
   return alerts;
 }
 
 // ── INFÉRENCE DU NIVEAU D'ACTIVITÉ ────────────────────────────────────────────
-// Déduit automatiquement le niveau d'activité depuis les 14 derniers jours.
 export function inferActivityLevel(history) {
   if (!history?.length) return "light";
-  const last14 = history.slice(-14);
+  const last14     = history.slice(-14);
   const activeDays = last14.filter(d => d.sport?.duration >= 20 && !d.sport?.isRest).length;
-  const perWeek = activeDays / 2;
+  const perWeek    = activeDays / 2;
   if (perWeek < 1)   return "sedentary";
   if (perWeek < 2.5) return "light";
   if (perWeek < 4)   return "moderate";
@@ -366,11 +395,52 @@ export function inferActivityLevel(history) {
 export function getWeeklySportFreq(history) {
   if (!history?.length) return 0;
   const todayStr = new Date().toISOString().split("T")[0];
-  const since = new Date(todayStr);
+  const since    = new Date(todayStr);
   since.setDate(since.getDate() - 7);
   const sinceStr = since.toISOString().split("T")[0];
-  return history.filter(d => d.date >= sinceStr && d.sport?.duration >= 20 && !d.sport?.isRest).length;
+  return history.filter(d =>
+    d.date >= sinceStr && d.sport?.duration >= 20 && !d.sport?.isRest
+  ).length;
 }
+
+// ── PÉDAGOGIE CUISSON : POIDS CRU vs CUIT ────────────────────────────────────
+// Les valeurs nutritionnelles standard (Ciqual, USDA) sont données pour le poids CRU.
+// La cuisson réduit le poids par évaporation d'eau — pas les glucides/protéines/lipides.
+// Ces ratios permettent de convertir entre les deux.
+export const COOKING_FACTORS = {
+  // Céréales et féculents
+  "Riz blanc cru":      { ratio: 2.5,  unit: "g cru → g cuit", note: "100g cru ≈ 250g cuit · 75-78g glucides pour 100g cru" },
+  "Riz complet cru":    { ratio: 2.2,  unit: "g cru → g cuit", note: "100g cru ≈ 220g cuit · 70-72g glucides pour 100g cru" },
+  "Pâtes crues":        { ratio: 2.4,  unit: "g cru → g cuit", note: "100g cru ≈ 240g cuit · 72-75g glucides pour 100g cru" },
+  "Flocons d'avoine":   { ratio: 2.5,  unit: "g cru → g cuit (porridge)", note: "100g cru ≈ 250g cuit · 58-60g glucides pour 100g cru" },
+  "Quinoa cru":         { ratio: 2.8,  unit: "g cru → g cuit", note: "100g cru ≈ 280g cuit · 60-64g glucides pour 100g cru" },
+  "Lentilles crues":    { ratio: 2.5,  unit: "g cru → g cuit", note: "100g cru ≈ 250g cuit · 50-52g glucides, 24g prot pour 100g cru" },
+  "Pois chiches crus":  { ratio: 2.3,  unit: "g cru → g cuit", note: "100g cru ≈ 230g cuit · 50g glucides, 19g prot pour 100g cru" },
+  // Viandes
+  "Poulet cru":         { ratio: 0.75, unit: "g cru → g cuit", note: "100g cru ≈ 75g cuit · les protéines restent identiques" },
+  "Bœuf cru":           { ratio: 0.70, unit: "g cru → g cuit", note: "100g cru ≈ 70g cuit" },
+  "Saumon cru":         { ratio: 0.80, unit: "g cru → g cuit", note: "100g cru ≈ 80g cuit" },
+};
+
+// Règle pédagogique affichée à l'utilisateur
+export const COOKING_PEDAGOGY = {
+  headline: "Poids cru ou cuit ?",
+  rules: [
+    "Les bases de données nutritionnelles (Ciqual, MyFitnessPal) utilisent le poids CRU par défaut.",
+    "100g de riz CRU → ~250g de riz CUIT (mais toujours ~75-78g de glucides).",
+    "100g de riz CUIT → seulement ~25-30g de glucides (le reste c'est de l'eau absorbée).",
+    "Pour les viandes : 100g de poulet CRU → ~75g cuit, mais les protéines sont identiques.",
+    "Règle simple : pèse toujours CRU si tu veux être précis. Ou ajoute le ratio ×2.5 pour le riz.",
+  ],
+  examples: [
+    { label: "Riz CRU",  per100g: { carbs: 77, prot: 7,  fat: 1  } },
+    { label: "Riz CUIT", per100g: { carbs: 28, prot: 2.5,fat: 0.3 } },
+    { label: "Pâtes CRUES",  per100g: { carbs: 73, prot: 13, fat: 1.5 } },
+    { label: "Pâtes CUITES", per100g: { carbs: 28, prot: 5,  fat: 0.6 } },
+    { label: "Poulet CRU",  per100g: { carbs: 0, prot: 22, fat: 2  } },
+    { label: "Poulet CUIT", per100g: { carbs: 0, prot: 29, fat: 3  } }, // concentré
+  ],
+};
 
 // ── MESSAGES ROTATIFS PAR OBJECTIF ────────────────────────────────────────────
 export const GOAL_MESSAGES = {
@@ -402,12 +472,11 @@ export const GOAL_MESSAGES = {
 
 export function getGoalMessage(goalType) {
   const msgs = GOAL_MESSAGES[goalType] || GOAL_MESSAGES.maintenance;
-  const idx = Math.floor(Date.now() / 86400000) % msgs.length;
+  const idx  = Math.floor(Date.now() / 86400000) % msgs.length;
   return msgs[idx];
 }
 
 // ── FORMATAGE DES PROGRÈS ──────────────────────────────────────────────────────
-// Retourne une string lisible et bienveillante pour l'affichage.
 export function formatProgress(progressEst, goalType) {
   if (!progressEst) return null;
   if (progressEst.done) return "Tu as atteint ton objectif de poids ! 🎉";
@@ -417,7 +486,7 @@ export function formatProgress(progressEst, goalType) {
   }
 
   const { diff, direction, minWeeks, maxWeeks, weeklyMin, weeklyMax } = progressEst;
-  const verb = direction === "perte" ? "perdre" : "prendre";
+  const verb  = direction === "perte" ? "perdre" : "prendre";
   const rythme = `${weeklyMin} à ${weeklyMax} kg par semaine`;
 
   return `${diff} kg à ${verb} · Estimation saine : ${minWeeks} à ${maxWeeks} semaines · Rythme recommandé : ${rythme}`;
