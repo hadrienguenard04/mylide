@@ -16,6 +16,10 @@ function Root() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setLoading(false)
+      // Nettoyer le hash OAuth laissé par Supabase après la connexion Google
+      if (window.location.hash) {
+        window.history.replaceState(null, '', window.location.pathname)
+      }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
