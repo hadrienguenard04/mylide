@@ -45,26 +45,28 @@ module.exports = async function handler(req, res) {
     const planName = planLabels[profile.plan] || profile.plan;
 
     if (isTrialing) {
-      // Encore en essai gratuit → résiliation immédiate (pas de débit)
-      await stripe.subscriptions.cancel(profile.stripe_subscription_id);
+      // Encore en essai gratuit → résiliation à la fin du trial (l'utilisateur garde l'accès)
+      const sub = await stripe.subscriptions.update(profile.stripe_subscription_id, {
+        cancel_at_period_end: true,
+      });
+
+      const trialEnd = new Date(sub.trial_end * 1000).toISOString();
+
       await supabase.from("profiles").update({
-        plan: "free",
-        subscription_status: "cancelled",
-        stripe_subscription_id: null,
-        subscription_period_end: null,
-        trial_end: null,
+        subscription_status: "cancel_at_period_end",
+        trial_end: trialEnd,
       }).eq("id", userId);
 
-      // Email de confirmation
+      // Email de confirmation avec date de fin d'accès
       if (user?.email) {
         await sendEmail({
           to: user.email,
-          subject: "Résiliation MYLIDE confirmée",
-          html: emailCancelled({ name: profile.name, planName, accessUntil: null }),
+          subject: "Résiliation MYLIDE programmée",
+          html: emailCancelled({ name: profile.name, planName, accessUntil: trialEnd }),
         });
       }
 
-      return res.json({ success: true, immediate: true });
+      return res.json({ success: true, immediate: false, period_end: trialEnd });
 
     } else {
       // Abonnement payé → accès conservé jusqu'à la fin de la période
