@@ -230,8 +230,10 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel 
   const planPrices = { starter: "3,99", pro: "6,99", premium: "12,99" };
   const col = planColors[currentPlan] || "#CC2936";
   const isTrialing = subscriptionData?.subscription_status === "trialing";
-  const periodEnd = subscriptionData?.subscription_period_end
-    ? new Date(subscriptionData.subscription_period_end).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+  const isCancelAtPeriodEnd = subscriptionData?.subscription_status === "cancel_at_period_end";
+  const periodEndRaw = subscriptionData?.subscription_period_end || subscriptionData?.trial_end;
+  const periodEnd = periodEndRaw
+    ? new Date(periodEndRaw).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
     : null;
 
   return (
@@ -259,6 +261,11 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel 
                   ESSAI
                 </span>
               )}
+              {isCancelAtPeriodEnd && (
+                <span style={{ background: "#F59E0B", color: "#fff", borderRadius: 8, padding: "2px 9px", fontSize: 10, fontWeight: 800 }}>
+                  RÉSILIATION PROGRAMMÉE
+                </span>
+              )}
             </div>
             <p style={{ margin: 0, fontSize: 13, color: C.muted }}>{planPrices[currentPlan]}€/mois apres l'essai</p>
           </div>
@@ -266,7 +273,7 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel 
         {periodEnd && (
           <div style={{ background: C.bg, borderRadius: 12, padding: "11px 14px" }}>
             <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>
-              {isTrialing ? "Essai gratuit jusqu'au" : "Prochain paiement le"}{" "}
+              {isCancelAtPeriodEnd ? "Accès jusqu'au" : isTrialing ? "Essai gratuit jusqu'au" : "Prochain paiement le"}{" "}
               <strong style={{ color: C.text }}>{periodEnd}</strong>
             </p>
           </div>

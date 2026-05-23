@@ -55,6 +55,7 @@ module.exports = async function handler(req, res) {
       await supabase.from("profiles").update({
         subscription_status: "cancel_at_period_end",
         trial_end: trialEnd,
+        subscription_period_end: trialEnd,
       }).eq("id", userId);
 
       // Email de confirmation avec date de fin d'accès
