@@ -44,7 +44,12 @@ export const PLANS = [
     color: "#F59E0B",
     recommended: false,
     features: [
-      "Tout ce qui est inclus dans Pro",
+      "Statistiques illimitées + historique complet",
+      "Radar historique illimité",
+      "Poches patrimoniales illimitées",
+      "Guide nutrition avancé (100+ conseils)",
+      "Corrélations entre domaines de vie",
+      "Export Excel / CSV + PDF",
       "Support prioritaire par email",
       "Accès anticipé aux nouvelles fonctionnalités",
       "Participation aux bêtas exclusives",

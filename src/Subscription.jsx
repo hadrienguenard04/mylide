@@ -282,14 +282,12 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel 
 
       <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, marginBottom: 14 }}>
         <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 700, color: C.text }}>Ce que tu as débloqué</p>
-        {PLANS.filter(p => PLAN_LEVELS[p.id] <= PLAN_LEVELS[currentPlan])
-          .flatMap(p => p.features)
-          .map((f, i) => (
+        {(PLANS.find(p => p.id === currentPlan)?.features || []).map((f, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
               <span style={{ color: col, fontWeight: 700, fontSize: 14 }}>✓</span>
               <span style={{ fontSize: 13, color: C.text }}>{f}</span>
             </div>
-          ))}
+          )}
       </div>
 
       <button
