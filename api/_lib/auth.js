@@ -29,7 +29,14 @@ async function verifyUser(req) {
     // On utilise la service role key pour valider le JWT (getUser vérifie la signature)
     const supabase = createClient(
       process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+          detectSessionInUrl: false,
+        },
+      }
     );
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
