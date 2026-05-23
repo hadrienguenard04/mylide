@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { MEAL_DB as NEW_MEAL_DB, getMeals, getMealEmoji, CAT_LABELS, CAT_ICONS } from './mealEngine.js';
 import { supabase } from "./supabase";
+import { Icon } from "./icons.jsx";
 import FAQPage from "./FAQ.jsx";
 import LegalPage from "./Legal.jsx";
 import { isAtLeast } from "./planConfig.js";
@@ -1344,7 +1345,9 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
   );
   const Row = ({ icon, label, desc, right, onClick, last }) => (
     <div onClick={onClick} style={{ display: "flex", alignItems: "center", padding: "13px 0", borderBottom: last ? "none" : `1px solid ${C.border}`, cursor: onClick ? "pointer" : "default", gap: 12 }}>
-      <span style={{ fontSize: 18, width: 28, textAlign: "center", flexShrink: 0 }}>{icon}</span>
+      <div style={{ width: 32, height: 32, borderRadius: 9, background: C.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        {typeof icon === "string" ? <span style={{ fontSize: 16 }}>{icon}</span> : icon}
+      </div>
       <div style={{ flex: 1 }}><p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.black }}>{label}</p>{desc && <p style={{ margin: "2px 0 0", fontSize: 12, color: C.muted }}>{desc}</p>}</div>
       {right !== undefined ? right : (onClick ? <span style={{ color: C.muted, fontSize: 20 }}>›</span> : null)}
     </div>
@@ -1382,7 +1385,7 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
         </div>
         <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 22 }}>›</span>
       </div>
-      {isPro && <Row icon="⚙️" label="Gérer mon abonnement" desc="Modifier · Résilier" onClick={() => { onClose(); setTimeout(() => setShowSubscription(true), 120); }} last />}
+      {isPro && <Row icon={<Icon name="crown" size={17} color={C.muted} strokeWidth={1.8}/>} label="Gérer mon abonnement" desc="Modifier · Résilier" onClick={() => { onClose(); setTimeout(() => setShowSubscription(true), 120); }} last />}
     </Sec>
   );
 
@@ -1404,12 +1407,12 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
         {!isPro && <SubscriptionBlock />}
 
         <Sec title={tr("sec_account")}>
-          <Row icon="👤" label={tr("row_info")} desc={tr("row_info_desc")} onClick={() => setSub("info")} />
-          <Row icon="📧" label={tr("row_email")} desc={userEmail || "..."} onClick={() => setSub("email")} />
-          <Row icon="🔑" label={tr("row_password")} desc={tr("row_password_desc")} onClick={() => setSub("password")} />
-          <Row icon="📱" label={tr("row_phone")} desc={profile.phone || tr("row_phone_add")} onClick={() => setSub("phone")} />
-          <Row icon="🌍" label={tr("row_lang")} desc={currentLang} onClick={() => setSub("language")} />
-          <Row icon="🚪" label={tr("row_logout")} desc={tr("row_logout_desc")} onClick={onSignOut} last />
+          <Row icon={<Icon name="user" size={17} color={C.muted} strokeWidth={1.8}/>} label={tr("row_info")} desc={tr("row_info_desc")} onClick={() => setSub("info")} />
+          <Row icon={<Icon name="message" size={17} color={C.muted} strokeWidth={1.8}/>} label={tr("row_email")} desc={userEmail || "..."} onClick={() => setSub("email")} />
+          <Row icon={<Icon name="lock" size={17} color={C.muted} strokeWidth={1.8}/>} label={tr("row_password")} desc={tr("row_password_desc")} onClick={() => setSub("password")} />
+          <Row icon={<Icon name="bell" size={17} color={C.muted} strokeWidth={1.8}/>} label={tr("row_phone")} desc={profile.phone || tr("row_phone_add")} onClick={() => setSub("phone")} />
+          <Row icon={<Icon name="settings" size={17} color={C.muted} strokeWidth={1.8}/>} label={tr("row_lang")} desc={currentLang} onClick={() => setSub("language")} />
+          <Row icon={<Icon name="refresh" size={17} color={C.muted} strokeWidth={1.8}/>} label={tr("row_logout")} desc={tr("row_logout_desc")} onClick={onSignOut} last />
         </Sec>
 
         <Sec title="Profil physique">
@@ -1452,7 +1455,7 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
         </Sec>
 
         <Sec title={tr("sec_notif")}>
-          <Row icon="🔔" label="Gérer les notifications" desc={`${Object.entries(notif).filter(([k,v]) => k !== "silentMode" && v).length} active(s)`} onClick={() => setSub("notif")} last />
+          <Row icon={<Icon name="bell" size={17} color={C.muted} strokeWidth={1.8}/>} label="Gérer les notifications" desc={`${Object.entries(notif).filter(([k,v]) => k !== "silentMode" && v).length} active(s)`} onClick={() => setSub("notif")} last />
         </Sec>
 
         <Sec title={tr("sec_appearance")}>
@@ -1481,20 +1484,20 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
         </Sec>
 
         <Sec title={tr("sec_privacy")}>
-          <Row icon="📤" label="Télécharger mes données" desc={isAtLeast(userPlan, "starter") ? "PDF ou Excel · médecin, coach..." : "🔒 Starter+ · PDF ou Excel"} onClick={() => { if (!isAtLeast(userPlan, "starter")) { onClose(); setTimeout(() => setShowSubscription(true), 120); return; } onClose(); setTimeout(() => setShowDataExport(true), 120); }} />
-          <Row icon="🗑️" label="Supprimer mon compte" desc="Récupérable sous 30 jours" onClick={() => { onClose(); setTimeout(() => setShowDeleteAccount(true), 120); }} last />
+          <Row icon={<Icon name="upload" size={17} color={C.muted} strokeWidth={1.8}/>} label="Télécharger mes données" desc={isAtLeast(userPlan, "premium") ? "PDF ou Excel · médecin, coach..." : "Premium · PDF ou Excel"} onClick={() => { if (!isAtLeast(userPlan, "premium")) { onClose(); setTimeout(() => setShowSubscription(true), 120); return; } onClose(); setTimeout(() => setShowDataExport(true), 120); }} />
+          <Row icon={<Icon name="trash" size={17} color={C.muted} strokeWidth={1.8}/>} label="Supprimer mon compte" desc="Récupérable sous 30 jours" onClick={() => { onClose(); setTimeout(() => setShowDeleteAccount(true), 120); }} last />
         </Sec>
 
         <Sec title={tr("sec_support")}>
-          <Row icon="❓" label="FAQ" desc="100+ réponses sur MYLIDE" onClick={() => { onClose(); setTimeout(() => setShowFAQ(true), 120); }} />
-          <Row icon="⚖️" label="Mentions légales & CGU" desc="RGPD · Confidentialité · Santé" onClick={() => { onClose(); setTimeout(() => setShowLegal && setShowLegal(true), 120); }} />
-          <Row icon="💬" label="Contacter l'équipe" desc="contact@mylide.app" onClick={() => window.open("mailto:contact@mylide.app")} />
-          <Row icon="🐛" label="Signaler un bug" onClick={() => window.open("mailto:bugs@mylide.app")} last />
+          <Row icon={<Icon name="quote" size={17} color={C.muted} strokeWidth={1.8}/>} label="FAQ" desc="100+ réponses sur MYLIDE" onClick={() => { onClose(); setTimeout(() => setShowFAQ(true), 120); }} />
+          <Row icon={<Icon name="shield" size={17} color={C.muted} strokeWidth={1.8}/>} label="Mentions légales & CGU" desc="RGPD · Confidentialité · Santé" onClick={() => { onClose(); setTimeout(() => setShowLegal && setShowLegal(true), 120); }} />
+          <Row icon={<Icon name="message" size={17} color={C.muted} strokeWidth={1.8}/>} label="Contacter l'équipe" desc="contact@mylide.app" onClick={() => window.open("mailto:contact@mylide.app")} />
+          <Row icon={<Icon name="warning" size={17} color={C.muted} strokeWidth={1.8}/>} label="Signaler un bug" onClick={() => window.open("mailto:bugs@mylide.app")} last />
         </Sec>
 
         <Sec title={tr("sec_about")}>
-          <Row icon="📱" label="Version de l'app" desc="Mylide 1.0.0" />
-          <Row icon="🏥" label="Avertissement santé" desc="MYLIDE n'est pas une app médicale" onClick={() => { onClose(); setTimeout(() => setShowLegal && setShowLegal(true), 120); }} last />
+          <Row icon={<Icon name="zap" size={17} color={C.muted} strokeWidth={1.8}/>} label="Version de l'app" desc="Mylide 1.0.0" />
+          <Row icon={<Icon name="heart" size={17} color={C.muted} strokeWidth={1.8}/>} label="Avertissement santé" desc="MYLIDE n'est pas une app médicale" onClick={() => { onClose(); setTimeout(() => setShowLegal && setShowLegal(true), 120); }} last />
         </Sec>
 
         {/* Abonnement EN BAS si Pro - réduit la visibilité de la résiliation */}
