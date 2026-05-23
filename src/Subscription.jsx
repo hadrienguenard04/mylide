@@ -300,7 +300,7 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel 
           cursor: "pointer", marginBottom: 10,
         }}
       >
-        {loading ? "Chargement..." : "Gerer mon abonnement (Stripe)"}
+        {loading ? "Chargement..." : "Gérer mon abonnement"}
       </button>
 
       {!showConfirm ? (
