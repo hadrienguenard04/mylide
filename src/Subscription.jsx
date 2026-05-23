@@ -287,7 +287,7 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel 
               <span style={{ color: col, fontWeight: 700, fontSize: 14 }}>✓</span>
               <span style={{ fontSize: 13, color: C.text }}>{f}</span>
             </div>
-          )}
+          ))}
       </div>
 
       <button
