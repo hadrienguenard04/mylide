@@ -130,13 +130,20 @@ module.exports = async function handler(req, res) {
         const plan = priceIdToPlan(priceId);
         const isActive = sub.status === "active" || sub.status === "trialing";
 
-        await supabase.from("profiles").update({
-          plan: isActive && plan ? plan : "free",
-          subscription_status: sub.status,
-          subscription_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-        }).eq("id", userId);
+        // Respecter cancel_at_period_end : ne pas écraser ce statut
+        const newStatus = sub.cancel_at_period_end ? "cancel_at_period_end" : sub.status;
 
-        console.log(`🔄 Subscription updated: ${sub.id} → ${sub.status}`);
+        const update = {
+          subscription_status: newStatus,
+          subscription_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+        };
+        // Ne mettre à jour le plan que si on peut le résoudre (évite de remettre "free" par erreur)
+        if (plan) update.plan = isActive ? plan : "free";
+        else if (!isActive) update.plan = "free";
+
+        await supabase.from("profiles").update(update).eq("id", userId);
+
+        console.log(`🔄 Subscription updated: ${sub.id} → ${newStatus}`);
         break;
       }
 
