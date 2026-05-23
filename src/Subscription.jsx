@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useC } from "./theme.jsx";
 import { PLANS, FREE_FEATURES, getPlanName, PLAN_LEVELS } from "./planConfig.js";
 import { supabase } from "./supabase.js";
+import { Icon } from "./icons.jsx";
 
 // Helper : récupère le token JWT de la session Supabase courante
 async function getAuthToken() {
@@ -247,9 +248,8 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel,
             width: 50, height: 50, borderRadius: 14,
             background: `linear-gradient(135deg, ${col}, ${col}aa)`,
             display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#fff", fontWeight: 900, fontSize: 20,
           }}>
-            {currentPlan === "starter" ? "S" : currentPlan === "pro" ? "P" : "★"}
+            <Icon name={currentPlan === "premium" ? "crown" : currentPlan === "pro" ? "zap" : "star"} size={24} color="#fff" strokeWidth={2} />
           </div>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -284,7 +284,7 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel,
         <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 700, color: C.text }}>Ce que tu as débloqué</p>
         {(PLANS.find(p => p.id === currentPlan)?.features || []).map((f, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
-              <span style={{ color: col, fontWeight: 700, fontSize: 14 }}>✓</span>
+              <Icon name="zap" size={14} color={col} strokeWidth={2.2} />
               <span style={{ fontSize: 13, color: C.text }}>{f}</span>
             </div>
           ))}
@@ -305,9 +305,10 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel,
 
       {isCancelAtPeriodEnd ? (
         <div style={{ background: "linear-gradient(135deg, #CC293608, #CC293615)", border: "1.5px solid #CC293630", borderRadius: 14, padding: "16px", textAlign: "center" }}>
-          <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 800, color: "#CC2936" }}>
-            😢 Tu vas nous manquer...
-          </p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 6 }}>
+            <Icon name="heart" size={16} color="#CC2936" strokeWidth={2} />
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "#CC2936" }}>Tu vas nous manquer...</p>
+          </div>
           <p style={{ margin: "0 0 14px", fontSize: 12, color: "#888", lineHeight: 1.6 }}>
             Tes progrès, tes stats, tes insights — tout disparaîtra le jour J.<br />
             Tu es sûr(e) de vouloir perdre ça ?
@@ -317,7 +318,7 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel,
             background: "linear-gradient(135deg, #CC2936, #8B1A22)", color: "#fff",
             border: "none", cursor: "pointer", boxShadow: "0 4px 14px rgba(204,41,54,0.3)",
           }}>
-            🔥 Rester Premium — Ne pas perdre mes données
+            Rester Premium — Ne pas perdre mes données
           </button>
         </div>
       ) : !showConfirm ? (
@@ -587,9 +588,11 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
                 width: 72, height: 72, borderRadius: 22,
                 background: "linear-gradient(135deg, #CC2936, #8B1A22)",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 36, margin: "0 auto 16px",
+                margin: "0 auto 16px",
                 boxShadow: "0 8px 28px rgba(204,41,54,0.3)",
-              }}>&#11088;</div>
+              }}>
+                <Icon name="crown" size={36} color="#fff" strokeWidth={1.8} />
+              </div>
               <h1 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 900, color: C.text, letterSpacing: -0.5 }}>
                 Membre {getPlanName(userPlan)}
               </h1>
@@ -628,7 +631,9 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
               display: "flex", alignItems: "center", gap: 14,
               boxShadow: "0 6px 20px rgba(16,185,129,0.25)",
             }}>
-              <span style={{ fontSize: 24, flexShrink: 0 }}>🎁</span>
+              <div style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon name="gift" size={20} color="#fff" strokeWidth={1.8} />
+              </div>
               <div>
                 <p style={{ margin: 0, fontWeight: 800, color: "#fff", fontSize: 14 }}>
                   1 mois gratuit sur tous les plans
@@ -652,13 +657,18 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
             {/* ERROR */}
             {error && (
               <div style={{ background: "#FFF1F2", border: "1px solid #CC293630", borderRadius: 12, padding: "12px 16px", marginBottom: 14 }}>
-                <p style={{ margin: 0, color: "#CC2936", fontSize: 13, fontWeight: 600 }}>⚠️ {error}</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Icon name="warning" size={14} color="#CC2936" strokeWidth={2} />
+                  <p style={{ margin: 0, color: "#CC2936", fontSize: 13, fontWeight: 600 }}>{error}</p>
+                </div>
               </div>
             )}
 
             {/* SOCIAL PROOF */}
             <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 18px", marginBottom: 14, display: "flex", gap: 14, alignItems: "flex-start" }}>
-              <span style={{ fontSize: 26, flexShrink: 0 }}>💬</span>
+              <div style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 10, background: "#CC293610", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon name="quote" size={18} color="#CC2936" strokeWidth={1.8} />
+              </div>
               <div>
                 <p style={{ margin: "0 0 4px", fontSize: 13, fontStyle: "italic", color: C.text, lineHeight: 1.5 }}>
                   "MYLIDE a change ma facon de voir mes habitudes. Les insights sont vraiment personnalises."
