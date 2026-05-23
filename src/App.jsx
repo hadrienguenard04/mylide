@@ -624,7 +624,7 @@ const TRANSLATIONS = {
     sec_account:"Compte",sec_goals:"Objectifs",sec_devices:"Appareils connectés",sec_notif:"Notifications",sec_appearance:"Apparence",sec_privacy:"Confidentialité & Sécurité",sec_ai:"IA & Analyses",sec_subscription:"Abonnement",sec_support:"Aide & Support",sec_about:"À propos",
     row_info:"Informations personnelles",row_info_desc:"Prénom, photo, date de naissance",row_email:"Adresse email",row_password:"Mot de passe",row_password_desc:"Modifier le mot de passe",row_phone:"Numéro de téléphone",row_phone_add:"Ajouter un numéro",row_lang:"Langue",row_logout:"Déconnexion",row_logout_desc:"Retour à l'écran de connexion",
     row_darkmode_on:"Mode clair",row_darkmode_off:"Mode sombre",row_textsize:"Taille du texte",row_anim:"Animations",row_compact:"Dashboard compact",
-    settings_title:"Paramètres",settings_edit:"Modifier ›",pro_member:"⭐ Membre Pro",free_member:"Membre Gratuit",
+    settings_title:"Paramètres",settings_edit:"Modifier ›",pro_member:"Membre Pro",free_member:"Membre Gratuit",
     stats_title:"Statistiques",profile_settings:"Paramètres",
   },
   en: {
@@ -643,7 +643,7 @@ const TRANSLATIONS = {
     sec_account:"Account",sec_goals:"Goals",sec_devices:"Connected devices",sec_notif:"Notifications",sec_appearance:"Appearance",sec_privacy:"Privacy & Security",sec_ai:"AI & Analytics",sec_subscription:"Subscription",sec_support:"Help & Support",sec_about:"About",
     row_info:"Personal information",row_info_desc:"Name, photo, date of birth",row_email:"Email address",row_password:"Password",row_password_desc:"Change password",row_phone:"Phone number",row_phone_add:"Add a number",row_lang:"Language",row_logout:"Log out",row_logout_desc:"Back to login screen",
     row_darkmode_on:"Light mode",row_darkmode_off:"Dark mode",row_textsize:"Text size",row_anim:"Animations",row_compact:"Compact dashboard",
-    settings_title:"Settings",settings_edit:"Edit ›",pro_member:"⭐ Pro Member",free_member:"Free Member",
+    settings_title:"Settings",settings_edit:"Edit ›",pro_member:"Pro Member",free_member:"Free Member",
     stats_title:"Statistics",profile_settings:"Settings",
   },
   es: {
@@ -662,7 +662,7 @@ const TRANSLATIONS = {
     sec_account:"Cuenta",sec_goals:"Objetivos",sec_devices:"Dispositivos conectados",sec_notif:"Notificaciones",sec_appearance:"Apariencia",sec_privacy:"Privacidad & Seguridad",sec_ai:"IA & Análisis",sec_subscription:"Suscripción",sec_support:"Ayuda & Soporte",sec_about:"Acerca de",
     row_info:"Información personal",row_info_desc:"Nombre, foto, fecha de nacimiento",row_email:"Correo electrónico",row_password:"Contraseña",row_password_desc:"Cambiar contraseña",row_phone:"Número de teléfono",row_phone_add:"Añadir número",row_lang:"Idioma",row_logout:"Cerrar sesión",row_logout_desc:"Volver al inicio de sesión",
     row_darkmode_on:"Modo claro",row_darkmode_off:"Modo oscuro",row_textsize:"Tamaño del texto",row_anim:"Animaciones",row_compact:"Panel compacto",
-    settings_title:"Ajustes",settings_edit:"Editar ›",pro_member:"⭐ Miembro Pro",free_member:"Miembro Gratuito",
+    settings_title:"Ajustes",settings_edit:"Editar ›",pro_member:"Miembro Pro",free_member:"Miembro Gratuito",
     stats_title:"Estadísticas",profile_settings:"Ajustes",
   },
   de: {
@@ -681,7 +681,7 @@ const TRANSLATIONS = {
     sec_account:"Konto",sec_goals:"Ziele",sec_devices:"Verbundene Geräte",sec_notif:"Benachrichtigungen",sec_appearance:"Erscheinungsbild",sec_privacy:"Datenschutz & Sicherheit",sec_ai:"KI & Analysen",sec_subscription:"Abonnement",sec_support:"Hilfe & Support",sec_about:"Über uns",
     row_info:"Persönliche Daten",row_info_desc:"Name, Foto, Geburtsdatum",row_email:"E-Mail-Adresse",row_password:"Passwort",row_password_desc:"Passwort ändern",row_phone:"Telefonnummer",row_phone_add:"Nummer hinzufügen",row_lang:"Sprache",row_logout:"Abmelden",row_logout_desc:"Zurück zum Anmeldebildschirm",
     row_darkmode_on:"Hellmodus",row_darkmode_off:"Dunkelmodus",row_textsize:"Textgröße",row_anim:"Animationen",row_compact:"Kompaktes Dashboard",
-    settings_title:"Einstellungen",settings_edit:"Bearbeiten ›",pro_member:"⭐ Pro-Mitglied",free_member:"Kostenloses Mitglied",
+    settings_title:"Einstellungen",settings_edit:"Bearbeiten ›",pro_member:"Pro-Mitglied",free_member:"Kostenloses Mitglied",
     stats_title:"Statistiken",profile_settings:"Einstellungen",
   },
 };
@@ -1377,7 +1377,7 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
       <div onClick={() => { onClose(); setTimeout(() => setShowSubscription(true), 120); }} style={{ background: "linear-gradient(135deg, #CC2936, #8B1A22)", borderRadius: 14, padding: "16px 18px", cursor: "pointer", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 8px 24px rgba(204,41,54,0.25)" }}>
         <div>
           <p style={{ color: "#fff", fontWeight: 900, fontSize: 16, margin: "0 0 2px" }}>
-            {isPro ? `⭐ Membre ${planLabels[userPlan] || "Pro"} actif` : "Passer Premium"}
+            {isPro ? `Membre ${planLabels[userPlan] || "Pro"} actif` : "Passer Premium"}
           </p>
           <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, margin: 0 }}>
             {planDesc[userPlan] || planDesc.free}
@@ -1417,25 +1417,25 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
 
         <Sec title="Profil physique">
           <Row
-            icon="⚧️"
+            icon={<Icon name="user" size={17} color={C.muted} strokeWidth={1.8}/>}
             label="Sexe biologique"
             desc={nutritionGoals.sex === "male" ? "Homme" : nutritionGoals.sex === "female" ? "Femme" : "Non renseigné"}
             onClick={() => setSub("body")}
           />
           <Row
-            icon="📏"
+            icon={<Icon name="chart" size={17} color={C.muted} strokeWidth={1.8}/>}
             label="Taille"
             desc={nutritionGoals.height ? `${nutritionGoals.height} cm` : "Non renseignée"}
             onClick={() => setSub("body")}
           />
           <Row
-            icon={GOAL_CONFIG[nutritionGoals.goalType]?.emoji || "🎯"}
+            icon={<Icon name="diamond" size={17} color={C.muted} strokeWidth={1.8}/>}
             label="Objectif nutritionnel"
             desc={GOAL_CONFIG[nutritionGoals.goalType]?.label || "Maintien"}
             onClick={() => setSub("body")}
           />
           <Row
-            icon="🏃"
+            icon={<Icon name="zap" size={17} color={C.muted} strokeWidth={1.8}/>}
             label="Niveau d'activite"
             desc={ACTIVITY_LEVELS[nutritionGoals.activityLevel]?.label || "Auto-détecté"}
             onClick={() => setSub("body")}
@@ -1445,12 +1445,12 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
 
         <Sec title={tr("sec_devices")}>
           {[
-            { k: "appleWatch", icon: "⌚", label: "Apple Watch", sub: "Fréquence cardiaque, activité" },
-            { k: "appleHealth", icon: "❤️", label: "Apple Health", sub: "Données santé iOS" },
-            { k: "garmin", icon: "🗺️", label: "Garmin", sub: "GPS & performance sport" },
-            { k: "fitbit", icon: "💪", label: "Fitbit", sub: "Bracelet fitness" },
-            { k: "oura", icon: "💍", label: "Oura Ring", sub: "Sommeil & récupération" },
-            { k: "strava", icon: "🚴", label: "Strava", sub: "Running & cyclisme" },
+            { k: "appleWatch", icon: <Icon name="heart" size={17} color={C.muted} strokeWidth={1.8}/>, label: "Apple Watch", sub: "Fréquence cardiaque, activité" },
+            { k: "appleHealth", icon: <Icon name="shield" size={17} color={C.muted} strokeWidth={1.8}/>, label: "Apple Health", sub: "Données santé iOS" },
+            { k: "garmin", icon: <Icon name="zap" size={17} color={C.muted} strokeWidth={1.8}/>, label: "Garmin", sub: "GPS & performance sport" },
+            { k: "fitbit", icon: <Icon name="chart" size={17} color={C.muted} strokeWidth={1.8}/>, label: "Fitbit", sub: "Bracelet fitness" },
+            { k: "oura", icon: <Icon name="star" size={17} color={C.muted} strokeWidth={1.8}/>, label: "Oura Ring", sub: "Sommeil & récupération" },
+            { k: "strava", icon: <Icon name="refresh" size={17} color={C.muted} strokeWidth={1.8}/>, label: "Strava", sub: "Running & cyclisme" },
           ].map((item, i, arr) => <Row key={item.k} icon={item.icon} label={item.label} desc={connApps[item.k] ? "✅ Connecté · sync. à l'instant" : item.sub} right={<Tog value={connApps[item.k]} onChange={v => upCA(item.k, v)} />} last={i === arr.length - 1} />)}
         </Sec>
 
@@ -1461,8 +1461,8 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
         <Sec title={tr("sec_appearance")}>
           <div style={{ display: "flex", gap: 10, padding: "4px 0 8px" }}>
             {[
-              { value: "light", icon: "☀️", label: "Clair" },
-              { value: "dark",  icon: "🌙", label: "Sombre" },
+              { value: "light", icon: "zap", label: "Clair" },
+              { value: "dark",  icon: "bell", label: "Sombre" },
             ].map(opt => {
               const active = themeMode === opt.value;
               return (
@@ -1473,7 +1473,7 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
                   display: "flex", flexDirection: "column", alignItems: "center", gap: 7,
                   transition: "all 0.18s", fontFamily: "inherit",
                 }}>
-                  <span style={{ fontSize: 24 }}>{opt.icon}</span>
+                  <Icon name={opt.icon} size={26} color={active ? C.red : C.muted} strokeWidth={1.6} />
                   <span style={{ fontSize: 12, fontWeight: active ? 800 : 600, color: active ? C.red : C.muted }}>
                     {opt.label}
                   </span>
@@ -2903,7 +2903,7 @@ export default function App() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 2 }}>
               <p style={{ fontSize: 10, color: C.red, letterSpacing: 2, textTransform: "uppercase", margin: 0, fontWeight: 700, lineHeight: 1 }}>Mylide</p>
-              <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: C.black, letterSpacing: -0.3, lineHeight: 1.2 }}>{tr("hello")} {profile.name} 👋</p>
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: C.black, letterSpacing: -0.3, lineHeight: 1.2 }}>{tr("hello")} {profile.name}</p>
             </div>
           </div>
           <ScoreRing score={today.score} delta={intel.scoreDelta} streak={streak} />
@@ -4019,7 +4019,7 @@ export default function App() {
                 <div onClick={() => setShowSubscription(true)} style={{ background: isPro ? "linear-gradient(135deg, #1a1a2e, #16213e)" : "linear-gradient(135deg, #CC2936, #8B1A22)", borderRadius: 16, padding: "18px 20px", marginBottom: 14, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: isPro ? "0 10px 32px rgba(0,0,0,0.2)" : "0 10px 32px rgba(204,41,54,0.35)" }}>
                   <div>
                     <p style={{ color: "#fff", fontWeight: 900, fontSize: 17, margin: "0 0 3px", letterSpacing: -0.2 }}>
-                      {isPro ? `⭐ Membre ${userPlan === "premium" ? "Premium" : userPlan === "starter" ? "Starter" : "Pro"} actif` : "Passer à Pro ⭐"}
+                      {isPro ? `Membre ${userPlan === "premium" ? "Premium" : userPlan === "starter" ? "Starter" : "Pro"} actif` : "Passer Premium"}
                     </p>
                     <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 13, margin: 0 }}>
                       {isPro ? "Gérer mon abonnement →" : "1 mois gratuit · à partir de 3,99€/mois ensuite"}
