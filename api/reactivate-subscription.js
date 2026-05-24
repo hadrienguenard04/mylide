@@ -37,12 +37,15 @@ module.exports = async function handler(req, res) {
     }
 
     // Annuler la résiliation programmée
-    await stripe.subscriptions.update(profile.stripe_subscription_id, {
+    const sub = await stripe.subscriptions.update(profile.stripe_subscription_id, {
       cancel_at_period_end: false,
     });
 
+    // Utiliser le vrai statut Stripe (active ou trialing) — jamais hardcodé
+    const realStatus = sub.status === "trialing" ? "trialing" : "active";
+
     await supabase.from("profiles").update({
-      subscription_status: "trialing",
+      subscription_status: realStatus,
     }).eq("id", userId);
 
     return res.json({ success: true });

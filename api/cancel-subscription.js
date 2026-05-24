@@ -56,6 +56,7 @@ module.exports = async function handler(req, res) {
         subscription_status: "cancel_at_period_end",
         trial_end: trialEnd,
         subscription_period_end: trialEnd,
+        cancellation_email_sent: true, // éviter le double envoi depuis le webhook
       }).eq("id", userId);
 
       // Email de confirmation avec date de fin d'accès
@@ -80,6 +81,7 @@ module.exports = async function handler(req, res) {
       await supabase.from("profiles").update({
         subscription_status: "cancel_at_period_end",
         subscription_period_end: periodEnd,
+        cancellation_email_sent: true, // éviter le double envoi depuis le webhook
       }).eq("id", userId);
 
       // Email de confirmation avec date d'accès

@@ -232,6 +232,7 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel,
   const col = planColors[currentPlan] || "#CC2936";
   const isTrialing = subscriptionData?.subscription_status === "trialing";
   const isCancelAtPeriodEnd = subscriptionData?.subscription_status === "cancel_at_period_end";
+  const isPastDue = subscriptionData?.subscription_status === "past_due";
   const periodEndRaw = subscriptionData?.subscription_period_end || subscriptionData?.trial_end;
   const periodEnd = periodEndRaw
     ? new Date(periodEndRaw).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
@@ -239,6 +240,25 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel,
 
   return (
     <div style={{ paddingBottom: 40 }}>
+
+      {/* Bandeau alerte paiement échoué */}
+      {isPastDue && (
+        <div style={{ background: "#FFF1F2", border: "1.5px solid #CC293650", borderRadius: 16, padding: "16px 18px", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <Icon name="warning" size={18} color="#CC2936" strokeWidth={2} />
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: "#CC2936" }}>Échec de paiement</p>
+          </div>
+          <p style={{ margin: "0 0 12px", fontSize: 13, color: "#7F1D1D", lineHeight: 1.55 }}>
+            Nous n'avons pas pu prélever ton abonnement. Mets à jour ton moyen de paiement pour éviter la suspension de ton accès.
+          </p>
+          <button
+            onClick={async () => { setLoading(true); await onManage(); setLoading(false); }}
+            disabled={loading}
+            style={{ width: "100%", padding: "12px", borderRadius: 12, background: "#CC2936", color: "#fff", border: "none", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+            {loading ? "Chargement..." : "Mettre à jour ma carte →"}
+          </button>
+        </div>
+      )}
       <div style={{
         background: `linear-gradient(145deg, ${col}12, ${col}05)`,
         border: `2px solid ${col}35`, borderRadius: 22, padding: 22, marginBottom: 14,
@@ -264,6 +284,11 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel,
               {isCancelAtPeriodEnd && (
                 <span style={{ background: "#F59E0B", color: "#fff", borderRadius: 8, padding: "2px 9px", fontSize: 10, fontWeight: 800 }}>
                   RÉSILIATION PROGRAMMÉE
+                </span>
+              )}
+              {isPastDue && (
+                <span style={{ background: "#CC2936", color: "#fff", borderRadius: 8, padding: "2px 9px", fontSize: 10, fontWeight: 800 }}>
+                  PAIEMENT ÉCHOUÉ
                 </span>
               )}
             </div>

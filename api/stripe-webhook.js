@@ -92,11 +92,24 @@ module.exports = async function handler(req, res) {
         const { userId, plan } = session.metadata || {};
         if (!userId) break;
 
-        const trialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        // Récupérer la date de fin d'essai depuis Stripe (source de vérité)
+        let trialEnd = null;
+        let subStatus = "trialing";
+        if (session.subscription) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(session.subscription);
+            trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
+            subStatus = sub.status || "trialing";
+          } catch (e) {
+            console.warn("Could not retrieve subscription for trial_end:", e.message);
+            // Fallback : calcul local
+            trialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+          }
+        }
 
         await supabase.from("profiles").update({
           plan: plan || "pro",
-          subscription_status: "trialing",
+          subscription_status: subStatus,
           stripe_subscription_id: session.subscription,
           trial_end: trialEnd,
         }).eq("id", userId);
@@ -156,27 +169,33 @@ module.exports = async function handler(req, res) {
         const priceId = sub.items.data[0]?.price?.id;
         const plan = priceIdToPlan(priceId);
 
+        // Lire le flag avant de mettre à jour (pour savoir si email déjà envoyé)
+        const { data: profileBefore } = await supabase
+          .from("profiles")
+          .select("name, cancellation_email_sent")
+          .eq("id", userId)
+          .single();
+
         await supabase.from("profiles").update({
           plan: "free",
           subscription_status: "cancelled",
           stripe_subscription_id: null,
           subscription_period_end: null,
           trial_end: null,
+          cancellation_email_sent: false, // reset pour un éventuel ré-abonnement futur
         }).eq("id", userId);
 
-        // Email annulation (si pas déjà envoyé par cancel-subscription.js)
-        // On l'envoie seulement si ce n'est pas une annulation programmée déjà gérée
-        const [profile, email] = await Promise.all([
-          getProfile(supabase, userId),
-          getUserEmail(supabase, userId),
-        ]);
-        if (email) {
-          const planName = PLAN_LABELS[plan] || plan || "Premium";
-          await sendEmail({
-            to: email,
-            subject: "Ton abonnement MYLIDE est terminé",
-            html: emailCancelled({ name: profile?.name, planName, accessUntil: null }),
-          }).catch(() => {}); // silencieux si déjà envoyé
+        // Envoyer l'email seulement si cancel-subscription.js ne l'a pas déjà fait
+        if (!profileBefore?.cancellation_email_sent) {
+          const email = await getUserEmail(supabase, userId);
+          if (email) {
+            const planName = PLAN_LABELS[plan] || plan || "Premium";
+            await sendEmail({
+              to: email,
+              subject: "Ton abonnement MYLIDE est terminé",
+              html: emailCancelled({ name: profileBefore?.name, planName, accessUntil: null }),
+            }).catch(() => {});
+          }
         }
 
         console.log(`❌ Subscription deleted: user ${userId} → free`);
