@@ -572,14 +572,14 @@ const POCHE_COLORS = ["#2563eb","#16a34a","#CC2936","#D4580A","#6B35C8","#0891b2
 const randomPocheColor = () => POCHE_COLORS[Math.floor(Math.random() * POCHE_COLORS.length)];
 
 const PRIORITIES = [
-  { id: "sport", label: "Sport & Recuperation", icon: "💪", color: "#CC2936" },
-  { id: "finance", label: "Finance & Patrimoine", icon: "💰", color: "#1A7A4A" },
-  { id: "mental", label: "Mental & Lecture", icon: "🧠", color: "#6B35C8" },
-  { id: "nutrition", label: "Nutrition", icon: "🥗", color: "#D4580A" },
-  { id: "business", label: "Business & Travail", icon: "🎯", color: "#1E5FCC" },
-  { id: "running", label: "Running", icon: "🏃", color: "#0891b2" },
-  { id: "body", label: "Composition corporelle", icon: "⚖️", color: "#D4580A" },
-  { id: "sleep", label: "Sommeil", icon: "🌙", color: "#6B35C8" },
+  { id: "sport",    label: "Sport & Recuperation",   icon: "zap",     color: "#CC2936" },
+  { id: "finance",  label: "Finance & Patrimoine",    icon: "diamond", color: "#1A7A4A" },
+  { id: "mental",   label: "Mental & Lecture",        icon: "star",    color: "#6B35C8" },
+  { id: "nutrition",label: "Nutrition",               icon: "heart",   color: "#D4580A" },
+  { id: "business", label: "Business & Travail",      icon: "chart",   color: "#1E5FCC" },
+  { id: "running",  label: "Running",                 icon: "refresh", color: "#0891b2" },
+  { id: "body",     label: "Composition corporelle",  icon: "user",    color: "#D4580A" },
+  { id: "sleep",    label: "Sommeil",                 icon: "bell",    color: "#6B35C8" },
 ];
 
 // ── ICONS ──────────────────────────────────────────────────────────────────
@@ -2167,7 +2167,9 @@ const Onboarding = ({ onComplete }) => {
             <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 340, overflowY: "auto" }}>
               {PRIORITIES.map(p => { const selected = priorities.includes(p.id); return (
                 <div key={p.id} onClick={() => togglePriority(p.id)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", borderRadius: 14, border: `1.5px solid ${selected ? p.color : C.border}`, background: selected ? `${p.color}10` : C.surface, cursor: "pointer", transition: "all 0.15s" }}>
-                  <span style={{ fontSize: 24 }}>{p.icon}</span>
+                  <div style={{ width: 38, height: 38, borderRadius: 12, background: selected ? `${p.color}20` : C.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.15s" }}>
+                    <Icon name={p.icon} size={18} color={selected ? p.color : C.muted} />
+                  </div>
                   <span style={{ fontSize: 14, fontWeight: 600, color: selected ? p.color : C.text, flex: 1 }}>{p.label}</span>
                   {selected && <div style={{ width: 24, height: 24, borderRadius: "50%", background: p.color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, flexShrink: 0 }}>✓</div>}
                 </div>
@@ -2190,7 +2192,9 @@ const Onboarding = ({ onComplete }) => {
                 const isMain = (mainPriority || priorities[0]) === pid;
                 return (
                   <div key={pid} onClick={() => { setMainPriority(pid); setGoalTarget(""); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", borderRadius: 14, border: `2px solid ${isMain ? pr.color : C.border}`, background: isMain ? `${pr.color}12` : C.surfaceAlt, cursor: "pointer", transition: "all 0.15s" }}>
-                    <span style={{ fontSize: 22 }}>{pr.icon}</span>
+                    <div style={{ width: 36, height: 36, borderRadius: 11, background: isMain ? `${pr.color}20` : C.surface, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.15s" }}>
+                      <Icon name={pr.icon} size={17} color={isMain ? pr.color : C.muted} />
+                    </div>
                     <span style={{ fontSize: 14, fontWeight: 700, color: isMain ? pr.color : C.text, flex: 1 }}>{pr.label}</span>
                     {isMain && <div style={{ width: 22, height: 22, borderRadius: "50%", background: pr.color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, flexShrink: 0, fontWeight: 800 }}>★</div>}
                   </div>
