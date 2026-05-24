@@ -2289,6 +2289,7 @@ export default function App() {
   const [newGoal, setNewGoal] = useState({ label: "", category: "", color: "#CC2936", sourceId: "manual", target: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reverse: false, manualProgress: 0 });
   const [renamingPoche, setRenamingPoche] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("idle"); // "idle" | "saving" | "saved" | "error"
   const [lang, setLang] = useState(() => localStorage.getItem("lang") || "fr");
   _lang = lang;
   const [nutritionGoals, setNutritionGoals] = useState(() => { try { return { goalType: "maintenance", protTarget: 150, calTarget: 2000, fatTarget: 65, carbsTarget: 200, sex: null, height: null, activityLevel: null, ...JSON.parse(localStorage.getItem("nutritionGoals") || "{}") }; } catch { return { goalType: "maintenance", protTarget: 150, calTarget: 2000, fatTarget: 65, carbsTarget: 200, sex: null, height: null, activityLevel: null }; } });
@@ -2333,6 +2334,17 @@ export default function App() {
           const merged = { goalType: "maintenance", protTarget: 150, calTarget: 2000, fatTarget: 65, carbsTarget: 200, sex: null, height: null, activityLevel: null, ...profileData.nutrition_goals };
           setNutritionGoals(merged);
           localStorage.setItem("nutritionGoals", JSON.stringify(merged));
+        }
+        // Charger les préférences depuis Supabase (priorité sur localStorage)
+        if (profileData.user_prefs) {
+          const p = profileData.user_prefs;
+          if (p.notif)     localStorage.setItem("notif",     JSON.stringify(p.notif));
+          if (p.connApps)  localStorage.setItem("connApps",  JSON.stringify(p.connApps));
+          if (p.aiPref)    localStorage.setItem("aiPref",    JSON.stringify(p.aiPref));
+          if (p.appPref)   localStorage.setItem("appPref",   JSON.stringify(p.appPref));
+          if (p.wakeTime)  localStorage.setItem("wakeTime",  p.wakeTime);
+          if (p.sleepTime) localStorage.setItem("sleepTime", p.sleepTime);
+          if (p.lang)      { localStorage.setItem("lang", p.lang); _lang = p.lang; }
         }
         setOnboarded(true);
         // Détecter retour Stripe
@@ -2505,6 +2517,7 @@ export default function App() {
     const { data: { session } } = await supabase.auth.getSession();
     const user = session?.user;
     if (!user) { console.warn("[saveAll] No session - skipping save"); return; }
+    setSyncStatus("saving");
 
     // Profil
     await supabase.from("profiles").upsert({ id: user.id, name: pr.name, dob: pr.dob, photo: pr.photo });
@@ -2533,7 +2546,9 @@ export default function App() {
 
       if (saveErr) {
         console.error("[saveAll] ERREUR save daily_logs:", saveErr);
-        alert("❌ Erreur de sauvegarde : " + saveErr.message);
+        setSyncStatus("error");
+        setTimeout(() => setSyncStatus("idle"), 4000);
+        return;
       } else {
         console.log("[saveAll] ✓", rowId ? "UPDATE" : "INSERT", todayStr, "poids:", todayData.body?.weight, "sport:", todayData.sport?.type || "-");
       }
@@ -2550,6 +2565,9 @@ export default function App() {
     // Todos
     await supabase.from("todos").delete().eq("user_id", user.id);
     if (t.length) await supabase.from("todos").insert(t.map(todo => ({ user_id: user.id, data: todo })));
+
+    setSyncStatus("saved");
+    setTimeout(() => setSyncStatus("idle"), 2500);
   }, []);
 
   const handleOnboardingComplete = async (profileData, createdGoals, bodyProfileData) => {
@@ -2897,9 +2915,50 @@ export default function App() {
         `}
       `}</style>
 
+      {/* Indicateur de synchronisation cloud */}
+      {syncStatus !== "idle" && (
+        <div style={{
+          position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)",
+          zIndex: 9999, pointerEvents: "none",
+          background: syncStatus === "error" ? "#CC2936" : syncStatus === "saving" ? C.surface : "#10B981",
+          border: `1.5px solid ${syncStatus === "error" ? "#CC293650" : syncStatus === "saving" ? C.border : "#10B98150"}`,
+          borderRadius: 30, padding: "8px 18px",
+          display: "flex", alignItems: "center", gap: 8,
+          boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+          transition: "all 0.3s ease",
+        }}>
+          {syncStatus === "saving" && (
+            <div style={{ width: 10, height: 10, borderRadius: "50%", border: `2px solid ${C.muted}`, borderTopColor: C.red, animation: "spin 0.7s linear infinite" }} />
+          )}
+          {syncStatus === "saved" && <span style={{ color: "#fff", fontSize: 13 }}>✓</span>}
+          {syncStatus === "error" && <span style={{ color: "#fff", fontSize: 13 }}>✗</span>}
+          <span style={{ fontSize: 12, fontWeight: 700, color: syncStatus === "saving" ? C.muted : "#fff", whiteSpace: "nowrap" }}>
+            {syncStatus === "saving" ? "Synchronisation..." : syncStatus === "saved" ? "Sauvegardé" : "Erreur de sauvegarde"}
+          </span>
+        </div>
+      )}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
       {editingGoal && <EditGoalModal goal={editingGoal} onSave={saveEditedGoal} onClose={() => setEditingGoal(null)} />}
       {showSubscription && <Subscription onClose={() => setShowSubscription(false)} userPlan={userPlan} userId={currentUser?.id} userEmail={currentUser?.email} subscriptionData={subscriptionData} />}
-      {showSettings && <SettingsPage onClose={() => setShowSettings(false)} darkMode={darkMode} themeMode={themeMode} setThemeMode={setThemeMode} profile={profile} isPro={isPro} userPlan={userPlan} setShowSubscription={setShowSubscription} nutritionGoals={nutritionGoals} setNutritionGoals={setNutritionGoals} onSignOut={handleSignOut} updateProfile={updateProfile} setLang={setLang} setShowDataExport={setShowDataExport} setShowDeleteAccount={setShowDeleteAccount} setShowFAQ={setShowFAQ} setShowLegal={setShowLegal} />}
+      {showSettings && <SettingsPage onClose={async () => {
+          setShowSettings(false);
+          // Sync préférences localStorage → Supabase au moment de la fermeture
+          if (currentUser?.id) {
+            try {
+              const prefs = {
+                notif: JSON.parse(localStorage.getItem("notif") || "{}"),
+                connApps: JSON.parse(localStorage.getItem("connApps") || "{}"),
+                aiPref: JSON.parse(localStorage.getItem("aiPref") || "{}"),
+                appPref: JSON.parse(localStorage.getItem("appPref") || "{}"),
+                wakeTime: localStorage.getItem("wakeTime") || "07:00",
+                sleepTime: localStorage.getItem("sleepTime") || "23:00",
+                lang: localStorage.getItem("lang") || "fr",
+              };
+              await supabase.from("profiles").update({ user_prefs: prefs }).eq("id", currentUser.id);
+            } catch {}
+          }
+        }} darkMode={darkMode} themeMode={themeMode} setThemeMode={setThemeMode} profile={profile} isPro={isPro} userPlan={userPlan} setShowSubscription={setShowSubscription} nutritionGoals={nutritionGoals} setNutritionGoals={setNutritionGoals} onSignOut={handleSignOut} updateProfile={updateProfile} setLang={setLang} setShowDataExport={setShowDataExport} setShowDeleteAccount={setShowDeleteAccount} setShowFAQ={setShowFAQ} setShowLegal={setShowLegal} />}
       {showLegal && <LegalPage onBack={() => setShowLegal(false)} />}
       {showDataExport && <DataExportModal history={history} profile={profile} nutritionGoals={nutritionGoals} goals={goals} patrimoine={patrimoine} onClose={() => setShowDataExport(false)} />}
       {showDeleteAccount && <DeleteAccountModal profile={profile} onClose={() => setShowDeleteAccount(false)} onConfirmDelete={async () => {

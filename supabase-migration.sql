@@ -11,7 +11,8 @@ ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS trial_end               TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS cancellation_email_sent BOOLEAN     DEFAULT false,
-  ADD COLUMN IF NOT EXISTS nutrition_goals         JSONB       DEFAULT '{}';
+  ADD COLUMN IF NOT EXISTS nutrition_goals         JSONB       DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS user_prefs              JSONB       DEFAULT '{}';
 -- cancellation_email_sent : évite le double envoi d'email entre
 --   cancel-subscription.js (API) et le webhook customer.subscription.deleted
 
