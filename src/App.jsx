@@ -2293,7 +2293,6 @@ export default function App() {
   _lang = lang;
   const [nutritionGoals, setNutritionGoals] = useState(() => { try { return { goalType: "maintenance", protTarget: 150, calTarget: 2000, fatTarget: 65, carbsTarget: 200, sex: null, height: null, activityLevel: null, ...JSON.parse(localStorage.getItem("nutritionGoals") || "{}") }; } catch { return { goalType: "maintenance", protTarget: 150, calTarget: 2000, fatTarget: 65, carbsTarget: 200, sex: null, height: null, activityLevel: null }; } });
   const [veganOnly, setVeganOnly] = useState(() => localStorage.getItem("veganOnly") === "true");
-  const [editingNutrGoals, setEditingNutrGoals] = useState(false);
   const [radarDate, setRadarDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [radarWeekOffset, setRadarWeekOffset] = useState(0);
   const [showDataExport, setShowDataExport] = useState(false);
@@ -3314,12 +3313,7 @@ export default function App() {
 
                     {/* ── Objectif principal ── */}
                     <Card>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                        <ST style={{ margin: 0 }}>{tr("nutr_goals_title")}</ST>
-                        <button onClick={() => setEditingNutrGoals(v => !v)} style={{ background: editingNutrGoals ? activeGoalColor : C.surfaceAlt, color: editingNutrGoals ? "#fff" : C.muted, border: "none", borderRadius: 10, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                          {editingNutrGoals ? "Fermer" : "Modifier"}
-                        </button>
-                      </div>
+                      <ST style={{ marginBottom: 14 }}>{tr("nutr_goals_title")}</ST>
 
                       {/* Sélecteur d'objectif */}
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
@@ -3382,27 +3376,27 @@ export default function App() {
                         </div>
                       )}
 
-                      {/* Suggestion auto basée sur TDEE */}
+                      {/* Macros calculées automatiquement */}
                       {scienceMacros && currentWeight ? (
                         <div style={{ background: `${activeGoalColor}12`, border: `1.5px solid ${activeGoalColor}30`, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                            <p style={{ fontSize: 12, color: activeGoalColor, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 5 }}>
-                              <Icon name="user" size={12} color={activeGoalColor} />
-                              {currentWeight}kg · {ACTIVITY_LEVELS[activeActivity]?.label}{nutritionGoals.sex === "female" ? " · Femme" : nutritionGoals.sex === "male" ? " · Homme" : ""}
-                            </p>
-                            <button onClick={() => saveNG({ ...nutritionGoals, calTarget: scienceMacros.calTarget, protTarget: scienceMacros.protTarget, fatTarget: scienceMacros.fatTarget, carbsTarget: scienceMacros.carbsTarget })}
-                              style={{ background: activeGoalColor, color: "#fff", border: "none", borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>Appliquer</button>
-                          </div>
+                          <p style={{ fontSize: 11, color: C.muted, fontWeight: 600, margin: "0 0 6px", display: "flex", alignItems: "center", gap: 5 }}>
+                            <Icon name="user" size={11} color={C.muted} />
+                            {currentWeight}kg · {ACTIVITY_LEVELS[activeActivity]?.label}{nutritionGoals.sex === "female" ? " · Femme" : nutritionGoals.sex === "male" ? " · Homme" : ""} · <span style={{ color: activeGoalColor, fontWeight: 700 }}>Calculé automatiquement</span>
+                          </p>
                           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                            <span style={{ fontSize: 11, color: C.orange, fontWeight: 700 }}>{scienceMacros.calTarget} kcal</span>
-                            <span style={{ fontSize: 11, color: C.purple, fontWeight: 700 }}>{scienceMacros.protTarget}g prot</span>
-                            <span style={{ fontSize: 11, color: C.blue, fontWeight: 700 }}>{scienceMacros.carbsTarget}g gluc</span>
-                            <span style={{ fontSize: 11, color: C.green, fontWeight: 700 }}>{scienceMacros.fatTarget}g lip</span>
+                            <span style={{ fontSize: 12, color: C.orange, fontWeight: 800 }}>{scienceMacros.calTarget} kcal</span>
+                            <span style={{ fontSize: 12, color: C.purple, fontWeight: 800 }}>{scienceMacros.protTarget}g prot</span>
+                            <span style={{ fontSize: 12, color: C.blue, fontWeight: 800 }}>{scienceMacros.carbsTarget}g gluc</span>
+                            <span style={{ fontSize: 12, color: C.green, fontWeight: 800 }}>{scienceMacros.fatTarget}g lip</span>
                           </div>
                         </div>
                       ) : (
-                        <div style={{ background: C.surfaceAlt, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
-                          <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>Entre ton poids dans <strong>Corps</strong> et complète ton profil pour des calculs TDEE personnalisés.</p>
+                        <div style={{ background: C.surfaceAlt, borderRadius: 12, padding: "12px 14px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <p style={{ fontSize: 12, color: C.muted, margin: 0, flex: 1, lineHeight: 1.5 }}>Entre ton poids dans <strong>Corps</strong> et complète ton profil pour des macros personnalisées.</p>
+                          <button onClick={() => setActivePage("settings")}
+                            style={{ marginLeft: 10, flexShrink: 0, background: C.red, color: "#fff", border: "none", borderRadius: 10, padding: "7px 13px", fontSize: 11, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>
+                            Profil →
+                          </button>
                         </div>
                       )}
 
@@ -3449,47 +3443,6 @@ export default function App() {
                           </div>
                         );
                       })()}
-
-                      {/* Panneau de configuration profil (Modifier) */}
-                      {editingNutrGoals && (
-                        <div style={{ marginBottom: 14 }}>
-                          {/* Profil corporel pour TDEE */}
-                          <p style={{ fontSize: 11, color: C.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 8px" }}>Profil pour calcul TDEE</p>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
-                            <Field label="Sexe">
-                              <select value={nutritionGoals.sex || ""} onChange={e => saveNG({ ...nutritionGoals, sex: e.target.value || null })} style={{ ...inp, appearance: "auto" }}>
-                                <option value="">Non renseigné</option>
-                                <option value="male">Homme</option>
-                                <option value="female">Femme</option>
-                              </select>
-                            </Field>
-                            <Field label="Taille (cm)">
-                              <input type="number" value={nutritionGoals.height || ""} min={100} max={250} onChange={e => saveNG({ ...nutritionGoals, height: +e.target.value || null })} style={inp} placeholder="Ex : 175" />
-                            </Field>
-                          </div>
-                          <Field label="Niveau d'activité">
-                            <select value={nutritionGoals.activityLevel || ""} onChange={e => saveNG({ ...nutritionGoals, activityLevel: e.target.value || null })} style={{ ...inp, appearance: "auto" }}>
-                              <option value="">Auto-détecté ({ACTIVITY_LEVELS[inferredActivity]?.label})</option>
-                              {Object.entries(ACTIVITY_LEVELS).map(([k, v]) => (
-                                <option key={k} value={k}>{v.label} - {v.desc}</option>
-                              ))}
-                            </select>
-                          </Field>
-                          <p style={{ fontSize: 11, color: C.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, margin: "12px 0 8px" }}>Objectifs manuels</p>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                            {[
-                              { key: "calTarget", label: "Calories (kcal)", max: 6000 },
-                              { key: "protTarget", label: "Protéines (g)", max: 400 },
-                              { key: "carbsTarget", label: "Glucides (g)", max: 600 },
-                              { key: "fatTarget", label: "Lipides (g)", max: 300 },
-                            ].map(({ key, label, max }) => (
-                              <Field key={key} label={label}>
-                                <input type="number" value={nutritionGoals[key] || ""} min={0} max={max} onChange={e => saveNG({ ...nutritionGoals, [key]: +e.target.value })} style={inp} />
-                              </Field>
-                            ))}
-                          </div>
-                        </div>
-                      )}
 
                       {/* Barres de progression */}
                       <MacroBar label="Calories" current={calCurrent} target={displayMacros.calTarget} color={C.orange} unit=" kcal" />
