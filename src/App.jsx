@@ -2290,6 +2290,8 @@ export default function App() {
   const [renamingPoche, setRenamingPoche] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [syncStatus, setSyncStatus] = useState("idle"); // "idle" | "saving" | "saved" | "error"
+  const [healthConsentGiven, setHealthConsentGiven] = useState(() => localStorage.getItem("healthConsentGiven") === "true");
+  const [showHealthConsent, setShowHealthConsent] = useState(false);
   const [lang, setLang] = useState(() => localStorage.getItem("lang") || "fr");
   _lang = lang;
   const [nutritionGoals, setNutritionGoals] = useState(() => { try { return { goalType: "maintenance", protTarget: 150, calTarget: 2000, fatTarget: 65, carbsTarget: 200, sex: null, height: null, activityLevel: null, ...JSON.parse(localStorage.getItem("nutritionGoals") || "{}") }; } catch { return { goalType: "maintenance", protTarget: 150, calTarget: 2000, fatTarget: 65, carbsTarget: 200, sex: null, height: null, activityLevel: null }; } });
@@ -2456,6 +2458,14 @@ export default function App() {
     }, 2000);
     return () => clearTimeout(t);
   }, [nutritionGoals]);
+
+  // Afficher le popup de consentement santé au premier accès aux onglets santé
+  useEffect(() => {
+    if (["sleep", "body", "nutrition"].includes(trackTab) && !healthConsentGiven) {
+      const t = setTimeout(() => setShowHealthConsent(true), 400);
+      return () => clearTimeout(t);
+    }
+  }, [trackTab, healthConsentGiven]);
 
   // Pré-remplir les mesures corpo depuis le dernier enregistrement connu.
   // SÉCURITÉ : on ne préremplit QUE si today n'est pas encore dans l'historique
@@ -2985,6 +2995,81 @@ export default function App() {
       }} />}
       {showFAQ && <FAQPage onBack={() => setShowFAQ(false)} />}
 
+      {/* ── Consentement données de santé (RGPD Art. 9) ─────────────────────── */}
+      {showHealthConsent && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 0 24px" }}>
+          <div style={{ background: C.surface, borderRadius: 28, padding: "28px 24px 24px", maxWidth: 420, width: "100%", boxShadow: "0 -8px 40px rgba(0,0,0,0.2)" }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 14, background: `${C.purple}15`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Icon name="shield" size={22} color={C.purple} />
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 900, color: C.text, letterSpacing: -0.3 }}>Données de santé</h2>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: C.muted }}>Consentement RGPD – Article 9</p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <p style={{ margin: "0 0 14px", fontSize: 13, color: C.text, lineHeight: 1.65 }}>
+              MYLIDE collecte des <strong>données de santé</strong> (sommeil, poids, nutrition) uniquement pour ton suivi personnel.
+            </p>
+            <div style={{ background: C.surfaceAlt, borderRadius: 14, padding: "12px 14px", marginBottom: 18 }}>
+              {[
+                "Stockées dans ton compte sécurisé Supabase",
+                "Jamais revendues ni partagées avec des tiers",
+                "Supprimables à tout moment via Paramètres",
+                "Utilisées uniquement pour tes statistiques perso",
+              ].map((item, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 9, marginBottom: i < 3 ? 8 : 0 }}>
+                  <div style={{ width: 18, height: 18, borderRadius: "50%", background: `${C.green}20`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                    <span style={{ fontSize: 10, fontWeight: 900, color: C.green, lineHeight: 1 }}>✓</span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{item}</p>
+                </div>
+              ))}
+            </div>
+            <p style={{ margin: "0 0 20px", fontSize: 11, color: C.muted, lineHeight: 1.55, textAlign: "center" }}>
+              MYLIDE ne remplace pas un professionnel de santé.
+            </p>
+
+            {/* Buttons */}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => {
+                  setShowHealthConsent(false);
+                  // Refus : l'utilisateur peut quand même utiliser l'app, on redemande la prochaine fois
+                }}
+                style={{ flex: 1, padding: "13px", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 14, fontWeight: 700, fontSize: 14, color: C.muted, cursor: "pointer" }}
+              >
+                Plus tard
+              </button>
+              <button
+                onClick={async () => {
+                  setHealthConsentGiven(true);
+                  setShowHealthConsent(false);
+                  localStorage.setItem("healthConsentGiven", "true");
+                  // Enregistrer dans Supabase user_prefs
+                  if (currentUser?.id) {
+                    try {
+                      const existingPrefs = JSON.parse(localStorage.getItem("userPrefs") || "{}");
+                      const updatedPrefs = { ...existingPrefs, healthConsentGiven: true, healthConsentDate: new Date().toISOString() };
+                      localStorage.setItem("userPrefs", JSON.stringify(updatedPrefs));
+                      await supabase.from("profiles").update({
+                        user_prefs: { ...updatedPrefs },
+                      }).eq("id", currentUser.id);
+                    } catch {}
+                  }
+                }}
+                style={{ flex: 2, padding: "13px", background: `linear-gradient(135deg, ${C.purple}, #5a28a8)`, border: "none", borderRadius: 14, fontWeight: 800, fontSize: 14, color: "#fff", cursor: "pointer", boxShadow: `0 6px 20px ${C.purple}40` }}
+              >
+                J'accepte
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* POPUP 7 JOURS - argument 0€ premier mois */}
       {showProPopup && (
         <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 0 20px" }} onClick={() => { setShowProPopup(false); localStorage.setItem("proPopupSeen", "1"); }}>
@@ -3173,6 +3258,10 @@ export default function App() {
 
               {trackTab === "sleep" && (
                 <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, background: `${C.purple}10`, border: `1px solid ${C.purple}25`, borderRadius: 12, padding: "9px 14px", marginBottom: 10 }}>
+                    <Icon name="shield" size={13} color={C.purple} />
+                    <p style={{ margin: 0, fontSize: 11, color: C.purple, fontWeight: 600, lineHeight: 1.4 }}>Suivi personnel uniquement · Ne remplace pas un professionnel de santé</p>
+                  </div>
                   <EvoChart data={sleepH.slice(-30)} dataKey="sleep.duration" color={C.purple} label="Duree de sommeil" unit="h" />
                   <Card>
                     <ST>{tr("sleep_schedule")}</ST>
@@ -3357,6 +3446,12 @@ export default function App() {
 
               {trackTab === "nutrition" && (() => {
                 const activeGoalColor = GOAL_CONFIG[nutritionGoals.goalType]?.color || C.orange;
+                const _nutritionDisclaimer = (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, background: `${C.orange}10`, border: `1px solid ${C.orange}25`, borderRadius: 12, padding: "9px 14px", marginBottom: 10 }}>
+                    <Icon name="shield" size={13} color={C.orange} />
+                    <p style={{ margin: 0, fontSize: 11, color: C.orange, fontWeight: 600, lineHeight: 1.4 }}>Indicateurs de suivi personnel · Consulte un nutritionniste pour un suivi médical</p>
+                  </div>
+                );
                 const activeGoalLabel = GOAL_CONFIG[nutritionGoals.goalType]?.label || "Maintien";
                 const goalMsg = getGoalMessage(nutritionGoals.goalType);
 
@@ -3395,6 +3490,7 @@ export default function App() {
 
                 return (
                   <div>
+                    {_nutritionDisclaimer}
                     <EvoChart data={waterH.slice(-30)} dataKey="nutrition.water" color={C.blue} label="Hydratation" unit="L" />
                     <EvoChart data={history.filter(d => d.nutrition?.protein > 0).slice(-30)} dataKey="nutrition.protein" color={C.purple} label="Protéines" unit="g" />
                     {temporalInsights.filter(i => i.msg.includes("prot") || i.msg.includes("repas") || i.msg.includes("eau")).map((ins, i) => <MsgBox key={i} type={ins.type} msg={ins.msg} suggestions={ins.suggestions} />)}
@@ -3614,6 +3710,10 @@ export default function App() {
 
               {trackTab === "body" && (
                 <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, background: `${C.orange}10`, border: `1px solid ${C.orange}25`, borderRadius: 12, padding: "9px 14px", marginBottom: 10 }}>
+                    <Icon name="shield" size={13} color={C.orange} />
+                    <p style={{ margin: 0, fontSize: 11, color: C.orange, fontWeight: 600, lineHeight: 1.4 }}>Suivi corporel personnel · Les données IMC sont indicatives, consulte un médecin pour un bilan complet</p>
+                  </div>
                   <EvoChart data={history.filter(d => d.body?.weight > 0).slice(-60)} dataKey="body.weight" color={C.orange} label="Evolution du poids" unit="kg" />
 
                   {/* ── Bloc taille fixe depuis le profil ── */}
