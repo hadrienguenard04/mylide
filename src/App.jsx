@@ -3032,7 +3032,20 @@ export default function App() {
                       <p style={{ margin: 0, fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}>{tr("today_week")}</p>
                       <p style={{ margin: "4px 0 0", fontSize: 28, fontWeight: 900, color: intel.scoreDelta >= 0 ? C.green : C.red, letterSpacing: -0.5 }}>{intel.scoreDelta >= 0 ? `+${intel.scoreDelta}` : intel.scoreDelta} pts</p>
                     </div>
-                    <div style={{ fontSize: 42 }}>{intel.scoreDelta >= 10 ? "🚀" : intel.scoreDelta >= 0 ? "📈" : "📉"}</div>
+                    <div style={{
+                      width: 56, height: 56, borderRadius: 16,
+                      background: intel.scoreDelta >= 10 ? `linear-gradient(135deg, ${C.green}, #059669)` : intel.scoreDelta >= 0 ? `${C.green}22` : `${C.red}18`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      boxShadow: intel.scoreDelta >= 10 ? `0 4px 16px ${C.green}40` : "none",
+                      flexShrink: 0,
+                    }}>
+                      <Icon
+                        name={intel.scoreDelta >= 10 ? "zap" : intel.scoreDelta >= 0 ? "chart" : "warning"}
+                        size={26}
+                        color={intel.scoreDelta >= 10 ? "#fff" : intel.scoreDelta >= 0 ? C.green : C.red}
+                        strokeWidth={2}
+                      />
+                    </div>
                   </div>
                 </Card>
               )}
