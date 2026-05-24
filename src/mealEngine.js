@@ -413,12 +413,11 @@ export function scaleMeal(meal, factor) {
  * @param {object} opts - { goalType, veganOnly, userCalTarget, maxCount }
  */
 export function getMeals(cat, opts = {}) {
-  const { goalType = "maintenance", veganOnly = false, userCalTarget = REF_CAL, maxCount = 6 } = opts;
+  const { goalType = "maintenance", veganOnly = false, userCalTarget = REF_CAL } = opts;
   const factor = getScaleFactor(userCalTarget);
   const pool = MEAL_DB[cat] || [];
   return pool
     .filter(m => m.goals.includes(goalType) && (!veganOnly || m.vegan))
-    .slice(0, maxCount)
     .map(m => scaleMeal(m, factor));
 }
 

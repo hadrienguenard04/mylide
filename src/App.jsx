@@ -1838,29 +1838,23 @@ const MEAL_TABS = [
   { key: "dinner",    icon: CAT_ICONS.dinner,    label: CAT_LABELS.dinner },
 ];
 
+const MEAL_BATCH = 6;
+
 const MealCarousel = ({ mealsByCategory, activeGoalColor, onAdd }) => {
   const C = useC();
   const [activeTab, setActiveTab] = useState("breakfast");
-  const [idxByTab, setIdxByTab] = useState({ breakfast:0, lunch:0, snack:0, dinner:0 });
+  const [pageByTab, setPageByTab] = useState({ breakfast: 0, lunch: 0, snack: 0, dinner: 0 });
   const [expandedId, setExpandedId] = useState(null);
   const [addedId, setAddedId] = useState(null);
-  const touchStartX = useRef(null);
 
   const meals = mealsByCategory[activeTab] || [];
-  const idx = idxByTab[activeTab] || 0;
-  const total = meals.length;
+  const page = pageByTab[activeTab] || 0;
+  const totalPages = Math.max(1, Math.ceil(meals.length / MEAL_BATCH));
+  const batch = meals.slice(page * MEAL_BATCH, (page + 1) * MEAL_BATCH);
 
-  const go = dir => {
-    setIdxByTab(prev => ({ ...prev, [activeTab]: ((prev[activeTab] || 0) + dir + total) % total }));
+  const nextBatch = () => {
+    setPageByTab(prev => ({ ...prev, [activeTab]: ((prev[activeTab] || 0) + 1) % totalPages }));
     setExpandedId(null);
-  };
-
-  const handleTouchStart = e => { touchStartX.current = e.touches[0].clientX; };
-  const handleTouchEnd = e => {
-    if (touchStartX.current === null) return;
-    const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 44) go(diff > 0 ? 1 : -1);
-    touchStartX.current = null;
   };
 
   const handleAdd = meal => {
@@ -1869,18 +1863,14 @@ const MealCarousel = ({ mealsByCategory, activeGoalColor, onAdd }) => {
     setTimeout(() => setAddedId(null), 2200);
   };
 
-  const isDark = C.bg === "#0C0C0C";
-  const meal = meals[idx];
-
   return (
     <div>
       {/* ── Onglets catégories ── */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 18, overflowX: "auto", paddingBottom: 2, scrollbarWidth: "none" }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 14, overflowX: "auto", paddingBottom: 2, scrollbarWidth: "none" }}>
         {MEAL_TABS.map(tab => {
           const tabMeals = mealsByCategory[tab.key] || [];
           if (!tabMeals.length) return null;
           const isActive = activeTab === tab.key;
-          const tabIdx = isActive ? idx : (idxByTab[tab.key] || 0);
           return (
             <button key={tab.key}
               onClick={() => { setActiveTab(tab.key); setExpandedId(null); }}
@@ -1895,169 +1885,159 @@ const MealCarousel = ({ mealsByCategory, activeGoalColor, onAdd }) => {
               }}>
               <span style={{ fontSize: 14 }}>{tab.icon}</span>
               <span>{tab.label}</span>
-              {isActive && total > 1 && (
-                <span style={{
-                  background: activeGoalColor, color: "#fff", borderRadius: 10,
-                  fontSize: 10, fontWeight: 800, padding: "1px 6px", marginLeft: 2,
-                }}>{tabIdx + 1}/{total}</span>
-              )}
+              <span style={{
+                background: isActive ? activeGoalColor : C.border,
+                color: isActive ? "#fff" : C.muted,
+                borderRadius: 10, fontSize: 10, fontWeight: 800, padding: "1px 6px", marginLeft: 2,
+              }}>{tabMeals.length}</span>
             </button>
           );
         })}
       </div>
 
-      {/* ── Carousel ── */}
-      {meal ? (
-        <>
-          <div style={{ overflow: "hidden", borderRadius: 22 }}
-            onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-            <div style={{
-              display: "flex",
-              transform: `translateX(${idx * -100}%)`,
-              transition: "transform 380ms cubic-bezier(0.4,0,0.2,1)",
-            }}>
-              {meals.map((m) => {
-                const emoji = getMealEmoji(m.name);
-                const isExpanded = expandedId === m.id;
-                const isAdded = addedId === m.id;
-                return (
-                  <div key={m.id} style={{ flex: "0 0 100%", width: "100%", boxSizing: "border-box" }}>
-                    <div style={{
-                      background: C.surface, borderRadius: 22, padding: "20px 18px 18px",
-                      border: `1.5px solid ${C.border}`,
-                      boxShadow: isDark
-                        ? "0 8px 36px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)"
-                        : "0 6px 30px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)",
-                      display: "flex", flexDirection: "column",
-                    }}>
-                      {/* En-tête : emoji + nom + badge vegan */}
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
-                        <div style={{
-                          width: 54, height: 54, borderRadius: 16, flexShrink: 0,
-                          background: `${activeGoalColor}16`, border: `1.5px solid ${activeGoalColor}28`,
-                          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28,
-                        }}>{emoji}</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontSize: 16, fontWeight: 900, color: C.black, margin: "0 0 6px", lineHeight: 1.2, letterSpacing: -0.3 }}>{m.name}</p>
-                          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                            <span style={{ fontSize: 13, fontWeight: 800, color: C.orange }}>{m.macros.cal} kcal</span>
-                            <span style={{ fontSize: 11, color: C.muted }}>·</span>
-                            <span style={{ fontSize: 13, fontWeight: 800, color: C.purple }}>{m.macros.prot}g prot</span>
-                            {m.vegan && (
-                              <span style={{ fontSize: 10, background: "rgba(34,197,94,0.13)", color: "#16a34a", borderRadius: 20, padding: "2px 9px", fontWeight: 700, border: "1px solid rgba(34,197,94,0.22)" }}>🌱 Vegan</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+      {/* ── Header lot ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <p style={{ margin: 0, fontSize: 12, color: C.muted, fontWeight: 600 }}>
+          {batch.length} idées · lot <strong style={{ color: C.text }}>{page + 1}/{totalPages}</strong>
+        </p>
+        {totalPages > 1 && (
+          <button onClick={nextBatch} style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "7px 13px", borderRadius: 20,
+            border: `1.5px solid ${activeGoalColor}40`,
+            background: `${activeGoalColor}10`,
+            color: activeGoalColor, fontSize: 12, fontWeight: 700,
+            cursor: "pointer", fontFamily: "inherit",
+            transition: "all 180ms ease",
+          }}>
+            <Icon name="refresh" size={13} color={activeGoalColor} />
+            Voir d'autres repas
+          </button>
+        )}
+      </div>
 
-                      {/* Macros 2×2 */}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
-                        {[
-                          { label: "Calories",  value: m.macros.cal,   unit: " kcal", color: C.orange },
-                          { label: "Protéines", value: m.macros.prot,  unit: "g",     color: C.purple },
-                          { label: "Glucides",  value: m.macros.carbs, unit: "g",     color: C.blue },
-                          { label: "Lipides",   value: m.macros.fat,   unit: "g",     color: C.green },
-                        ].map(({ label, value, unit, color }) => (
-                          <div key={label} style={{ background: `${color}10`, border: `1px solid ${color}22`, borderRadius: 13, padding: "11px 13px" }}>
-                            <div style={{ fontSize: 17, fontWeight: 900, color, lineHeight: 1, letterSpacing: -0.3 }}>
-                              {value}<span style={{ fontSize: 11, fontWeight: 700, opacity: 0.75 }}>{unit}</span>
-                            </div>
-                            <div style={{ fontSize: 10, color: C.muted, marginTop: 4, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
-                          </div>
-                        ))}
-                      </div>
+      {/* ── Liste de 6 cartes compactes ── */}
+      {batch.length > 0 ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {batch.map(m => {
+            const emoji = getMealEmoji(m.name);
+            const isExpanded = expandedId === m.id;
+            const isAdded = addedId === m.id;
+            return (
+              <div key={m.id} style={{
+                background: C.surface, borderRadius: 16,
+                border: `1.5px solid ${isExpanded ? activeGoalColor + "50" : C.border}`,
+                overflow: "hidden",
+                transition: "border-color 200ms ease",
+                boxShadow: isExpanded ? `0 4px 20px ${activeGoalColor}18` : "0 1px 4px rgba(0,0,0,0.05)",
+              }}>
+                {/* Ligne principale — toujours visible */}
+                <button onClick={() => setExpandedId(isExpanded ? null : m.id)}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: 12,
+                    padding: "13px 14px", background: "none", border: "none",
+                    cursor: "pointer", textAlign: "left", fontFamily: "inherit",
+                  }}>
+                  {/* Emoji pill */}
+                  <div style={{
+                    width: 42, height: 42, borderRadius: 13, flexShrink: 0,
+                    background: `${activeGoalColor}14`, border: `1px solid ${activeGoalColor}22`,
+                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
+                  }}>{emoji}</div>
 
-                      {/* Ingrédients expandable */}
-                      {m.ingredients?.length > 0 && (
-                        <div style={{ marginBottom: 14 }}>
-                          <button onClick={() => setExpandedId(isExpanded ? null : m.id)}
-                            style={{
-                              width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-                              background: "none", border: `1px solid ${C.border}`, borderRadius: 12,
-                              padding: "10px 14px", cursor: "pointer", fontFamily: "inherit",
-                              marginBottom: isExpanded ? 10 : 0,
-                            }}>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: C.muted }}>🧾 Ingrédients · {m.ingredients.length} aliments</span>
-                            <span style={{ fontSize: 13, color: C.muted, transition: "transform 220ms ease", display: "inline-block", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
-                          </button>
-                          {isExpanded && (
-                            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                              {m.ingredients.map((ing, j) => {
-                                const qDisplay = ing.u === "x" ? `${ing.q}×` :
-                                  ing.u === "tranche" ? `${ing.q} tranche${ing.q > 1 ? "s" : ""}` :
-                                  `${ing.q}${ing.u}`;
-                                return (
-                                  <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 12px", background: C.surfaceAlt, borderRadius: 10 }}>
-                                    <span style={{ fontSize: 13, color: C.text, fontWeight: 500 }}>{ing.n}</span>
-                                    <span style={{ fontSize: 13, color: activeGoalColor, fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>{qDisplay}</span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
+                  {/* Nom + macros clés */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 800, color: C.black, letterSpacing: -0.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</p>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: C.orange }}>{m.macros.cal} kcal</span>
+                      <span style={{ fontSize: 11, color: C.muted }}>·</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: C.purple }}>{m.macros.prot}g prot</span>
+                      {m.vegan && (
+                        <span style={{ fontSize: 9, background: "rgba(34,197,94,0.12)", color: "#16a34a", borderRadius: 20, padding: "1px 7px", fontWeight: 700, border: "1px solid rgba(34,197,94,0.2)" }}>vegan</span>
                       )}
-
-                      {/* Bouton Ajouter */}
-                      <button onClick={() => handleAdd(m)}
-                        style={{
-                          width: "100%", padding: "14px",
-                          background: isAdded
-                            ? `linear-gradient(135deg, ${C.green}, #16a34a)`
-                            : `linear-gradient(135deg, ${activeGoalColor}, ${activeGoalColor}CC)`,
-                          color: "#fff", border: "none", borderRadius: 14,
-                          fontSize: 14, fontWeight: 800, cursor: "pointer",
-                          boxShadow: isAdded ? "0 4px 20px rgba(34,197,94,0.38)" : `0 4px 20px ${activeGoalColor}3A`,
-                          fontFamily: "inherit",
-                          transition: "background 340ms ease, box-shadow 340ms ease",
-                          marginTop: "auto",
-                        }}>
-                        {isAdded ? "✓ Ajouté à ta journée !" : "+ Ajouter à ma journée"}
-                      </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
 
-          {/* Dots + flèches */}
-          {total > 1 && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginTop: 14 }}>
-              <button onClick={() => go(-1)} style={{
-                width: 36, height: 36, borderRadius: "50%",
-                border: `1.5px solid ${C.border}`, background: C.surface,
-                color: C.text, fontSize: 18, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: isDark ? "0 2px 10px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.06)",
-                fontFamily: "inherit",
-              }}>‹</button>
-              <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-                {meals.map((_, i) => (
-                  <div key={i} onClick={() => { setIdxByTab(prev => ({ ...prev, [activeTab]: i })); setExpandedId(null); }}
-                    style={{
-                      height: 6, width: i === idx ? 22 : 6, borderRadius: 3,
-                      background: i === idx ? activeGoalColor : C.border,
-                      cursor: "pointer",
-                      transition: "all 350ms cubic-bezier(0.4,0,0.2,1)", flexShrink: 0,
-                    }} />
-                ))}
+                  {/* Chevron */}
+                  <svg width={16} height={16} viewBox="0 0 24 24" fill="none"
+                    stroke={C.muted} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ flexShrink: 0, transition: "transform 220ms ease", transform: isExpanded ? "rotate(180deg)" : "none" }}>
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {/* Détail expandé */}
+                {isExpanded && (
+                  <div style={{ padding: "0 14px 14px", borderTop: `1px solid ${C.border}` }}>
+                    {/* Macros 4 pills */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6, margin: "12px 0" }}>
+                      {[
+                        { label: "Kcal",  value: m.macros.cal,   color: C.orange },
+                        { label: "Prot",  value: `${m.macros.prot}g`, color: C.purple },
+                        { label: "Gluc",  value: `${m.macros.carbs}g`, color: C.blue },
+                        { label: "Lip",   value: `${m.macros.fat}g`, color: C.green },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} style={{ background: `${color}10`, borderRadius: 10, padding: "8px 6px", textAlign: "center" }}>
+                          <div style={{ fontSize: 13, fontWeight: 900, color, lineHeight: 1 }}>{value}</div>
+                          <div style={{ fontSize: 9, color: C.muted, marginTop: 3, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Ingrédients */}
+                    {m.ingredients?.length > 0 && (
+                      <div style={{ marginBottom: 12 }}>
+                        {m.ingredients.map((ing, j) => {
+                          const qDisplay = ing.u === "x" ? `${ing.q}×` :
+                            ing.u === "tranche" ? `${ing.q} tranche${ing.q > 1 ? "s" : ""}` :
+                            `${ing.q}${ing.u}`;
+                          return (
+                            <div key={j} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: j < m.ingredients.length - 1 ? `1px solid ${C.border}` : "none" }}>
+                              <span style={{ fontSize: 12, color: C.text, fontWeight: 500 }}>{ing.n}</span>
+                              <span style={{ fontSize: 12, color: activeGoalColor, fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>{qDisplay}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Bouton ajouter */}
+                    <button onClick={() => handleAdd(m)} style={{
+                      width: "100%", padding: "12px",
+                      background: isAdded
+                        ? `linear-gradient(135deg, ${C.green}, #16a34a)`
+                        : `linear-gradient(135deg, ${activeGoalColor}, ${activeGoalColor}CC)`,
+                      color: "#fff", border: "none", borderRadius: 12,
+                      fontSize: 13, fontWeight: 800, cursor: "pointer",
+                      fontFamily: "inherit",
+                      transition: "background 300ms ease",
+                    }}>
+                      {isAdded ? "✓ Ajouté !" : "+ Ajouter à ma journée"}
+                    </button>
+                  </div>
+                )}
               </div>
-              <button onClick={() => go(1)} style={{
-                width: 36, height: 36, borderRadius: "50%",
-                border: `1.5px solid ${C.border}`, background: C.surface,
-                color: C.text, fontSize: 18, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: isDark ? "0 2px 10px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.06)",
-                fontFamily: "inherit",
-              }}>›</button>
-            </div>
-          )}
-        </>
+            );
+          })}
+        </div>
       ) : (
         <div style={{ textAlign: "center", padding: "32px 0", color: C.muted, fontSize: 13 }}>
           Aucun repas disponible pour ce filtre
         </div>
+      )}
+
+      {/* ── Bouton suivant en bas aussi ── */}
+      {totalPages > 1 && (
+        <button onClick={nextBatch} style={{
+          width: "100%", marginTop: 12, padding: "12px",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          border: `1.5px solid ${C.border}`, background: C.surfaceAlt,
+          borderRadius: 14, color: C.muted, fontSize: 13, fontWeight: 700,
+          cursor: "pointer", fontFamily: "inherit",
+        }}>
+          <Icon name="refresh" size={14} color={C.muted} />
+          Lot suivant — {page + 1}/{totalPages}
+        </button>
       )}
     </div>
   );
