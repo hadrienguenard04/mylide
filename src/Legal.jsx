@@ -93,9 +93,12 @@ Vos donnees sont conservees pendant la duree de votre compte actif, plus 30 jour
 
 6. PARTAGE
 Vos donnees ne sont jamais vendues ni partagees avec des tiers a des fins publicitaires. Elles sont partagees uniquement avec :
-- Supabase (hebergement et base de donnees, UE)
-- Stripe (paiement, avec uniquement les informations necessaires)
-- Vercel (hebergement de l'application, UE)
+- Supabase (hebergement et base de donnees, region UE — Frankfurt)
+- Stripe (paiement securise PCI DSS niveau 1 — donnees de facturation uniquement)
+- Vercel (hebergement de l'application, region UE)
+- Resend (envoi d'emails transactionnels — email uniquement, jamais de donnees de sante)
+
+Aucune de ces entites n'a acces a vos donnees de sante ou de bien-etre.
 
 7. SECURITE
 Toutes les donnees sont chiffrees en transit (TLS 1.3) et au repos (AES-256). Les mots de passe ne sont jamais stockes en clair.
@@ -182,6 +185,69 @@ En cas de modification des tarifs, vous serez notifie 30 jours a l'avance par em
 
 PAIEMENT SECURISE
 Les paiements sont traites par Stripe, certifie PCI DSS niveau 1. MYLIDE ne stocke jamais vos informations de paiement.`,
+  },
+  {
+    id: "health_data",
+    title: "Donnees de sante — Declaration Google Play",
+    icon: "heart",
+    content: `Derniere mise a jour : Mai 2026
+
+NATURE DES DONNEES DE SANTE COLLECTEES
+
+MYLIDE collecte uniquement les donnees que vous saisissez manuellement. Aucune donnee n'est lue depuis Google Health Connect, Apple HealthKit ou tout autre service de sante tiers.
+
+Types de donnees de sante collectees :
+
+1. SOMMEIL
+Donnees : heure de coucher, heure de lever, duree calculee, qualite percue (echelle 1–5), indicateur "pas d'ecran avant dormir".
+Pourquoi : calculer votre score de sommeil, identifier les tendances, generer des conseils personnalises.
+Qui saisit : vous-meme, manuellement, chaque jour.
+
+2. ACTIVITE PHYSIQUE
+Donnees : type de sport, duree de seance, intensite, calories estimees brulees.
+Pourquoi : calculer votre depense energetique totale (TDEE), suivre la progression sur 30 jours.
+Qui saisit : vous-meme, manuellement.
+
+3. NUTRITION
+Donnees : calories consommees, proteines, glucides, lipides, hydratation (litres d'eau).
+Pourquoi : comparer vos apports a vos objectifs nutritionnels calcules par notre moteur scientifique (Harris-Benedict).
+Qui saisit : vous-meme, manuellement.
+
+4. MESURES CORPORELLES
+Donnees : poids (kg), taille (cm), tour de poitrine, taille, hanches, bras, cuisses, frequence cardiaque au repos et maximale.
+Pourquoi : calculer l'IMC, le TDEE, suivre l'evolution corporelle sur 60 jours.
+Qui saisit : vous-meme, manuellement.
+
+5. BIEN-ETRE MENTAL
+Donnees : humeur (1–5), niveau de stress (1–5), niveau d'energie (1–5), notes libres.
+Pourquoi : generer un score de bien-etre global, identifier les correlations avec le sommeil et l'activite physique.
+Qui saisit : vous-meme, manuellement.
+
+COMMENT CES DONNEES SONT STOCKEES
+
+- Localement sur votre appareil (localStorage) pour un acces hors ligne
+- Dans votre compte securise Supabase (hebergement UE) lorsque vous etes connecte
+- Chiffrees en transit via TLS 1.3 et au repos via AES-256
+- Isolees par utilisateur via Row Level Security (RLS) : personne d'autre ne peut y acceder
+
+AVEC QUI CES DONNEES SONT-ELLES PARTAGEES ?
+
+Ces donnees ne sont jamais :
+- Vendues a des tiers
+- Partagees avec des annonceurs ou des partenaires commerciaux
+- Envoyees a des services d'IA externes
+- Utilisees a des fins autres que votre suivi personnel
+
+CONTROLE TOTAL DE VOS DONNEES
+
+Vous pouvez a tout moment :
+- Exporter l'integralite de vos donnees (Parametres > Telecharger mes donnees)
+- Supprimer definitivement votre compte et toutes vos donnees (Parametres > Supprimer mon compte)
+- Retirer votre consentement aux donnees de sante (Parametres > Confidentialite)
+
+CONFORMITE RGPD ART. 9
+
+Les donnees de sante sont des donnees sensibles au sens du RGPD (Art. 9). MYLIDE les traite sur la base de votre consentement explicite, donne lors de la creation de compte et confirme a la premiere utilisation des fonctions de suivi sante.`,
   },
   {
     id: "ai",
