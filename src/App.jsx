@@ -614,7 +614,7 @@ const TRANSLATIONS = {
     hello:"Bonjour",save_day:"Sauvegarder la journée",saved:"Sauvegardé !",
     today_balance:"Équilibre du jour",today_goals:"Objectifs en cours",today_intel:"Intelligence · Maintenant",today_week:"Semaine vs précédente",today_nogoals:"Aucun objectif. Créez-en un dans Objectifs.",
     sleep_schedule:"Horaires",sleep_quality:"Qualité",sleep_bedtime:"Coucher",sleep_wakeup:"Réveil",sleep_noscreen:"Pas d'écran 30min avant de dormir",sleep_optimal:"Optimal",sleep_ok:"Correct, visez 7h30+",sleep_insufficient:"Insuffisant",
-    sport_type:"Type d'activité",sport_recovery:"Récupération",sport_photo:"Photo de progression",sport_import_photo:"📷 Importer une photo",
+    sport_type:"Type d'activité",sport_recovery:"Récupération",sport_photo:"Photo de progression",sport_import_photo:"Importer une photo",
     nutr_goals_title:"Objectifs nutritionnels",nutr_meals_day:"Repas du jour",nutr_macros:"Macros du jour",nutr_suggest:"Idées repas",nutr_breakfast:"Petit-déjeuner",nutr_lunch:"Déjeuner",nutr_snack:"Collation",nutr_dinner:"Dîner",
     body_weight_sec:"Poids & objectif",body_measures:"Mensurations",body_current:"Poids actuel (kg)",body_target:"Objectif poids (kg)",body_chest:"Poitrine (cm)",body_waist:"Tour de taille (cm)",body_hips:"Hanches (cm)",body_arms:"Bras (cm)",body_thighs:"Cuisses (cm)",
     work_focus_sec:"Focus & Productivité",work_tasks:"Tâches",work_tasks_planned:"Prévues",work_tasks_done:"Faites",work_highlight:"Highlight du jour",work_screen:"Temps d'écran",work_screen_hours:"Heures aujourd'hui",
@@ -633,7 +633,7 @@ const TRANSLATIONS = {
     hello:"Hello",save_day:"Save the day",saved:"Saved!",
     today_balance:"Day Balance",today_goals:"Active Goals",today_intel:"Intelligence · Now",today_week:"Week vs previous",today_nogoals:"No goals yet. Create one in Goals.",
     sleep_schedule:"Schedule",sleep_quality:"Quality",sleep_bedtime:"Bedtime",sleep_wakeup:"Wake up",sleep_noscreen:"No screen 30min before sleep",sleep_optimal:"Optimal",sleep_ok:"Good, aim for 7h30+",sleep_insufficient:"Insufficient",
-    sport_type:"Activity type",sport_recovery:"Recovery",sport_photo:"Progress photo",sport_import_photo:"📷 Import a photo",
+    sport_type:"Activity type",sport_recovery:"Recovery",sport_photo:"Progress photo",sport_import_photo:"Import a photo",
     nutr_goals_title:"Nutritional goals",nutr_meals_day:"Today's meals",nutr_macros:"Today's macros",nutr_suggest:"Meal ideas",nutr_breakfast:"Breakfast",nutr_lunch:"Lunch",nutr_snack:"Snack",nutr_dinner:"Dinner",
     body_weight_sec:"Weight & goal",body_measures:"Measurements",body_current:"Current weight (kg)",body_target:"Target weight (kg)",body_chest:"Chest (cm)",body_waist:"Waist (cm)",body_hips:"Hips (cm)",body_arms:"Arms (cm)",body_thighs:"Thighs (cm)",
     work_focus_sec:"Focus & Productivity",work_tasks:"Tasks",work_tasks_planned:"Planned",work_tasks_done:"Done",work_highlight:"Highlight of the day",work_screen:"Screen time",work_screen_hours:"Hours today",
@@ -652,7 +652,7 @@ const TRANSLATIONS = {
     hello:"Hola",save_day:"Guardar el día",saved:"¡Guardado!",
     today_balance:"Equilibrio del día",today_goals:"Objetivos activos",today_intel:"Inteligencia · Ahora",today_week:"Semana vs anterior",today_nogoals:"Sin objetivos. Crea uno en Objetivos.",
     sleep_schedule:"Horario",sleep_quality:"Calidad",sleep_bedtime:"Acostarse",sleep_wakeup:"Despertar",sleep_noscreen:"Sin pantallas 30min antes de dormir",sleep_optimal:"Óptimo",sleep_ok:"Bien, apunta a 7h30+",sleep_insufficient:"Insuficiente",
-    sport_type:"Tipo de actividad",sport_recovery:"Recuperación",sport_photo:"Foto de progreso",sport_import_photo:"📷 Importar foto",
+    sport_type:"Tipo de actividad",sport_recovery:"Recuperación",sport_photo:"Foto de progreso",sport_import_photo:"Importar foto",
     nutr_goals_title:"Objetivos nutricionales",nutr_meals_day:"Comidas del día",nutr_macros:"Macros del día",nutr_suggest:"Ideas de comidas",nutr_breakfast:"Desayuno",nutr_lunch:"Almuerzo",nutr_snack:"Merienda",nutr_dinner:"Cena",
     body_weight_sec:"Peso & objetivo",body_measures:"Medidas",body_current:"Peso actual (kg)",body_target:"Peso objetivo (kg)",body_chest:"Pecho (cm)",body_waist:"Cintura (cm)",body_hips:"Caderas (cm)",body_arms:"Brazos (cm)",body_thighs:"Muslos (cm)",
     work_focus_sec:"Enfoque & Productividad",work_tasks:"Tareas",work_tasks_planned:"Previstas",work_tasks_done:"Hechas",work_highlight:"Logro del día",work_screen:"Tiempo de pantalla",work_screen_hours:"Horas hoy",
@@ -671,7 +671,7 @@ const TRANSLATIONS = {
     hello:"Hallo",save_day:"Tag speichern",saved:"Gespeichert!",
     today_balance:"Tagesbalance",today_goals:"Aktive Ziele",today_intel:"Intelligenz · Jetzt",today_week:"Woche vs. vorherige",today_nogoals:"Keine Ziele. Erstelle eines unter Ziele.",
     sleep_schedule:"Zeiten",sleep_quality:"Qualität",sleep_bedtime:"Schlafenszeit",sleep_wakeup:"Aufwachzeit",sleep_noscreen:"Kein Bildschirm 30min vor dem Schlafen",sleep_optimal:"Optimal",sleep_ok:"Gut, ziele auf 7h30+",sleep_insufficient:"Unzureichend",
-    sport_type:"Aktivitätstyp",sport_recovery:"Erholung",sport_photo:"Fortschrittsfoto",sport_import_photo:"📷 Foto importieren",
+    sport_type:"Aktivitätstyp",sport_recovery:"Erholung",sport_photo:"Fortschrittsfoto",sport_import_photo:"Foto importieren",
     nutr_goals_title:"Ernährungsziele",nutr_meals_day:"Mahlzeiten heute",nutr_macros:"Heutige Makros",nutr_suggest:"Mahlzeiten-Ideen",nutr_breakfast:"Frühstück",nutr_lunch:"Mittagessen",nutr_snack:"Snack",nutr_dinner:"Abendessen",
     body_weight_sec:"Gewicht & Ziel",body_measures:"Maße",body_current:"Aktuelles Gewicht (kg)",body_target:"Zielgewicht (kg)",body_chest:"Brust (cm)",body_waist:"Taille (cm)",body_hips:"Hüften (cm)",body_arms:"Arme (cm)",body_thighs:"Oberschenkel (cm)",
     work_focus_sec:"Fokus & Produktivität",work_tasks:"Aufgaben",work_tasks_planned:"Geplant",work_tasks_done:"Erledigt",work_highlight:"Highlight des Tages",work_screen:"Bildschirmzeit",work_screen_hours:"Stunden heute",
@@ -783,7 +783,9 @@ const SubPageInfo = ({ onBack, profile, updateProfile }) => {
       <div onClick={() => pRef.current.click()} style={{ textAlign: "center", marginBottom: 28, cursor: "pointer" }}>
         {profile.photo ? <img src={profile.photo} style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover", border: `3px solid ${C.red}`, boxShadow: "0 4px 20px rgba(204,41,54,0.25)" }} alt="" />
           : <div style={{ width: 96, height: 96, borderRadius: "50%", background: `linear-gradient(135deg, #CC2936, #8B1A22)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 40, fontWeight: 900, margin: "0 auto" }}>{profile.name?.[0] || "K"}</div>}
-        <p style={{ margin: "10px 0 0", fontSize: 13, fontWeight: 600, color: C.red }}>Changer la photo 📷</p>
+        <p style={{ margin: "10px 0 0", fontSize: 13, fontWeight: 600, color: C.red, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+          <Icon name="camera" size={13} color={C.red} /> Changer la photo
+        </p>
       </div>
       <div style={{ marginBottom: 16 }}><label style={lbl}>Prénom</label><input value={name} onChange={e => setName(e.target.value)} placeholder="Ton prénom" style={settingsInp} /></div>
       <div style={{ marginBottom: 16 }}><label style={lbl}>Date de naissance</label><input type="date" value={dob} onChange={e => setDob(e.target.value)} style={settingsInp} /></div>
@@ -2081,7 +2083,10 @@ const Onboarding = ({ onComplete }) => {
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
               <div onClick={() => photoRef.current.click()} style={{ cursor: "pointer", position: "relative" }}>
                 {photo ? <img src={photo} alt="" style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover", border: `3px solid ${C.red}`, boxShadow: "0 8px 24px rgba(204,41,54,0.3)" }} />
-                  : <div style={{ width: 96, height: 96, borderRadius: "50%", background: C.surfaceAlt, border: `2px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>📷</div>}
+                  : <div style={{ width: 96, height: 96, borderRadius: "50%", background: C.surfaceAlt, border: `2px dashed ${C.border}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                      <Icon name="camera" size={28} color={C.muted} />
+                      <span style={{ fontSize: 9, fontWeight: 700, color: C.muted, letterSpacing: 0.3, textTransform: "uppercase" }}>Photo</span>
+                    </div>}
                 <div style={{ position: "absolute", bottom: 2, right: 2, background: C.red, borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 14, boxShadow: "0 4px 12px rgba(204,41,54,0.4)" }}>+</div>
               </div>
             </div>
@@ -3967,7 +3972,7 @@ export default function App() {
             <div>
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
                 <button onClick={() => setShowSettings(true)} style={{ display: "flex", alignItems: "center", gap: 7, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "9px 16px", cursor: "pointer", fontSize: 13, fontWeight: 700, color: C.black, boxShadow: "0 2px 10px rgba(0,0,0,0.07)" }}>
-                  <span style={{ fontSize: 16 }}>⚙️</span> Paramètres
+                  <Icon name="settings" size={15} color={C.black} /> Paramètres
                 </button>
               </div>
               <Card accent style={{ textAlign: "center", paddingTop: 28, paddingBottom: 28 }}>
@@ -3975,7 +3980,9 @@ export default function App() {
                 <div onClick={() => photoRef.current.click()} style={{ cursor: "pointer", display: "inline-block", position: "relative", marginBottom: 14 }}>
                   {profile.photo ? <img src={profile.photo} alt="" style={{ width: 100, height: 100, borderRadius: "50%", objectFit: "cover", border: "4px solid rgba(255,255,255,0.3)", boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }} />
                     : <div style={{ width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 42, fontWeight: 900, margin: "0 auto" }}>{profile.name?.[0] || "M"}</div>}
-                  <div style={{ position: "absolute", bottom: 4, right: 4, background: "rgba(255,255,255,0.9)", borderRadius: "50%", width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>📷</div>
+                  <div style={{ position: "absolute", bottom: 4, right: 4, background: "rgba(255,255,255,0.95)", borderRadius: "50%", width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                    <Icon name="camera" size={14} color="#333" />
+                  </div>
                 </div>
                 <p style={{ fontSize: 24, fontWeight: 900, color: "#fff", margin: "0 0 4px", letterSpacing: -0.5 }}>{profile.name}</p>
                 {age !== null && <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", margin: 0, fontWeight: 500 }}>{age} ans · Kojihsports</p>}
