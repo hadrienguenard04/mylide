@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useC } from "./theme.jsx";
+import { Icon } from "./icons.jsx";
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 const SECTIONS = [
   {
     id: "disclaimer",
     title: "Avertissement sante",
-    icon: "🏥",
+    icon: "warning",
     content: `MYLIDE est une application de bien-etre et de suivi personnel. Elle ne constitue pas un dispositif medical.
 
 MYLIDE ne diagnostique, ne soigne, ne traite et ne remplace en aucun cas l'avis d'un professionnel de sante qualifie (medecin, nutritionniste, psychologue, kinesitherapeute, etc.).
@@ -20,7 +21,7 @@ MYLIDE decline toute responsabilite en cas d'utilisation des donnees de l'applic
   {
     id: "cgu",
     title: "Conditions generales d'utilisation",
-    icon: "📋",
+    icon: "message",
     content: `Derniere mise a jour : Mai 2026
 
 1. OBJET
@@ -60,7 +61,7 @@ Les presentes CGU sont regies par le droit francais. Tout litige sera soumis aux
   {
     id: "privacy",
     title: "Politique de confidentialite",
-    icon: "🔒",
+    icon: "lock",
     content: `Derniere mise a jour : Mai 2026
 
 1. RESPONSABLE DU TRAITEMENT
@@ -116,7 +117,7 @@ MYLIDE n'utilise pas de cookies publicitaires. Des cookies techniques essentiels
   {
     id: "rgpd",
     title: "Gestion de vos donnees (RGPD)",
-    icon: "🛡️",
+    icon: "shield",
     content: `MYLIDE est conforme au Reglement General sur la Protection des Donnees (RGPD - UE 2016/679).
 
 VOS DROITS EN PRATIQUE
@@ -152,7 +153,7 @@ contact@mylide.app`,
   {
     id: "subscription_legal",
     title: "Informations legales sur l'abonnement",
-    icon: "💳",
+    icon: "diamond",
     content: `RENOUVELLEMENT AUTOMATIQUE
 L'abonnement MYLIDE se renouvelle automatiquement a la fin de chaque periode de facturation (mensuelle). Vous serez preleve du montant de l'abonnement choisi, sauf resiliation.
 
@@ -185,7 +186,7 @@ Les paiements sont traites par Stripe, certifie PCI DSS niveau 1. MYLIDE ne stoc
   {
     id: "ai",
     title: "Intelligence artificielle et insights",
-    icon: "🧠",
+    icon: "zap",
     content: `NATURE DES INSIGHTS
 Les recommandations, scores et insights generes par MYLIDE sont bases sur des algorithmes d'analyse de donnees personnelles. Ils constituent des indicateurs de bien-etre personnel, pas des diagnostics medicaux.
 
@@ -230,7 +231,9 @@ function Section({ section, isOpen, onToggle }) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 20, flexShrink: 0 }}>{section.icon}</span>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: isOpen ? "#CC293612" : C.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.18s" }}>
+            <Icon name={section.icon} size={18} color={isOpen ? "#CC2936" : C.muted} />
+          </div>
           <span style={{
             fontSize: 15, fontWeight: 700,
             color: isOpen ? "#CC2936" : C.text,
@@ -326,7 +329,9 @@ export default function LegalPage({ onBack, initialSection }) {
           borderRadius: 16, padding: "14px 16px",
           marginBottom: 16, display: "flex", gap: 12, alignItems: "flex-start",
         }}>
-          <span style={{ fontSize: 20, flexShrink: 0 }}>⚠️</span>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: "#F59E0B20", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Icon name="warning" size={18} color="#F59E0B" />
+          </div>
           <p style={{ margin: 0, fontSize: 12.5, color: "#92400E", lineHeight: 1.6, fontWeight: 500 }}>
             MYLIDE est une application de bien-etre personnel.
             Elle ne remplace pas un professionnel de sante.

@@ -4029,11 +4029,11 @@ export default function App() {
                 </div>
                 <ST>Parametres</ST>
                 <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                  {[{ value: "light", icon: "☀️", label: "Clair" }, { value: "dark", icon: "🌙", label: "Sombre" }].map(opt => {
+                  {[{ value: "light", icon: "zap", label: "Clair" }, { value: "dark", icon: "bell", label: "Sombre" }].map(opt => {
                     const active = themeMode === opt.value;
                     return (
                       <button key={opt.value} onClick={() => setThemeMode(opt.value)} style={{ flex: 1, padding: "12px 6px", borderRadius: 12, cursor: "pointer", border: active ? `2px solid ${C.red}` : `1.5px solid ${C.border}`, background: active ? C.redLight : C.surfaceAlt, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, fontFamily: "inherit" }}>
-                        <span style={{ fontSize: 20 }}>{opt.icon}</span>
+                        <Icon name={opt.icon} size={20} color={active ? C.red : C.muted} />
                         <span style={{ fontSize: 11, fontWeight: active ? 800 : 600, color: active ? C.red : C.muted }}>{opt.label}</span>
                       </button>
                     );
