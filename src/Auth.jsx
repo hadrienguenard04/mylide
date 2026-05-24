@@ -31,6 +31,19 @@ export default function Auth() {
   const [error, setError] = useState("");
   const [showLegalModal, setShowLegalModal] = useState(false);
 
+  const handleForgotPassword = async () => {
+    setError("");
+    setMessage("");
+    if (!email.trim()) { setError("Entre ton email pour recevoir le lien de réinitialisation."); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}?reset=true`,
+    });
+    setLoading(false);
+    if (error) setError(error.message);
+    else setMessage("Lien envoyé ! Vérifie ta boîte mail (et les spams).");
+  };
+
   const handleGoogle = async () => {
     setLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
@@ -75,6 +88,40 @@ export default function Auth() {
     }
     setLoading(false);
   };
+
+  // ── Écran mot de passe oublié ──────────────────────────────────────────────
+  if (mode === "forgot") {
+    return (
+      <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "Inter, sans-serif" }}>
+        <div style={{ width: "100%", maxWidth: 400, background: C.surface, borderRadius: 24, padding: 32, boxShadow: "0 20px 60px rgba(0,0,0,0.1)" }}>
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
+            <img src={mylidelogo} alt="MYLIDE" style={{ width: 56, height: 56, margin: "0 auto 12px", display: "block", filter: "drop-shadow(0 6px 16px rgba(204,41,54,0.4))" }} />
+            <h2 style={{ fontSize: 20, fontWeight: 900, color: C.text, margin: "0 0 6px" }}>Mot de passe oublié</h2>
+            <p style={{ fontSize: 13, color: C.muted, margin: 0, lineHeight: 1.55 }}>
+              Entre ton email et on t'envoie un lien pour réinitialiser ton mot de passe.
+            </p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <input
+              type="email" value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="Ton email" style={inp}
+              onKeyDown={e => e.key === "Enter" && handleForgotPassword()}
+            />
+            {error && <p style={{ fontSize: 12, color: C.red, margin: 0, padding: "8px 12px", background: "rgba(204,41,54,0.08)", borderRadius: 8 }}>{error}</p>}
+            {message && <p style={{ fontSize: 12, color: C.green, margin: 0, padding: "8px 12px", background: "rgba(22,163,74,0.08)", borderRadius: 8 }}>{message}</p>}
+            <button onClick={handleForgotPassword} disabled={loading}
+              style={{ padding: "14px", background: `linear-gradient(135deg, ${C.red}, #a01e28)`, color: "#fff", border: "none", borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: loading ? "wait" : "pointer", boxShadow: "0 6px 20px rgba(204,41,54,0.3)", opacity: loading ? 0.7 : 1 }}>
+              {loading ? "Envoi..." : "Envoyer le lien"}
+            </button>
+            <button onClick={() => { setMode("login"); setError(""); setMessage(""); }}
+              style={{ background: "none", border: "none", color: C.muted, fontSize: 13, cursor: "pointer", textAlign: "center", textDecoration: "underline" }}>
+              ← Retour à la connexion
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -132,6 +179,12 @@ export default function Auth() {
               onKeyDown={e => e.key === "Enter" && handleSubmit()}
             />
           </div>
+          {mode === "login" && (
+            <button onClick={() => { setMode("forgot"); setError(""); setMessage(""); }}
+              style={{ background: "none", border: "none", color: C.muted, fontSize: 12, cursor: "pointer", textAlign: "right", padding: "0 2px", textDecoration: "underline" }}>
+              Mot de passe oublié ?
+            </button>
+          )}
 
           {/* Consentement RGPD à l'inscription */}
           {mode === "signup" && (

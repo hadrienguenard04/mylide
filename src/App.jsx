@@ -2328,6 +2328,12 @@ export default function App() {
           trial_end: profileData.trial_end,
           stripe_subscription_id: profileData.stripe_subscription_id,
         });
+        // Charger nutritionGoals depuis Supabase (priorité sur localStorage)
+        if (profileData.nutrition_goals) {
+          const merged = { goalType: "maintenance", protTarget: 150, calTarget: 2000, fatTarget: 65, carbsTarget: 200, sex: null, height: null, activityLevel: null, ...profileData.nutrition_goals };
+          setNutritionGoals(merged);
+          localStorage.setItem("nutritionGoals", JSON.stringify(merged));
+        }
         setOnboarded(true);
         // Détecter retour Stripe
         const params = new URLSearchParams(window.location.search);
@@ -2428,6 +2434,16 @@ export default function App() {
 
     return () => { authSub?.unsubscribe(); window.removeEventListener("beforeunload", handleBeforeUnload); };
   }, []);
+
+  // Sync nutritionGoals → Supabase (debounced 2s) pour ne pas perdre les macros
+  // si l'utilisateur vide son cache ou change d'appareil
+  useEffect(() => {
+    if (!currentUser?.id || !loadDoneRef.current) return;
+    const t = setTimeout(async () => {
+      await supabase.from("profiles").update({ nutrition_goals: nutritionGoals }).eq("id", currentUser.id);
+    }, 2000);
+    return () => clearTimeout(t);
+  }, [nutritionGoals]);
 
   // Pré-remplir les mesures corpo depuis le dernier enregistrement connu.
   // SÉCURITÉ : on ne préremplit QUE si today n'est pas encore dans l'historique
