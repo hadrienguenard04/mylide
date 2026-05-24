@@ -33,7 +33,8 @@ export const ACTIVITY_LEVELS = {
 export const GOAL_CONFIG = {
   perte: {
     label:          "Perte de poids",
-    emoji:          "⚖️",
+    icon:           "chart",
+    color:          "#3B82F6",
     color:          "#3B82F6",
     // Hall 2012 : déficit 15-20% du TDEE = perte saine sans ralentissement métabolique
     deficitPct:     0.18,
@@ -53,7 +54,7 @@ export const GOAL_CONFIG = {
   },
   masse: {
     label:          "Prise de masse",
-    emoji:          "💪",
+    icon:           "zap",
     color:          "#CC2936",
     // Slater 2019 : lean bulk +200 à +350 kcal. Au-delà, c'est principalement de la graisse
     surplusPct:     0.08,
@@ -72,7 +73,7 @@ export const GOAL_CONFIG = {
   },
   maintenance: {
     label:          "Maintien",
-    emoji:          "🎯",
+    icon:           "heart",
     color:          "#16a34a",
     // Pas de delta : équilibre calorique
     deficitPct:     0,
@@ -90,7 +91,7 @@ export const GOAL_CONFIG = {
   },
   seche: {
     label:          "Sèche et Recompo",
-    emoji:          "🔥",
+    icon:           "refresh",
     color:          "#7C3AED",
     // Barakat 2020 : la recomposition fonctionne mieux avec un léger déficit (5-10%)
     // Un déficit de 8% sur un TDEE de 3172 = ~254 kcal → très progressif, idéal pour la recompo
@@ -479,7 +480,7 @@ export function getGoalMessage(goalType) {
 // ── FORMATAGE DES PROGRÈS ──────────────────────────────────────────────────────
 export function formatProgress(progressEst, goalType) {
   if (!progressEst) return null;
-  if (progressEst.done) return "Tu as atteint ton objectif de poids ! 🎉";
+  if (progressEst.done) return "Objectif de poids atteint.";
 
   if (progressEst.recomp) {
     return `Recomposition estimée : 10 à 24 semaines · ${progressEst.diff} kg de différence · progression mesurable aux mensurations`;
@@ -487,7 +488,92 @@ export function formatProgress(progressEst, goalType) {
 
   const { diff, direction, minWeeks, maxWeeks, weeklyMin, weeklyMax } = progressEst;
   const verb  = direction === "perte" ? "perdre" : "prendre";
-  const rythme = `${weeklyMin} à ${weeklyMax} kg par semaine`;
+  const rythme = `${weeklyMin} à ${weeklyMax} kg/semaine`;
 
-  return `${diff} kg à ${verb} · Estimation saine : ${minWeeks} à ${maxWeeks} semaines · Rythme recommandé : ${rythme}`;
+  return `${diff} kg à ${verb} · Estimation : ${minWeeks} à ${maxWeeks} semaines · Rythme conseillé : ${rythme}`;
+}
+
+// ── VALIDATION DE DATE CIBLE ──────────────────────────────────────────────────
+// Traduit la date choisie par l'utilisateur en vitesse hebdomadaire,
+// puis vérifie si cette vitesse est cohérente avec les recommandations scientifiques.
+// Références : Slater & Phillips 2011, Hall 2012, Helms 2014, Barakat 2020
+//
+// Retourne : { zone, label, color, message, tip, weeklyRate, weeklyRatePct, weeksChosen, earliestWeeks }
+export function validateDateTarget(currentWeight, targetWeight, goalType, weeksChosen) {
+  if (!currentWeight || !targetWeight || !weeksChosen || weeksChosen <= 0) return null;
+  if (goalType === "maintenance") return null;
+
+  const absDiff       = Math.abs(targetWeight - currentWeight);
+  const weeklyRate    = absDiff / weeksChosen;         // kg par semaine
+  const weeklyRatePct = weeklyRate / currentWeight;    // fraction du poids corporel
+
+  let zone, label, color, message, tip, earliestWeeks;
+
+  if (goalType === "masse") {
+    // Slater 2019 : 0.25-0.5%/semaine = lean bulk optimal
+    earliestWeeks = Math.ceil(absDiff / (currentWeight * 0.005));
+    if (weeklyRatePct <= 0.0025) {
+      zone = "conservative"; color = "#16a34a"; label = "Estimation conservatrice";
+      message = "Rythme très progressif — qualité musculaire maximale.";
+    } else if (weeklyRatePct <= 0.005) {
+      zone = "standard"; color = "#16a34a"; label = "Rythme conseillé";
+      message = "Zone optimale pour une prise de masse de qualité (0,25–0,5 %/semaine).";
+    } else if (weeklyRatePct <= 0.0075) {
+      zone = "aggressive"; color = "#F59E0B"; label = "Rythme ambitieux";
+      message = "Au-dessus de la zone standard. Risque accru de prise de gras.";
+      tip = `Date réaliste minimum : ${earliestWeeks} semaines pour une prise de masse propre.`;
+    } else {
+      zone = "not_recommended"; color = "#CC2936"; label = "Date cible non recommandée";
+      message = "À ce rythme, la prise sera surtout de la masse grasse, pas du muscle.";
+      tip = `Nous recommandons au moins ${earliestWeeks} semaines. Tu peux reformuler en "prise de poids" si tu veux aller plus vite.`;
+    }
+
+  } else if (goalType === "perte") {
+    // Hall 2012 : 0.5-1.0%/semaine = zone saine de perte
+    earliestWeeks = Math.ceil(absDiff / (currentWeight * 0.010));
+    if (weeklyRatePct <= 0.005) {
+      zone = "conservative"; color = "#16a34a"; label = "Estimation conservatrice";
+      message = "Rythme très progressif — préservation musculaire maximale.";
+    } else if (weeklyRatePct <= 0.010) {
+      zone = "standard"; color = "#16a34a"; label = "Rythme conseillé";
+      message = "Zone optimale pour perdre du gras en préservant le muscle (0,5–1 %/semaine).";
+    } else if (weeklyRatePct <= 0.015) {
+      zone = "aggressive"; color = "#F59E0B"; label = "Rythme ambitieux";
+      message = "Légèrement au-dessus de la zone recommandée. Surveille récupération et énergie.";
+      tip = `Date réaliste minimum : ${earliestWeeks} semaines dans la zone sûre.`;
+    } else {
+      zone = "not_recommended"; color = "#CC2936"; label = "Date cible non recommandée";
+      message = "Ce rythme sort du cadre prudent. Risque de perte musculaire et de fatigue.";
+      tip = `Nous recommandons au moins ${earliestWeeks} semaines pour préserver ta masse musculaire.`;
+    }
+
+  } else if (goalType === "seche") {
+    // Barakat 2020 : recompo = léger déficit, progression lente mesurable aux mensurations
+    earliestWeeks = Math.ceil(absDiff / (currentWeight * 0.005));
+    if (weeklyRatePct <= 0.003) {
+      zone = "standard"; color = "#16a34a"; label = "Rythme conseillé";
+      message = "Rythme adapté à une recomposition progressive et durable.";
+    } else if (weeklyRatePct <= 0.005) {
+      zone = "aggressive"; color = "#F59E0B"; label = "Rythme ambitieux";
+      message = "Vitesse élevée pour une recomposition — tu te rapproches d'une sèche classique.";
+      tip = "Si tu veux aller plus vite, l'objectif \"Perte de poids\" sera plus adapté.";
+    } else {
+      zone = "not_recommended"; color = "#CC2936"; label = "Ce n'est plus une recomposition";
+      message = "À ce rythme, l'objectif approprié est plutôt une perte de poids.";
+      tip = "Bascule vers \"Perte de poids\" pour une logique nutritionnelle et un plan adaptés.";
+    }
+  }
+
+  return {
+    zone,
+    label,
+    color,
+    message,
+    tip: tip || null,
+    weeklyRate:    Math.round(weeklyRate * 100) / 100,
+    weeklyRatePct: Math.round(weeklyRatePct * 1000) / 10,  // % avec 1 décimale
+    weeksChosen,
+    earliestWeeks: earliestWeeks || null,
+    absDiff:       Math.round(absDiff * 10) / 10,
+  };
 }

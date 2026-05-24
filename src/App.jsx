@@ -8,7 +8,7 @@ import { isAtLeast } from "./planConfig.js";
 import {
   GOAL_CONFIG, ACTIVITY_LEVELS,
   calcBMR, calcTDEE, calcSportBurn, calcMacros,
-  estimateProgress, detectContradictions, formatProgress,
+  estimateProgress, detectContradictions, formatProgress, validateDateTarget,
   inferActivityLevel, getWeeklySportFreq, getGoalMessage,
 } from "./nutritionScience.js";
 
@@ -861,6 +861,8 @@ const SubPageBody = ({ onBack, nutritionGoals, setNutritionGoals }) => {
   const [height, setHeight] = useState(nutritionGoals.height || "");
   const [activityLevel, setActivityLevel] = useState(nutritionGoals.activityLevel || "");
   const [goalType, setGoalType] = useState(nutritionGoals.goalType || "maintenance");
+  const [dietaryPref, setDietaryPref] = useState(nutritionGoals.dietaryPref || "omnivore");
+  const [targetWeeks, setTargetWeeks] = useState(nutritionGoals.targetWeeks || "");
   const [saveOk, setSaveOk] = useState(false);
   const lbl = { fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "block" };
 
@@ -871,6 +873,8 @@ const SubPageBody = ({ onBack, nutritionGoals, setNutritionGoals }) => {
       height: Number(height) || null,
       activityLevel: activityLevel || null,
       goalType,
+      dietaryPref,
+      targetWeeks: Number(targetWeeks) || null,
     };
     setNutritionGoals(ng);
     localStorage.setItem("nutritionGoals", JSON.stringify(ng));
@@ -887,9 +891,9 @@ const SubPageBody = ({ onBack, nutritionGoals, setNutritionGoals }) => {
           Utilisé pour calibrer le BMR (Mifflin-St Jeor) et les besoins en lipides.
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {[{ val: "male", label: "Homme", icon: "👨" }, { val: "female", label: "Femme", icon: "👩" }].map(({ val, label, icon }) => (
+          {[{ val: "male", label: "Homme", icon: "user" }, { val: "female", label: "Femme", icon: "heart" }].map(({ val, label, icon }) => (
             <button key={val} onClick={() => setSex(val)} style={{ padding: "16px 12px", borderRadius: 14, border: `2px solid ${sex === val ? "#CC2936" : C.border}`, background: sex === val ? "rgba(204,41,54,0.08)" : C.surfaceAlt, color: sex === val ? "#CC2936" : C.muted, fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontFamily: "inherit" }}>
-              <span style={{ fontSize: 22 }}>{icon}</span> {label}
+              <Icon name={icon} size={20} color={sex === val ? "#CC2936" : C.muted} /> {label}
             </button>
           ))}
         </div>
@@ -918,7 +922,9 @@ const SubPageBody = ({ onBack, nutritionGoals, setNutritionGoals }) => {
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {Object.entries(GOAL_CONFIG).map(([key, cfg]) => (
             <button key={key} onClick={() => setGoalType(key)} style={{ padding: "14px 16px", borderRadius: 14, border: `2px solid ${goalType === key ? cfg.color : C.border}`, background: goalType === key ? `${cfg.color}10` : C.surfaceAlt, cursor: "pointer", textAlign: "left", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 14 }}>
-              <span style={{ fontSize: 22 }}>{cfg.emoji}</span>
+              <div style={{ width: 36, height: 36, borderRadius: 11, background: goalType === key ? `${cfg.color}20` : C.surface, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Icon name={cfg.icon} size={18} color={goalType === key ? cfg.color : C.muted} />
+              </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 800, color: goalType === key ? cfg.color : C.text }}>{cfg.label}</div>
                 <div style={{ fontSize: 11, color: C.muted, marginTop: 2, lineHeight: 1.4 }}>{cfg.tagline}</div>
@@ -944,10 +950,62 @@ const SubPageBody = ({ onBack, nutritionGoals, setNutritionGoals }) => {
           ))}
           {!activityLevel && (
             <div style={{ padding: "10px 14px", borderRadius: 12, background: C.surfaceAlt, border: `1px solid ${C.border}` }}>
-              <p style={{ margin: 0, fontSize: 12, color: C.muted }}>Non renseigné - niveau auto-détecté depuis tes séances récentes</p>
+              <p style={{ margin: 0, fontSize: 12, color: C.muted }}>Non renseigné — niveau auto-détecté depuis tes séances récentes</p>
             </div>
           )}
         </div>
+      </div>
+
+      {/* Préférence alimentaire */}
+      <div style={{ marginBottom: 22 }}>
+        <label style={lbl}>Préférence alimentaire</label>
+        <p style={{ fontSize: 12, color: C.muted, margin: "0 0 10px", lineHeight: 1.5 }}>
+          Utilisé pour filtrer et adapter les repas proposés.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+          {[
+            { val: "omnivore",    label: "Omnivore",    icon: "heart" },
+            { val: "vegetarian",  label: "Végétarien",  icon: "star"  },
+            { val: "vegan",       label: "Vegan",       icon: "zap"   },
+          ].map(({ val, label, icon }) => {
+            const active = dietaryPref === val;
+            return (
+              <button key={val} onClick={() => setDietaryPref(val)} style={{ padding: "12px 8px", borderRadius: 12, border: `2px solid ${active ? "#CC2936" : C.border}`, background: active ? "rgba(204,41,54,0.08)" : C.surfaceAlt, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, fontFamily: "inherit" }}>
+                <Icon name={icon} size={18} color={active ? "#CC2936" : C.muted} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: active ? "#CC2936" : C.muted }}>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+        {dietaryPref === "vegan" && (
+          <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 12, background: "#7C3AED10", border: "1px solid #7C3AED30" }}>
+            <p style={{ margin: 0, fontSize: 12, color: "#7C3AED", lineHeight: 1.6, fontWeight: 500 }}>
+              Mode vegan activé — les repas seront adaptés. Assure un apport suffisant en B12, fer, calcium, vitamine D, zinc et oméga-3.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Semaines cibles */}
+      <div style={{ marginBottom: 22 }}>
+        <label style={lbl}>Horizon de progression (semaines)</label>
+        <p style={{ fontSize: 12, color: C.muted, margin: "0 0 10px", lineHeight: 1.5 }}>
+          Optionnel. L'app valide si ta date cible est réaliste selon ton objectif.
+        </p>
+        <input
+          type="number" value={targetWeeks} min={4} max={104}
+          onChange={e => setTargetWeeks(e.target.value)}
+          placeholder="Ex : 16 semaines"
+          style={settingsInp}
+        />
+        {targetWeeks > 0 && goalType !== "maintenance" && (
+          <div style={{ background: C.surfaceAlt, borderRadius: 12, padding: "10px 14px", marginTop: 8 }}>
+            <p style={{ margin: 0, fontSize: 12, color: C.muted }}>
+              Horizon enregistré : <strong style={{ color: C.black }}>{targetWeeks} semaines</strong>
+              {" "}· La validation s'affiche dans le suivi nutrition.
+            </p>
+          </div>
+        )}
       </div>
     </SubLayout>
   );
@@ -3287,15 +3345,19 @@ export default function App() {
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
                         {Object.entries(GOAL_CONFIG).map(([key, cfg]) => (
                           <button key={key} onClick={() => saveNG({ ...nutritionGoals, goalType: key })}
-                            style={{ padding: "7px 14px", borderRadius: 20, border: `2px solid ${nutritionGoals.goalType === key ? cfg.color : C.border}`, background: nutritionGoals.goalType === key ? `${cfg.color}18` : C.surfaceAlt, color: nutritionGoals.goalType === key ? cfg.color : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                            {cfg.emoji} {cfg.label}
+                            style={{ padding: "7px 14px", borderRadius: 20, border: `2px solid ${nutritionGoals.goalType === key ? cfg.color : C.border}`, background: nutritionGoals.goalType === key ? `${cfg.color}18` : C.surfaceAlt, color: nutritionGoals.goalType === key ? cfg.color : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                            <Icon name={cfg.icon} size={13} color={nutritionGoals.goalType === key ? cfg.color : C.muted} />
+                            {cfg.label}
                           </button>
                         ))}
                       </div>
 
                       {/* Message scientifique rotatif */}
                       <div style={{ background: `${activeGoalColor}10`, border: `1.5px solid ${activeGoalColor}28`, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
-                        <p style={{ fontSize: 12, color: activeGoalColor, fontWeight: 700, margin: "0 0 4px" }}>{GOAL_CONFIG[nutritionGoals.goalType]?.emoji} {activeGoalLabel}</p>
+                        <p style={{ fontSize: 12, color: activeGoalColor, fontWeight: 700, margin: "0 0 4px", display: "flex", alignItems: "center", gap: 5 }}>
+                          <Icon name={GOAL_CONFIG[nutritionGoals.goalType]?.icon || "heart"} size={13} color={activeGoalColor} />
+                          {activeGoalLabel}
+                        </p>
                         <p style={{ fontSize: 12, color: C.muted, margin: 0, lineHeight: 1.55 }}>{goalMsg}</p>
                         <p style={{ fontSize: 11, color: `${activeGoalColor}aa`, margin: "4px 0 0", fontWeight: 600 }}>{GOAL_CONFIG[nutritionGoals.goalType]?.tagline}</p>
                       </div>
@@ -3344,8 +3406,9 @@ export default function App() {
                       {scienceMacros && currentWeight ? (
                         <div style={{ background: `${activeGoalColor}12`, border: `1.5px solid ${activeGoalColor}30`, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                            <p style={{ fontSize: 12, color: activeGoalColor, fontWeight: 700, margin: 0 }}>
-                              ⚗️ {currentWeight}kg · {ACTIVITY_LEVELS[activeActivity]?.label}{nutritionGoals.sex === "female" ? " · Femme" : nutritionGoals.sex === "male" ? " · Homme" : ""}
+                            <p style={{ fontSize: 12, color: activeGoalColor, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 5 }}>
+                              <Icon name="user" size={12} color={activeGoalColor} />
+                              {currentWeight}kg · {ACTIVITY_LEVELS[activeActivity]?.label}{nutritionGoals.sex === "female" ? " · Femme" : nutritionGoals.sex === "male" ? " · Homme" : ""}
                             </p>
                             <button onClick={() => saveNG({ ...nutritionGoals, calTarget: scienceMacros.calTarget, protTarget: scienceMacros.protTarget, fatTarget: scienceMacros.fatTarget, carbsTarget: scienceMacros.carbsTarget })}
                               style={{ background: activeGoalColor, color: "#fff", border: "none", borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>Appliquer</button>
@@ -3359,7 +3422,7 @@ export default function App() {
                         </div>
                       ) : (
                         <div style={{ background: C.surfaceAlt, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
-                          <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>💡 Entre ton poids dans <strong>Corps</strong> et complète ton profil pour des calculs TDEE personnalisés.</p>
+                          <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>Entre ton poids dans <strong>Corps</strong> et complète ton profil pour des calculs TDEE personnalisés.</p>
                         </div>
                       )}
 
@@ -3368,9 +3431,41 @@ export default function App() {
                         const progressText = formatProgress(progressEst, nutritionGoals.goalType);
                         if (!progressText) return null;
                         return (
-                          <div style={{ background: `${activeGoalColor}08`, border: `1px solid ${activeGoalColor}20`, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
-                            <p style={{ fontSize: 11, color: activeGoalColor, fontWeight: 700, margin: "0 0 3px" }}>📊 Estimation personnalisée</p>
+                          <div style={{ background: `${activeGoalColor}08`, border: `1px solid ${activeGoalColor}20`, borderRadius: 12, padding: "10px 14px", marginBottom: 10 }}>
+                            <p style={{ fontSize: 11, color: activeGoalColor, fontWeight: 700, margin: "0 0 3px", display: "flex", alignItems: "center", gap: 5 }}>
+                              <Icon name="chart" size={11} color={activeGoalColor} /> Estimation personnalisée
+                            </p>
                             <p style={{ fontSize: 11, color: C.muted, margin: 0, lineHeight: 1.6 }}>{progressText}</p>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Validation de la date cible */}
+                      {(() => {
+                        const tw = nutritionGoals.targetWeeks;
+                        const wt = today.body?.weightTarget || nutritionGoals.weightTarget;
+                        if (!tw || !wt || !currentWeight) return null;
+                        const v = validateDateTarget(currentWeight, wt, nutritionGoals.goalType, tw);
+                        if (!v) return null;
+                        return (
+                          <div style={{ background: `${v.color}10`, border: `1.5px solid ${v.color}35`, borderRadius: 12, padding: "12px 14px", marginBottom: 14 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                              <div style={{ width: 28, height: 28, borderRadius: 8, background: `${v.color}20`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <Icon name={v.zone === "not_recommended" ? "warning" : v.zone === "aggressive" ? "zap" : "shield"} size={14} color={v.color} />
+                              </div>
+                              <span style={{ fontSize: 12, fontWeight: 800, color: v.color }}>{v.label}</span>
+                              <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: v.color, background: `${v.color}18`, padding: "2px 8px", borderRadius: 10 }}>
+                                {v.weeklyRatePct}%/sem
+                              </span>
+                            </div>
+                            <p style={{ fontSize: 12, color: C.text, margin: "0 0 4px", lineHeight: 1.5 }}>{v.message}</p>
+                            {v.tip && <p style={{ fontSize: 11, color: C.muted, margin: 0, lineHeight: 1.5, fontStyle: "italic" }}>{v.tip}</p>}
+                            <p style={{ fontSize: 11, color: C.muted, margin: "6px 0 0" }}>
+                              Horizon choisi : <strong style={{ color: C.text }}>{tw} semaines</strong>
+                              {v.earliestWeeks && v.zone !== "standard" && v.zone !== "conservative" && (
+                                <> · Minimum recommandé : <strong style={{ color: v.color }}>{v.earliestWeeks} semaines</strong></>
+                              )}
+                            </p>
                           </div>
                         );
                       })()}
