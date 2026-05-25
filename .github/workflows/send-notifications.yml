@@ -1,0 +1,24 @@
+name: Send Push Notifications
+
+on:
+  schedule:
+    # Toutes les 15 minutes — GitHub Actions est gratuit et précis
+    - cron: '0,15,30,45 * * * *'
+  workflow_dispatch:   # permet de déclencher manuellement pour tester
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Trigger notification worker
+        run: |
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.VERCEL_APP_URL }}/api/send-notifications" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            --max-time 30)
+          echo "HTTP status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Warning: unexpected status $HTTP_STATUS"
+            exit 1
+          fi

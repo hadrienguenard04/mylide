@@ -12,9 +12,9 @@ import {
   inferActivityLevel, getWeeklySportFreq, getGoalMessage,
 } from "./nutritionScience.js";
 
-const VAPID_PUBLIC_KEY = "BHfX8lG2QQGuaE8AW9qOykb2GZaxtzONoy7k3feJBGzf-Dyrx4h2qUk4xt9FQyo8H1Cr1EuemZLucqdd0iEt7M4";
+const VAPID_PUBLIC_KEY = "BD1163GBvUcRa73jWQncoH1awx662axyd7RCZ7FQlyha-mmYsEdCu--kB9yl__7cJ6VpZb0MzzD9qTuGWp1djxo";
 
-async function registerPush(notifPrefs, wakeTime = "07:00", sleepTime = "23:00") {
+async function registerPush(notifPrefs, wakeTime = "07:00", sleepTime = "23:00", notifV2 = null) {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
   try {
     const reg = await navigator.serviceWorker.register("/sw.js");
@@ -28,12 +28,18 @@ async function registerPush(notifPrefs, wakeTime = "07:00", sleepTime = "23:00")
     });
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    // Détection automatique du fuseau horaire de l'appareil
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Paris";
+    // Lire le notifV2 depuis localStorage si non fourni
+    const v2 = notifV2 || (() => { try { return JSON.parse(localStorage.getItem("notifV2")); } catch { return null; } })();
     await supabase.from("push_subscriptions").upsert({
       user_id: user.id,
       subscription: sub.toJSON(),
       notif_prefs: notifPrefs,
+      notif_v2: v2,
       wake_time: wakeTime,
       sleep_time: sleepTime,
+      timezone,
     }, { onConflict: "user_id" });
   } catch (e) { console.warn("Push registration failed", e); }
 }
@@ -1060,7 +1066,7 @@ const SubPageNotif = ({ onBack }) => {
     localStorage.setItem("notif", JSON.stringify(legacy));
     localStorage.setItem("wakeTime", newCfg.wakeTime);
     localStorage.setItem("sleepTime", newCfg.sleepTime);
-    registerPush(legacy, newCfg.wakeTime, newCfg.sleepTime);
+    registerPush(legacy, newCfg.wakeTime, newCfg.sleepTime, newCfg);
   };
   const toggleType = (key) => persist({ ...cfg, [key]: { ...cfg[key], on: !cfg[key].on } });
   const updateType = (key, field, val) => persist({ ...cfg, [key]: { ...cfg[key], [field]: val } });
