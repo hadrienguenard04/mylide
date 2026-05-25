@@ -1198,6 +1198,32 @@ const SubPageNotif = ({ onBack }) => {
         })}
       </div>
 
+      {/* Bouton de test */}
+      {(() => {
+        const [testState, setTestState] = useState("idle"); // idle | sending | ok | error
+        const sendTest = async () => {
+          setTestState("sending");
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) { setTestState("error"); return; }
+            const r = await fetch("/api/test-notification", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+            setTestState(r.ok ? "ok" : "error");
+            if (r.ok) setTimeout(() => setTestState("idle"), 4000);
+          } catch { setTestState("error"); }
+        };
+        const label = { idle: "Envoyer une notification test", sending: "Envoi…", ok: "✓ Notification envoyée !", error: "Erreur — vérifie les permissions" };
+        const bg = { idle: C.surfaceAlt, sending: C.surfaceAlt, ok: "#1A7A4A", error: C.red };
+        const col = { idle: C.text, sending: C.muted, ok: "#fff", error: "#fff" };
+        return (
+          <button onClick={testState === "idle" ? sendTest : undefined} disabled={testState === "sending"} style={{ width: "100%", padding: "14px", background: bg[testState], border: `1.5px solid ${testState === "idle" ? C.border : "transparent"}`, borderRadius: 16, fontWeight: 700, fontSize: 14, color: col[testState], cursor: testState === "idle" ? "pointer" : "default", transition: "all 0.3s", fontFamily: "inherit" }}>
+            {label[testState]}
+          </button>
+        );
+      })()}
+
       {/* Mode silencieux */}
       <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "0 16px" }}>
         <div style={{ display: "flex", alignItems: "center", padding: "13px 0", gap: 12 }}>
