@@ -1527,18 +1527,22 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
   if (sub === "privacy") return <SubPageLegal onBack={() => setSub(null)} title="Politique de confidentialité" sections={PRIVACY_SECTIONS} />;
 
   const planLabels = { free: "Gratuit", starter: "Starter", pro: "Pro", premium: "Premium" };
-  const planDesc = { free: "1 mois gratuit · à partir de 3,99€/mois", starter: "Plan Starter actif · 3,99€/mois", pro: "Plan Pro actif · 6,99€/mois", premium: "Plan Premium actif · 12,99€/mois" };
+  // Subtitle shown in the subscription banner — plan-aware
+  const planBannerTitle = isAtLeast(userPlan, "pro")
+    ? `Membre ${planLabels[userPlan] || "Pro"} actif`
+    : userPlan === "starter" ? "Passer Pro ou Premium"
+    : "Passer Premium";
+  const planBannerSub = isAtLeast(userPlan, "pro")
+    ? { pro: "Plan Pro actif · 6,99€/mois", premium: "Plan Premium actif · 12,99€/mois" }[userPlan] || "Gérer mon abonnement"
+    : userPlan === "starter" ? "Déjà Starter · upgrade dès 6,99€/mois"
+    : "7 jours gratuits · à partir de 3,99€/mois";
 
   const SubscriptionBlock = () => (
     <Sec title={tr("sec_subscription")}>
-      <div onClick={() => { onClose(); setTimeout(() => setShowSubscription(true), 120); }} style={{ background: "linear-gradient(135deg, #CC2936, #8B1A22)", borderRadius: 14, padding: "16px 18px", cursor: "pointer", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 8px 24px rgba(204,41,54,0.25)" }}>
+      <div onClick={() => { onClose(); setTimeout(() => setShowSubscription(true), 120); }} style={{ background: isAtLeast(userPlan, "pro") ? "linear-gradient(135deg, #1a1a2e, #16213e)" : "linear-gradient(135deg, #CC2936, #8B1A22)", borderRadius: 14, padding: "16px 18px", cursor: "pointer", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: isAtLeast(userPlan, "pro") ? "0 8px 24px rgba(0,0,0,0.25)" : "0 8px 24px rgba(204,41,54,0.25)" }}>
         <div>
-          <p style={{ color: "#fff", fontWeight: 900, fontSize: 16, margin: "0 0 2px" }}>
-            {isPro ? `Membre ${planLabels[userPlan] || "Pro"} actif` : "Passer Premium"}
-          </p>
-          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, margin: 0 }}>
-            {planDesc[userPlan] || planDesc.free}
-          </p>
+          <p style={{ color: "#fff", fontWeight: 900, fontSize: 16, margin: "0 0 2px" }}>{planBannerTitle}</p>
+          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, margin: 0 }}>{planBannerSub}</p>
         </div>
         <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 22 }}>›</span>
       </div>
@@ -3244,7 +3248,7 @@ export default function App() {
               </div>
               <div>
                 <p style={{ margin: 0, fontWeight: 800, color: "#fff", fontSize: 15 }}>7 jours gratuits · 0€ aujourd'hui</p>
-                <p style={{ margin: "2px 0 0", color: "rgba(255,255,255,0.85)", fontSize: 12 }}>Puis à partir de 3,99€/mois · Résiliable à tout moment</p>
+                <p style={{ margin: "2px 0 0", color: "rgba(255,255,255,0.85)", fontSize: 12 }}>Puis à partir de 3,99€/mois · sans engagement</p>
               </div>
             </div>
             <button onClick={() => { setShowProPopup(false); localStorage.setItem("proPopupSeen", "1"); setShowSubscription(true); }} style={{ width: "100%", padding: "15px", background: "linear-gradient(135deg, #CC2936, #8B1A22)", color: "#fff", border: "none", borderRadius: 14, fontWeight: 800, fontSize: 16, cursor: "pointer", boxShadow: "0 6px 20px rgba(204,41,54,0.3)", marginBottom: 10 }}>
@@ -4587,17 +4591,31 @@ export default function App() {
                 <input value={profile.vision || ""} onChange={e => updateProfile("vision", e.target.value)} placeholder="Ta vision personnelle..." style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 12, padding: "12px 16px", color: "#fff", fontSize: 16, width: "100%", boxSizing: "border-box", fontFamily: "inherit", outline: "none" }} />
               </Card>
               <Card>
-                <div onClick={() => setShowSubscription(true)} style={{ background: isPro ? "linear-gradient(135deg, #1a1a2e, #16213e)" : "linear-gradient(135deg, #CC2936, #8B1A22)", borderRadius: 16, padding: "18px 20px", marginBottom: 14, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: isPro ? "0 10px 32px rgba(0,0,0,0.2)" : "0 10px 32px rgba(204,41,54,0.35)" }}>
-                  <div>
-                    <p style={{ color: "#fff", fontWeight: 900, fontSize: 17, margin: "0 0 3px", letterSpacing: -0.2 }}>
-                      {isPro ? `Membre ${userPlan === "premium" ? "Premium" : userPlan === "starter" ? "Starter" : "Pro"} actif` : "Passer Premium"}
-                    </p>
-                    <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 13, margin: 0 }}>
-                      {isPro ? "Gérer mon abonnement →" : "1 mois gratuit · à partir de 3,99€/mois ensuite"}
-                    </p>
-                  </div>
-                  <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 20 }}>→</span>
-                </div>
+                {(() => {
+                  const bTitle = isAtLeast(userPlan, "pro")
+                    ? `Membre ${userPlan === "premium" ? "Premium" : "Pro"} actif`
+                    : userPlan === "starter" ? "Passer Pro ou Premium"
+                    : "Passer Premium";
+                  const bSub = isAtLeast(userPlan, "pro")
+                    ? "Gérer mon abonnement →"
+                    : userPlan === "starter" ? "Déjà Starter · upgrade dès 6,99€/mois"
+                    : "7 jours gratuits · à partir de 3,99€/mois";
+                  const bBg = isAtLeast(userPlan, "pro")
+                    ? "linear-gradient(135deg, #1a1a2e, #16213e)"
+                    : "linear-gradient(135deg, #CC2936, #8B1A22)";
+                  const bShadow = isAtLeast(userPlan, "pro")
+                    ? "0 10px 32px rgba(0,0,0,0.2)"
+                    : "0 10px 32px rgba(204,41,54,0.35)";
+                  return (
+                    <div onClick={() => setShowSubscription(true)} style={{ background: bBg, borderRadius: 16, padding: "18px 20px", marginBottom: 14, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: bShadow }}>
+                      <div>
+                        <p style={{ color: "#fff", fontWeight: 900, fontSize: 17, margin: "0 0 3px", letterSpacing: -0.2 }}>{bTitle}</p>
+                        <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 13, margin: 0 }}>{bSub}</p>
+                      </div>
+                      <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 20 }}>→</span>
+                    </div>
+                  );
+                })()}
                 <ST>Parametres</ST>
                 <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                   {[{ value: "light", icon: "zap", label: "Clair" }, { value: "dark", icon: "bell", label: "Sombre" }].map(opt => {
