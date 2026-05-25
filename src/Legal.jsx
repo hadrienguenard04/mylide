@@ -44,7 +44,7 @@ Vous vous engagez a ne pas :
 - Transmettre des contenus malveillants ou inappropries
 
 6. ABONNEMENTS ET PAIEMENTS
-Les abonnements sont proposes en trois formules (Starter, Pro, Premium). Chaque abonnement inclut une periode d'essai gratuit de 30 jours. Apres la periode d'essai, l'abonnement se renouvelle automatiquement selon la periodicite choisie. La resiliation peut etre effectuee a tout moment depuis les parametres de l'application.
+Les abonnements sont proposes en trois formules (Starter, Pro, Premium). Chaque abonnement inclut une periode d'essai gratuit de 7 jours. Apres la periode d'essai, l'abonnement se renouvelle automatiquement selon la periodicite choisie. La resiliation peut etre effectuee a tout moment depuis les parametres de l'application.
 
 7. PROPRIETE INTELLECTUELLE
 MYLIDE et tous ses contenus (design, algorithmes, textes, logos) sont proteges par les droits de propriete intellectuelle. Toute reproduction sans autorisation est interdite.
@@ -161,7 +161,7 @@ contact@mylide.app`,
 L'abonnement MYLIDE se renouvelle automatiquement a la fin de chaque periode de facturation (mensuelle). Vous serez preleve du montant de l'abonnement choisi, sauf resiliation.
 
 PERIODE D'ESSAI GRATUIT
-Chaque plan beneficie d'un essai gratuit de 30 jours. Un moyen de paiement valide est requis pour demarrer l'essai. Aucun prelevement n'est effectue pendant la periode d'essai. Si vous resiliez avant la fin de l'essai, vous ne serez pas preleve.
+Chaque plan beneficie d'un essai gratuit de 7 jours. Un moyen de paiement valide est requis pour demarrer l'essai. Aucun prelevement n'est effectue pendant la periode d'essai. Si vous resiliez avant la fin de l'essai, vous ne serez pas preleve.
 
 RESILIATION
 Vous pouvez resilier votre abonnement a tout moment :

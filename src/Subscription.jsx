@@ -97,7 +97,7 @@ function PlanCard({ plan, onSubscribe, loading, currentPlan, compact = false }) 
           <>
             <div style={{ fontSize: 11, color: C.muted, textDecoration: "line-through", marginBottom: 1 }}>{plan.price}€/mois</div>
             <div style={{ fontSize: 20, fontWeight: 900, color: isRec ? col : C.text, lineHeight: 1 }}>0€</div>
-            <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>1er mois gratuit</div>
+            <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>7 jours gratuits</div>
           </>
         ) : (
           <>
@@ -660,10 +660,10 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
               </div>
               <div>
                 <p style={{ margin: 0, fontWeight: 800, color: "#fff", fontSize: 14 }}>
-                  1 mois gratuit sur tous les plans
+                  7 jours gratuits sur tous les plans
                 </p>
                 <p style={{ margin: "2px 0 0", color: "rgba(255,255,255,0.82)", fontSize: 12 }}>
-                  Carte requise · Aucun debit pendant 30 jours · Resiliable a tout moment
+                  Carte requise · Aucun debit pendant 7 jours · Resiliable a tout moment
                 </p>
               </div>
             </div>

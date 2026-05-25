@@ -103,7 +103,7 @@ module.exports = async function handler(req, res) {
           } catch (e) {
             console.warn("Could not retrieve subscription for trial_end:", e.message);
             // Fallback : calcul local
-            trialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+            trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
           }
         }
 

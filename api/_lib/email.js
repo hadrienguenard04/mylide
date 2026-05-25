@@ -106,7 +106,7 @@ function emailWelcome({ name, planName, trialEnd }) {
     </h2>
     <p style="margin: 0 0 20px; color: #6B6B6B; font-size: 14px; line-height: 1.65;">
       Salut ${name || "là"},<br><br>
-      Ton essai gratuit de 30 jours est maintenant actif. Toutes les fonctionnalités premium sont débloquées.
+      Ton essai gratuit de 7 jours est maintenant actif. Toutes les fonctionnalités premium sont débloquées.
       ${dateStr ? `<br><br><strong>Ton essai se termine le ${dateStr}.</strong> Tu peux résilier à tout moment avant cette date sans être débité.` : ""}
     </p>
     <div style="background: #F8F8F6; border-radius: 14px; padding: 18px 20px; margin-bottom: 24px;">

@@ -1,5 +1,5 @@
 // api/create-checkout.js — Vercel Serverless Function
-// Crée une session Stripe Checkout avec 30 jours d'essai gratuit.
+// Crée une session Stripe Checkout avec 7 jours d'essai gratuit.
 // Requiert un JWT Supabase valide dans le header Authorization.
 
 const Stripe = require("stripe");
@@ -51,14 +51,14 @@ module.exports = async function handler(req, res) {
         .eq("id", userId);
     }
 
-    // Créer la session Checkout avec 30 jours d'essai
+    // Créer la session Checkout avec 7 jours d'essai
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
       subscription_data: {
-        trial_period_days: 30,
+        trial_period_days: 7,
         metadata: { userId, plan },
       },
       success_url: `${appUrl}?payment=success&plan=${plan}`,
