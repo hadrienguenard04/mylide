@@ -296,7 +296,7 @@ export function detectContradictions({
     }
     if (goalType === "seche" && balance > 350) {
       alerts.push({
-        level: "info", icon: "🔥",
+        level: "info", icon: "📊",
         msg:   "Ton apport est au-dessus de tes dépenses totales aujourd'hui.",
         tip:   "La recomposition fonctionne mieux avec un léger déficit de 150 à 300 kcal. Ça reste très proche de la maintenance.",
       });

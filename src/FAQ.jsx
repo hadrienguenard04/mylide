@@ -192,7 +192,7 @@ const FAQ_ITEMS = [
   {
     id: 37, cat: "sport",
     q: "MYLIDE peut-il suivre ma fréquence cardiaque ?",
-    a: "Actuellement, tu peux saisir manuellement ta fréquence cardiaque au repos dans la section Corps. La synchronisation automatique avec les montres connectées (Apple Watch, Garmin) est en cours de développement.",
+    a: "Oui, tu peux saisir manuellement ta fréquence cardiaque au repos et pendant le sport dans la section Corps. Tu peux aussi connecter Garmin, Strava ou Fitbit depuis les paramètres pour importer tes données automatiquement.",
   },
   {
     id: 38, cat: "sport",
@@ -320,8 +320,8 @@ const FAQ_ITEMS = [
   },
   {
     id: 62, cat: "corps",
-    q: "La synchronisation Apple Watch sera-t-elle disponible ?",
-    a: "Oui, la synchronisation avec Apple Watch et Apple Health est prévue dans les prochaines versions. Elle permettra d'importer automatiquement fréquence cardiaque, étapes, séances sportives et données de sommeil.",
+    q: "Quelles applications puis-je connecter à MYLIDE ?",
+    a: "MYLIDE est compatible avec Garmin, Fitbit, Oura Ring et Strava. Tu peux activer la synchronisation depuis Paramètres > Appareils connectés. MYLIDE étant une Progressive Web App, les intégrations natives iOS (Apple Health) ne sont pas disponibles.",
   },
 
   // ── MENTAL (8) ────────────────────────────────────────────────────────────

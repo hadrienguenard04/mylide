@@ -950,7 +950,7 @@ const SubPageBody = ({ onBack, nutritionGoals, setNutritionGoals }) => {
           ))}
           {!activityLevel && (
             <div style={{ padding: "10px 14px", borderRadius: 12, background: C.surfaceAlt, border: `1px solid ${C.border}` }}>
-              <p style={{ margin: 0, fontSize: 12, color: C.muted }}>Non renseigné — niveau auto-détecté depuis tes séances récentes</p>
+              <p style={{ margin: 0, fontSize: 12, color: C.muted }}>Non renseigné · niveau auto-détecté depuis tes séances récentes</p>
             </div>
           )}
         </div>
@@ -980,7 +980,7 @@ const SubPageBody = ({ onBack, nutritionGoals, setNutritionGoals }) => {
         {dietaryPref === "vegan" && (
           <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 12, background: "#7C3AED10", border: "1px solid #7C3AED30" }}>
             <p style={{ margin: 0, fontSize: 12, color: "#7C3AED", lineHeight: 1.6, fontWeight: 500 }}>
-              Mode vegan activé — les repas seront adaptés. Assure un apport suffisant en B12, fer, calcium, vitamine D, zinc et oméga-3.
+              Mode vegan activé · les repas seront adaptés. Assure un apport suffisant en B12, fer, calcium, vitamine D, zinc et oméga-3.
             </p>
           </div>
         )}
@@ -1373,7 +1373,7 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
   const [notif, setNotif] = useState(() => { try { return JSON.parse(localStorage.getItem("notif")) || { hydration: true, sleep: true, training: true, walk: false, motivation: true, daily: true, weekly: true, silentMode: false }; } catch { return { hydration: true, sleep: true, training: true, walk: false, motivation: true, daily: true, weekly: true, silentMode: false }; } });
   const [wakeTime, setWakeTime] = useState(() => localStorage.getItem("wakeTime") || "07:00");
   const [sleepTime, setSleepTime] = useState(() => localStorage.getItem("sleepTime") || "23:00");
-  const [connApps, setConnApps] = useState(() => { try { return JSON.parse(localStorage.getItem("connApps")) || { appleWatch: false, appleHealth: false, garmin: false, fitbit: false, oura: false, strava: false }; } catch { return { appleWatch: false, appleHealth: false, garmin: false, fitbit: false, oura: false, strava: false }; } });
+  const [connApps, setConnApps] = useState(() => { try { return JSON.parse(localStorage.getItem("connApps")) || { garmin: false, fitbit: false, oura: false, strava: false }; } catch { return { garmin: false, fitbit: false, oura: false, strava: false }; } });
   const [aiPref, setAiPref] = useState(() => { try { return JSON.parse(localStorage.getItem("aiPref")) || { coach: true, autoAnalysis: true, healthSummary: true, predictive: false }; } catch { return { coach: true, autoAnalysis: true, healthSummary: true, predictive: false }; } });
   const [appPref, setAppPref] = useState(() => { try { return JSON.parse(localStorage.getItem("appPref")) || { textSize: "normal", animations: true, compact: false }; } catch { return { textSize: "normal", animations: true, compact: false }; } });
 
@@ -1505,8 +1505,6 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
 
         <Sec title={tr("sec_devices")}>
           {[
-            { k: "appleWatch", icon: <Icon name="heart" size={17} color={C.muted} strokeWidth={1.8}/>, label: "Apple Watch", sub: "Fréquence cardiaque, activité" },
-            { k: "appleHealth", icon: <Icon name="shield" size={17} color={C.muted} strokeWidth={1.8}/>, label: "Apple Health", sub: "Données santé iOS" },
             { k: "garmin", icon: <Icon name="zap" size={17} color={C.muted} strokeWidth={1.8}/>, label: "Garmin", sub: "GPS & performance sport" },
             { k: "fitbit", icon: <Icon name="chart" size={17} color={C.muted} strokeWidth={1.8}/>, label: "Fitbit", sub: "Bracelet fitness" },
             { k: "oura", icon: <Icon name="star" size={17} color={C.muted} strokeWidth={1.8}/>, label: "Oura Ring", sub: "Sommeil & récupération" },
@@ -1583,7 +1581,7 @@ const ScoreRing = ({ score, delta, streak }) => {
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <span style={{ fontSize: 20, fontWeight: 900, color: col, lineHeight: 1 }}>{score}</span>
-        {streak > 0 && <span style={{ fontSize: 9, color: C.orange, fontWeight: 700, marginTop: 1 }}>🔥{streak}j</span>}
+        {streak > 0 && <span style={{ fontSize: 9, color: C.orange, fontWeight: 700, marginTop: 1 }}>{streak}j</span>}
       </div>
     </div>
   );
@@ -3488,8 +3486,17 @@ export default function App() {
                     <Card>
                       <ST>{tr("sport_photo")}</ST>
                       <input type="file" accept="image/*" ref={sportPhotoRef} style={{ display: "none" }} onChange={handleSportPhoto} />
-                      <button onClick={() => sportPhotoRef.current.click()} style={{ width: "100%", padding: 16, background: C.surfaceAlt, border: `2px dashed ${C.border}`, borderRadius: 14, cursor: "pointer", fontSize: 14, color: C.muted, fontWeight: 500 }}>{tr("sport_import_photo")}</button>
-                      {today.sport.photoUrl && <img src={today.sport.photoUrl} alt="prog" style={{ width: "100%", borderRadius: 14, marginTop: 12, objectFit: "cover", maxHeight: 240 }} />}
+                      {today.sport.photoUrl ? (
+                        <div>
+                          <img src={today.sport.photoUrl} alt="prog" style={{ width: "100%", borderRadius: 14, objectFit: "cover", maxHeight: 240, display: "block" }} />
+                          <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                            <button onClick={() => sportPhotoRef.current.click()} style={{ flex: 1, padding: "11px", background: C.surfaceAlt, border: `1.5px solid ${C.border}`, borderRadius: 12, cursor: "pointer", fontSize: 13, color: C.text, fontWeight: 600, fontFamily: "inherit" }}>Remplacer</button>
+                            <button onClick={() => update("sport", "photoUrl", null)} style={{ flex: 1, padding: "11px", background: `${C.red}15`, border: `1.5px solid ${C.red}30`, borderRadius: 12, cursor: "pointer", fontSize: 13, color: C.red, fontWeight: 600, fontFamily: "inherit" }}>Supprimer</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button onClick={() => sportPhotoRef.current.click()} style={{ width: "100%", padding: 16, background: C.surfaceAlt, border: `2px dashed ${C.border}`, borderRadius: 14, cursor: "pointer", fontSize: 14, color: C.muted, fontWeight: 500 }}>{tr("sport_import_photo")}</button>
+                      )}
                     </Card>
                   )}
                   <EvoChart data={sportH.slice(-30)} dataKey="sport.duration" color={C.red} label="Duree des seances" unit="min" />
@@ -3824,7 +3831,7 @@ export default function App() {
                       if (progressEst.recomp) return (
                         <div style={{ marginBottom: 14, background: `${col}12`, border: `1.5px solid ${col}28`, borderRadius: 14, padding: "12px 16px" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                            <span style={{ fontSize: 13, fontWeight: 800, color: col }}>🔥 Recomposition corporelle</span>
+                            <span style={{ fontSize: 13, fontWeight: 800, color: col }}>Recomposition corporelle</span>
                             <span style={{ fontSize: 13, fontWeight: 900, color: col }}>~{progressEst.minWeeks} à {progressEst.maxWeeks} sem.</span>
                           </div>
                           <p style={{ margin: 0, fontSize: 11, color: C.muted, lineHeight: 1.6 }}>📊 {progressEst.note}</p>
@@ -3875,7 +3882,7 @@ export default function App() {
                         )}
                       </div>
                     )}
-                    <p style={{ fontSize: 11, color: C.muted, margin: "10px 0 0", lineHeight: 1.5 }}>💡 Apple Watch : les données seront synchronisées automatiquement dans une future mise à jour.</p>
+                    <p style={{ fontSize: 11, color: C.muted, margin: "10px 0 0", lineHeight: 1.5 }}>💡 Connecte une app partenaire (Garmin, Strava…) depuis les paramètres pour importer tes données automatiquement.</p>
                   </Card>
                 </div>
               )}
@@ -4046,7 +4053,7 @@ export default function App() {
                       style={inp}
                     />
                   </div>
-                  <button onClick={addPoche} style={{ width: "100%", padding: "13px", background: C.black, color: "#fff", border: "none", borderRadius: 14, fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Ajouter une poche</button>
+                  <button onClick={addPoche} style={{ width: "100%", padding: "13px", background: C.red, color: "#fff", border: "none", borderRadius: 14, fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Ajouter une poche</button>
                 </div>
               </Card>
               <Card>
@@ -4129,7 +4136,7 @@ export default function App() {
                     <Field label="Debut"><input type="date" value={newGoal.startDate} onChange={e => setNewGoal(p => ({ ...p, startDate: e.target.value }))} style={inp} /></Field>
                     <Field label="Fin"><input type="date" value={newGoal.endDate} onChange={e => setNewGoal(p => ({ ...p, endDate: e.target.value }))} style={inp} /></Field>
                   </div>
-                  <button onClick={addGoal} style={{ background: C.black, color: "#fff", border: "none", borderRadius: 14, padding: "15px", fontWeight: 800, cursor: "pointer", fontSize: 15 }}>+ Ajouter l'objectif</button>
+                  <button onClick={addGoal} style={{ background: C.red, color: "#fff", border: "none", borderRadius: 14, padding: "15px", fontWeight: 800, cursor: "pointer", fontSize: 15, width: "100%" }}>+ Ajouter l'objectif</button>
                 </div>
               </Card>
               {computedGoals.map((g, idx) => {
@@ -4195,7 +4202,7 @@ export default function App() {
                     { label: "Score moyen", value: `${intel.scoreAvg}/100`, color: C.orange },
                     { label: "Sommeil moyen", value: avgSleepVal ? `${avgSleepVal}h` : "-", color: C.purple },
                     { label: "Seances sport", value: sportSessions, color: C.red },
-                    { label: "Streak actuel", value: `${streak}j 🔥`, color: C.orange },
+                    { label: "Streak actuel", value: `${streak}j`, color: C.orange },
                     { label: "Évolution poids", value: weightDeltaNum !== null ? (weightDeltaNum > 0 ? `+${weightDelta}kg` : `${weightDelta}kg`) : "-", color: weightDeltaNum > 0 ? C.green : weightDeltaNum < 0 ? C.orange : C.muted },
                   ];
                 })().map(item => (
@@ -4277,7 +4284,7 @@ export default function App() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   {[
                     { label: "Jours trackes", value: history.length },
-                    { label: "Streak", value: `${streak}j 🔥` },
+                    { label: "Streak", value: `${streak}j` },
                     { label: "Score moyen", value: `${intel.scoreAvg}/100` },
                     { label: "Objectifs", value: goals.length },
                     { label: "Patrimoine", value: `${(totalPatrimoine/1000).toFixed(1)}k€` },
