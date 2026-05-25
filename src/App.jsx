@@ -39,7 +39,7 @@ async function registerPush(notifPrefs, wakeTime = "07:00", sleepTime = "23:00")
 }
 import Subscription from "./Subscription";
 import { useTheme, useC } from "./theme.jsx";
-import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
+import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, BarChart, Bar, Legend } from "recharts";
 import kojihLogo from "./assets/logo.png";
 
 // ── THEMES ────────────────────────────────────────────────────────────────
@@ -2326,6 +2326,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [patrimoine, setPatrimoine] = useState(defaultPatrimoine());
   const [newPoche, setNewPoche] = useState({ name: "", amount: 0, color: "#2563eb" });
+  const [flowPocket, setFlowPocket] = useState({ income: "", expense: "", invested: "" });
   const [statRange, setStatRange] = useState(() => localStorage.getItem("statRange") || "7");
   const [profile, setProfile] = useState({ name: "", dob: "", photo: "" });
   const [sim, setSim] = useState(() => { try { const s = JSON.parse(localStorage.getItem("simData")); return s && s.years ? s : { amount: 10000, monthly: 200, rate: 10, years: 10 }; } catch { return { amount: 10000, monthly: 200, rate: 10, years: 10 }; } });
@@ -2708,6 +2709,15 @@ export default function App() {
   };
   const addPoche = () => { if (!newPoche.name.trim()) return; const pocheLimit = isAtLeast(userPlan, "pro") ? 999 : isAtLeast(userPlan, "starter") ? 5 : 2; if (patrimoine.length >= pocheLimit) { setShowSubscription(true); return; } const p = [...patrimoine, { ...newPoche, id: Date.now(), amount: Number(newPoche.amount) }]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); setNewPoche({ name: "", amount: 0, color: "#2563eb" }); };
   const deletePoche = id => { const p = patrimoine.filter(p => p.id !== id); setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
+  const applyFlowToPocket = (type, amount, pocheIdStr) => {
+    if (!pocheIdStr || !amount) return;
+    const pocheId = Number(pocheIdStr);
+    const poche = patrimoine.find(p => p.id === pocheId);
+    if (!poche) return;
+    const delta = type === "expense" ? -amount : amount;
+    updatePoche(pocheId, "amount", Math.max(0, (poche.amount || 0) + delta));
+    setFlowPocket(fp => ({ ...fp, [type]: "" }));
+  };
   const movePoche = (idx, dir) => { const p = [...patrimoine]; const ni = idx + dir; if (ni < 0 || ni >= p.length) return; [p[idx], p[ni]] = [p[ni], p[idx]]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
   const updateProfile = (f, v) => { const pr = { ...profile, [f]: v }; setProfile(pr); saveAll(history, todos, goals, patrimoine, pr); };
   const handleProfilePhoto = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => updateProfile("photo", ev.target.result); r.readAsDataURL(f); };
@@ -4058,13 +4068,149 @@ export default function App() {
               </Card>
               <Card>
                 <ST>Flux du jour</ST>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                  <Field label="Revenus (€)"><input type="number" value={today.money.income || ""} min={0} onChange={e => update("money", "income", +e.target.value)} style={inp} /></Field>
-                  <Field label="Depenses (€)"><input type="number" value={today.money.expense || ""} min={0} onChange={e => update("money", "expense", +e.target.value)} style={inp} /></Field>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {/* Revenus */}
+                  <div>
+                    <Field label="Revenus (€)">
+                      <input type="number" value={today.money.income || ""} min={0} onChange={e => update("money", "income", +e.target.value)} style={inp} />
+                    </Field>
+                    {today.money.income > 0 && patrimoine.length > 0 && (
+                      <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
+                        <select value={flowPocket.income} onChange={e => setFlowPocket(fp => ({ ...fp, income: e.target.value }))} style={{ ...inp, flex: 1, color: flowPocket.income ? C.text : C.muted, marginBottom: 0 }}>
+                          <option value="">Ajouter à une poche…</option>
+                          {patrimoine.map(p => <option key={p.id} value={p.id}>{p.name} ({(p.amount || 0).toLocaleString("fr-FR")}€)</option>)}
+                        </select>
+                        {flowPocket.income && (
+                          <button onClick={() => applyFlowToPocket("income", today.money.income, flowPocket.income)} style={{ padding: "10px 14px", background: "#1A7A4A", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer", fontSize: 13, whiteSpace: "nowrap", fontFamily: "inherit" }}>+{today.money.income}€</button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* Dépenses */}
+                  <div>
+                    <Field label="Dépenses (€)">
+                      <input type="number" value={today.money.expense || ""} min={0} onChange={e => update("money", "expense", +e.target.value)} style={inp} />
+                    </Field>
+                    {today.money.expense > 0 && patrimoine.length > 0 && (
+                      <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
+                        <select value={flowPocket.expense} onChange={e => setFlowPocket(fp => ({ ...fp, expense: e.target.value }))} style={{ ...inp, flex: 1, color: flowPocket.expense ? C.text : C.muted, marginBottom: 0 }}>
+                          <option value="">Déduire d'une poche…</option>
+                          {patrimoine.map(p => <option key={p.id} value={p.id}>{p.name} ({(p.amount || 0).toLocaleString("fr-FR")}€)</option>)}
+                        </select>
+                        {flowPocket.expense && (
+                          <button onClick={() => applyFlowToPocket("expense", today.money.expense, flowPocket.expense)} style={{ padding: "10px 14px", background: C.red, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer", fontSize: 13, whiteSpace: "nowrap", fontFamily: "inherit" }}>-{today.money.expense}€</button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* Investi */}
+                  <div>
+                    <Field label="Investi (€)">
+                      <input type="number" value={today.money.invested || ""} min={0} onChange={e => update("money", "invested", +e.target.value)} style={inp} />
+                    </Field>
+                    {today.money.invested > 0 && patrimoine.length > 0 && (
+                      <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
+                        <select value={flowPocket.invested} onChange={e => setFlowPocket(fp => ({ ...fp, invested: e.target.value }))} style={{ ...inp, flex: 1, color: flowPocket.invested ? C.text : C.muted, marginBottom: 0 }}>
+                          <option value="">Affecter à une poche…</option>
+                          {patrimoine.map(p => <option key={p.id} value={p.id}>{p.name} ({(p.amount || 0).toLocaleString("fr-FR")}€)</option>)}
+                        </select>
+                        {flowPocket.invested && (
+                          <button onClick={() => applyFlowToPocket("invested", today.money.invested, flowPocket.invested)} style={{ padding: "10px 14px", background: C.purple, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer", fontSize: 13, whiteSpace: "nowrap", fontFamily: "inherit" }}>+{today.money.invested}€</button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <Field label="Note"><input type="text" placeholder="Ex: DCA ETF World..." value={today.money.note} onChange={e => update("money", "note", e.target.value)} style={inp} /></Field>
                 </div>
-                <Field label="Investi (€)"><input type="number" value={today.money.invested || ""} min={0} onChange={e => update("money", "invested", +e.target.value)} style={{ ...inp, marginBottom: 12 }} /></Field>
-                <Field label="Note"><input type="text" placeholder="Ex: DCA ETF World..." value={today.money.note} onChange={e => update("money", "note", e.target.value)} style={inp} /></Field>
               </Card>
+              {/* Graphiques financiers — Premium */}
+              {isAtLeast(userPlan, "premium") ? (() => {
+                const moneyDays = history.slice(-30).map(d => ({
+                  date: d.date ? d.date.slice(5).replace("-", "/") : "",
+                  Revenus: d.money?.income || 0,
+                  Dépenses: d.money?.expense || 0,
+                  Investi: d.money?.invested || 0,
+                })).filter(d => d.Revenus > 0 || d.Dépenses > 0 || d.Investi > 0);
+                let cumul = 0;
+                const patrimoineEvol = history.filter(d => d.money?.invested > 0).map(d => {
+                  cumul += d.money.invested;
+                  return { date: d.date ? d.date.slice(5).replace("-", "/") : "", Investi: cumul };
+                });
+                const totalIncome30 = history.slice(-30).reduce((a, d) => a + (d.money?.income || 0), 0);
+                const totalExpense30 = history.slice(-30).reduce((a, d) => a + (d.money?.expense || 0), 0);
+                const totalInvested30 = history.slice(-30).reduce((a, d) => a + (d.money?.invested || 0), 0);
+                return (
+                  <>
+                    <Card>
+                      <ST>Bilan 30 jours</ST>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
+                        <div style={{ background: `${C.green10}`, border: `1.5px solid ${C.green22}`, borderRadius: 12, padding: "12px 10px", textAlign: "center" }}>
+                          <div style={{ fontSize: 18, fontWeight: 900, color: "#1A7A4A" }}>+{totalIncome30.toLocaleString("fr-FR")}€</div>
+                          <div style={{ fontSize: 10, color: C.muted, marginTop: 3, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Revenus</div>
+                        </div>
+                        <div style={{ background: `${C.red12}`, border: `1.5px solid ${C.red22}`, borderRadius: 12, padding: "12px 10px", textAlign: "center" }}>
+                          <div style={{ fontSize: 18, fontWeight: 900, color: C.red }}>-{totalExpense30.toLocaleString("fr-FR")}€</div>
+                          <div style={{ fontSize: 10, color: C.muted, marginTop: 3, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Dépenses</div>
+                        </div>
+                        <div style={{ background: `${C.purple}18`, border: `1.5px solid ${C.purple}30`, borderRadius: 12, padding: "12px 10px", textAlign: "center" }}>
+                          <div style={{ fontSize: 18, fontWeight: 900, color: C.purple }}>{totalInvested30.toLocaleString("fr-FR")}€</div>
+                          <div style={{ fontSize: 10, color: C.muted, marginTop: 3, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Investi</div>
+                        </div>
+                      </div>
+                      {moneyDays.length > 1 ? (
+                        <ResponsiveContainer width="100%" height={160}>
+                          <BarChart data={moneyDays} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} barSize={6}>
+                            <CartesianGrid stroke={C.border} vertical={false} strokeDasharray="3 3" />
+                            <XAxis dataKey="date" tick={{ fill: C.muted, fontSize: 9 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                            <YAxis tick={{ fill: C.muted, fontSize: 9 }} width={36} tickFormatter={v => v >= 1000 ? `${Math.round(v/1000)}k` : v} axisLine={false} tickLine={false} />
+                            <Tooltip contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 12, color: C.text }} formatter={v => [`${v.toLocaleString("fr-FR")} €`]} />
+                            <Bar dataKey="Revenus" fill="#1A7A4A" radius={[3,3,0,0]} />
+                            <Bar dataKey="Dépenses" fill={C.red} radius={[3,3,0,0]} />
+                            <Bar dataKey="Investi" fill={C.purple} radius={[3,3,0,0]} />
+                            <Legend wrapperStyle={{ fontSize: 11, color: C.muted }} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <p style={{ textAlign: "center", fontSize: 13, color: C.muted, padding: "20px 0" }}>Enregistre quelques jours de flux pour voir le graphique.</p>
+                      )}
+                    </Card>
+                    {patrimoineEvol.length > 1 && (
+                      <Card>
+                        <ST>Évolution investissements</ST>
+                        <p style={{ fontSize: 12, color: C.muted, margin: "0 0 12px" }}>Cumul des montants investis depuis tes premières saisies.</p>
+                        <ResponsiveContainer width="100%" height={155}>
+                          <AreaChart data={patrimoineEvol} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="investGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={C.purple} stopOpacity={0.7}/>
+                                <stop offset="95%" stopColor={C.purple} stopOpacity={0.15}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid stroke={C.border} vertical={false} strokeDasharray="3 3" />
+                            <XAxis dataKey="date" tick={{ fill: C.muted, fontSize: 9 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                            <YAxis tick={{ fill: C.muted, fontSize: 9 }} width={42} tickFormatter={v => v >= 1000 ? `${Math.round(v/1000)}k€` : `${v}€`} axisLine={false} tickLine={false} />
+                            <Tooltip contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 12, color: C.text }} formatter={v => [`${v.toLocaleString("fr-FR")} €`, "Investi cumulé"]} />
+                            <Area type="monotone" dataKey="Investi" stroke={C.purple} strokeWidth={2} fill="url(#investGrad)" dot={false} />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </Card>
+                    )}
+                  </>
+                );
+              })() : (
+                <Card>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "6px 0" }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 14, background: `${C.purple}18`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Icon name="chart" size={22} color={C.purple} strokeWidth={1.8} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.text }}>Graphiques financiers</p>
+                      <p style={{ margin: "3px 0 0", fontSize: 12, color: C.muted }}>Revenus, dépenses, évolution · Premium</p>
+                    </div>
+                    <button onClick={() => setShowSubscription(true)} style={{ padding: "9px 14px", background: `linear-gradient(135deg, #6B35C8, #9333ea)`, color: "#fff", border: "none", borderRadius: 12, fontWeight: 700, cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Débloquer</button>
+                  </div>
+                </Card>
+              )}
               <Card>
                 <ST>Simulateur</ST>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
