@@ -1026,47 +1026,81 @@ const SubPagePhone = ({ onBack, profile, updateProfile }) => {
   );
 };
 
+const defaultNotifCfg = (v1 = {}) => ({
+  version: 2,
+  wakeTime:  localStorage.getItem("wakeTime")  || "07:00",
+  sleepTime: localStorage.getItem("sleepTime") || "23:00",
+  silentMode: v1.silentMode || false,
+  motivation: { on: v1.motivation !== false },
+  hydration:  { on: v1.hydration  !== false },
+  training:   { on: v1.training   !== false, time: "17:00", days: [1,2,3,4,5,6] },
+  walk:       { on: v1.walk       === true,  time: "12:30", days: [1,2,3,4,5,6,7] },
+  daily:      { on: v1.daily      !== false, time: "21:00" },
+  weekly:     { on: v1.weekly     !== false, time: "19:00", day: 0 },
+  sleep:      { on: v1.sleep      !== false },
+});
+
 const SubPageNotif = ({ onBack }) => {
   const C = useC();
-  const [notif, setNotif] = useState(() => { try { return JSON.parse(localStorage.getItem("notif")) || { hydration: true, sleep: true, training: true, walk: false, motivation: true, daily: true, weekly: true, silentMode: false }; } catch { return { hydration: true, sleep: true, training: true, walk: false, motivation: true, daily: true, weekly: true, silentMode: false }; } });
-  const [wakeTime, setWakeTime] = useState(() => localStorage.getItem("wakeTime") || "07:00");
-  const [sleepTime, setSleepTime] = useState(() => localStorage.getItem("sleepTime") || "23:00");
+  const [cfg, setCfg] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("notifV2"));
+      if (saved?.version === 2) return saved;
+      const v1 = JSON.parse(localStorage.getItem("notif") || "{}");
+      return defaultNotifCfg(v1);
+    } catch { return defaultNotifCfg(); }
+  });
+  const [expanded, setExpanded] = useState(null);
   const [confirmSilent, setConfirmSilent] = useState(false);
 
-  const upN = (k, v) => {
-    const n = { ...notif, [k]: v };
-    setNotif(n);
-    localStorage.setItem("notif", JSON.stringify(n));
-    const anyOn = Object.entries(n).some(([key, val]) => key !== "silentMode" && val);
-    if (anyOn) registerPush(n, wakeTime, sleepTime);
+  const persist = (newCfg) => {
+    setCfg(newCfg);
+    localStorage.setItem("notifV2", JSON.stringify(newCfg));
+    const legacy = { hydration: newCfg.hydration.on, sleep: newCfg.sleep.on, training: newCfg.training.on, walk: newCfg.walk.on, motivation: newCfg.motivation.on, daily: newCfg.daily.on, weekly: newCfg.weekly.on, silentMode: newCfg.silentMode };
+    localStorage.setItem("notif", JSON.stringify(legacy));
+    localStorage.setItem("wakeTime", newCfg.wakeTime);
+    localStorage.setItem("sleepTime", newCfg.sleepTime);
+    registerPush(legacy, newCfg.wakeTime, newCfg.sleepTime);
   };
-  const upTime = (type, val) => {
-    if (type === "wake") { setWakeTime(val); localStorage.setItem("wakeTime", val); registerPush(notif, val, sleepTime); }
-    else { setSleepTime(val); localStorage.setItem("sleepTime", val); registerPush(notif, wakeTime, val); }
+  const toggleType = (key) => persist({ ...cfg, [key]: { ...cfg[key], on: !cfg[key].on } });
+  const updateType = (key, field, val) => persist({ ...cfg, [key]: { ...cfg[key], [field]: val } });
+  const toggleDay = (key, day) => {
+    const days = cfg[key].days || [];
+    const nd = days.includes(day) ? days.filter(d => d !== day) : [...days, day].sort((a, b) => a - b);
+    if (nd.length === 0) return; // keep at least 1 day
+    updateType(key, "days", nd);
   };
-  const handleSilent = () => {
-    if (!notif.silentMode) setConfirmSilent(true);
-    else upN("silentMode", false);
-  };
+  const upGlobal = (field, val) => persist({ ...cfg, [field]: val });
   const confirmSilentMode = () => {
-    const n = { hydration: false, sleep: false, training: false, walk: false, motivation: false, daily: false, weekly: false, silentMode: true };
-    setNotif(n);
-    localStorage.setItem("notif", JSON.stringify(n));
+    persist({ ...cfg, motivation: { on: false }, hydration: { on: false }, training: { ...cfg.training, on: false }, walk: { ...cfg.walk, on: false }, daily: { ...cfg.daily, on: false }, weekly: { ...cfg.weekly, on: false }, sleep: { on: false }, silentMode: true });
     setConfirmSilent(false);
   };
 
+  const addMins = (time, mins) => {
+    const [h, m] = time.split(":").map(Number);
+    const t = ((h * 60 + m + mins) + 1440) % 1440;
+    return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+  };
+
   const Tog = ({ value, onChange }) => (
-    <div onClick={onChange} style={{ width: 44, height: 26, borderRadius: 13, background: value ? C.red : C.subtle, position: "relative", transition: "background 0.25s", cursor: "pointer", flexShrink: 0 }}>
+    <div onClick={e => { e.stopPropagation(); onChange(); }} style={{ width: 44, height: 26, borderRadius: 13, background: value ? C.red : C.subtle, position: "relative", transition: "background 0.25s", cursor: "pointer", flexShrink: 0 }}>
       <div style={{ position: "absolute", top: 3, left: value ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)", boxShadow: "0 2px 6px rgba(0,0,0,0.25)" }} />
     </div>
   );
-  const Row = ({ icon, label, desc, right, last }) => (
-    <div style={{ display: "flex", alignItems: "center", padding: "13px 0", borderBottom: last ? "none" : `1px solid ${C.border}`, gap: 12 }}>
-      <span style={{ fontSize: 18, width: 28, textAlign: "center", flexShrink: 0 }}>{icon}</span>
-      <div style={{ flex: 1 }}><p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.black }}>{label}</p>{desc && <p style={{ margin: "2px 0 0", fontSize: 12, color: C.muted }}>{desc}</p>}</div>
-      {right}
-    </div>
-  );
+
+  const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+  const DAY_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
+  const DAY_LABELS_FULL = ["Dim.", "Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam."];
+
+  const TYPES = [
+    { key: "motivation", icon: "⚡", label: "Motivation",         desc: `Envoyée à ${addMins(cfg.wakeTime, 30)} (réveil + 30min)`,        expandable: false },
+    { key: "hydration",  icon: "💧", label: "Hydratation",        desc: "Toutes les 2h30 pendant ta journée",                              expandable: false },
+    { key: "training",   icon: "🏋️", label: "Entraînement",       desc: `${cfg.training.time} · ${cfg.training.days?.length ?? 6}j/sem.`, expandable: true,  hasTime: true, hasDays: true },
+    { key: "walk",       icon: "👟", label: "Rappel marche",      desc: `${cfg.walk.time} · ${cfg.walk.days?.length ?? 7}j/sem.`,         expandable: true,  hasTime: true, hasDays: true },
+    { key: "daily",      icon: "📊", label: "Résumé quotidien",   desc: `${cfg.daily.time} · bilan du jour`,                              expandable: true,  hasTime: true },
+    { key: "weekly",     icon: "📅", label: "Résumé hebdo",       desc: `${DAY_LABELS_FULL[cfg.weekly.day ?? 0]} ${cfg.weekly.time}`,     expandable: true,  hasTime: true, hasWeekDay: true },
+    { key: "sleep",      icon: "🌙", label: "Rappel coucher",     desc: `Envoyé à ${addMins(cfg.sleepTime, -30)} (coucher − 30min)`,      expandable: false },
+  ];
 
   return (
     <SubLayout onBack={onBack} title="Notifications">
@@ -1076,35 +1110,98 @@ const SubPageNotif = ({ onBack }) => {
             <p style={{ fontSize: 17, fontWeight: 800, color: C.black, margin: "0 0 8px" }}>🔕 Mode silencieux</p>
             <p style={{ fontSize: 14, color: C.muted, margin: "0 0 20px", lineHeight: 1.5 }}>Toutes tes notifications vont être désactivées. Tu peux les réactiver à tout moment.</p>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setConfirmSilent(false)} style={{ flex: 1, padding: 14, borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surfaceAlt, color: C.muted, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Annuler</button>
-              <button onClick={confirmSilentMode} style={{ flex: 1, padding: 14, borderRadius: 12, border: "none", background: C.red, color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>Confirmer</button>
+              <button onClick={() => setConfirmSilent(false)} style={{ flex: 1, padding: 14, borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surfaceAlt, color: C.muted, fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>Annuler</button>
+              <button onClick={confirmSilentMode} style={{ flex: 1, padding: 14, borderRadius: 12, border: "none", background: C.red, color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>Confirmer</button>
             </div>
           </div>
         </div>
       )}
-      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "0 16px", marginBottom: 16 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: "14px 0" }}>
-          {[{ k: "wake", label: "🌅 Je me lève à", val: wakeTime }, { k: "sleep_t", label: "🌙 Je dors à", val: sleepTime }].map(({ k, label, val }) => (
+
+      {/* Horaires globaux */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "14px 16px", marginBottom: 14 }}>
+        <p style={{ margin: "0 0 12px", fontSize: 12, color: C.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8 }}>Tes horaires</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {[{ k: "wakeTime", label: "🌅 Réveil", val: cfg.wakeTime }, { k: "sleepTime", label: "🌙 Coucher", val: cfg.sleepTime }].map(({ k, label, val }) => (
             <div key={k}>
-              <p style={{ fontSize: 11, color: C.muted, fontWeight: 700, marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</p>
-              <input type="time" value={val} onChange={e => upTime(k === "wake" ? "wake" : "sleep", e.target.value)} style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", color: C.black, fontSize: 15, fontWeight: 700, width: "100%", boxSizing: "border-box", outline: "none", fontFamily: "inherit" }} />
+              <p style={{ fontSize: 11, color: C.muted, fontWeight: 700, marginBottom: 6 }}>{label}</p>
+              <input type="time" value={val} onChange={e => upGlobal(k, e.target.value)} style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", color: C.black, fontSize: 15, fontWeight: 700, width: "100%", boxSizing: "border-box", outline: "none", fontFamily: "inherit" }} />
             </div>
           ))}
         </div>
       </div>
-      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "0 16px", marginBottom: 16 }}>
-        {[
-          { k: "motivation", icon: "⚡", label: "Motivation", desc: `Lever + 30min` },
-          { k: "hydration", icon: "💧", label: "Rappel hydratation", desc: "Toutes les 2h30 dans la journée" },
-          { k: "training", icon: "🏋️", label: "Rappel entraînement", desc: "17h00" },
-          { k: "walk", icon: "👟", label: "Rappel marche", desc: "12h30" },
-          { k: "daily", icon: "📊", label: "Résumé quotidien", desc: "Coucher - 2h" },
-          { k: "weekly", icon: "📅", label: "Résumé hebdomadaire", desc: "Dimanche soir" },
-          { k: "sleep", icon: "🌙", label: "Rappel coucher", desc: "Coucher - 30min" },
-        ].map((item, i, arr) => <Row key={item.k} icon={item.icon} label={item.label} desc={item.desc} right={<Tog value={notif[item.k]} onChange={() => upN(item.k, !notif[item.k])} />} last={i === arr.length - 1} />)}
+
+      {/* Types de notification */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, overflow: "hidden", marginBottom: 14 }}>
+        {TYPES.map((t, i) => {
+          const isLast = i === TYPES.length - 1;
+          const isOpen = expanded === t.key && t.expandable;
+          const typeCfg = cfg[t.key];
+          return (
+            <div key={t.key} style={{ borderBottom: isLast ? "none" : `1px solid ${C.border}` }}>
+              {/* Header row */}
+              <div onClick={() => t.expandable && typeCfg.on && setExpanded(isOpen ? null : t.key)} style={{ display: "flex", alignItems: "center", padding: "13px 16px", gap: 12, cursor: t.expandable && typeCfg.on ? "pointer" : "default", opacity: typeCfg.on ? 1 : 0.45 }}>
+                <span style={{ fontSize: 18, width: 26, textAlign: "center", flexShrink: 0 }}>{t.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.black }}>{t.label}</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 11, color: C.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.desc}</p>
+                </div>
+                {t.expandable && typeCfg.on && (
+                  <span style={{ fontSize: 12, color: C.muted, marginRight: 4, transition: "transform 0.2s", display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
+                )}
+                <Tog value={typeCfg.on} onChange={() => { toggleType(t.key); if (isOpen) setExpanded(null); }} />
+              </div>
+              {/* Expanded settings */}
+              {isOpen && (
+                <div style={{ padding: "0 16px 16px", display: "flex", flexDirection: "column", gap: 14 }}>
+                  {t.hasTime && (
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: C.muted, margin: "0 0 7px", textTransform: "uppercase", letterSpacing: 0.7 }}>Heure</p>
+                      <input type="time" value={typeCfg.time || "08:00"} onChange={e => updateType(t.key, "time", e.target.value)} style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", color: C.black, fontSize: 16, fontWeight: 800, width: "100%", boxSizing: "border-box", outline: "none", fontFamily: "inherit" }} />
+                    </div>
+                  )}
+                  {t.hasWeekDay && (
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: C.muted, margin: "0 0 7px", textTransform: "uppercase", letterSpacing: 0.7 }}>Jour de la semaine</p>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {DAY_ORDER.map(day => {
+                          const active = (cfg.weekly.day ?? 0) === day;
+                          return (
+                            <button key={day} onClick={() => updateType("weekly", "day", day)} style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: `1.5px solid ${active ? C.red : C.border}`, background: active ? C.red : C.surfaceAlt, color: active ? "#fff" : C.muted, fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>{DAY_LABELS[day]}</button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {t.hasDays && (
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: C.muted, margin: "0 0 7px", textTransform: "uppercase", letterSpacing: 0.7 }}>Jours actifs</p>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {DAY_ORDER.map(day => {
+                          const active = (typeCfg.days || []).includes(day);
+                          return (
+                            <button key={day} onClick={() => toggleDay(t.key, day)} style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: `1.5px solid ${active ? C.red : C.border}`, background: active ? C.red : C.surfaceAlt, color: active ? "#fff" : C.muted, fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>{DAY_LABELS[day]}</button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
+
+      {/* Mode silencieux */}
       <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "0 16px" }}>
-        <Row icon="🔕" label="Mode silencieux" desc="Désactive toutes les notifications" right={<Tog value={notif.silentMode} onChange={handleSilent} />} last />
+        <div style={{ display: "flex", alignItems: "center", padding: "13px 0", gap: 12 }}>
+          <span style={{ fontSize: 18, width: 26, textAlign: "center", flexShrink: 0 }}>🔕</span>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.black }}>Mode silencieux</p>
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: C.muted }}>Désactive toutes les notifications</p>
+          </div>
+          <Tog value={cfg.silentMode} onChange={() => { if (!cfg.silentMode) setConfirmSilent(true); else persist({ ...cfg, silentMode: false }); }} />
+        </div>
       </div>
     </SubLayout>
   );
@@ -2824,7 +2921,9 @@ export default function App() {
     const base = Math.min(55, dur * 1.1); // 50min → 55pts
     const iBonus = intensity >= 1 ? (intensity - 1) * 8 : 0; // up to +32
     const rBonus = recovery >= 4 ? 10 : recovery >= 3 ? 5 : 0;
-    return Math.max(5, Math.min(100, Math.round(base + iBonus + rBonus)));
+    const steps = today.sport.steps || 0;
+    const stepsBonus = steps >= 10000 ? 8 : steps >= 7000 ? 5 : steps >= 5000 ? 3 : steps >= 3000 ? 1 : 0;
+    return Math.max(5, Math.min(100, Math.round(base + iBonus + rBonus + stepsBonus)));
   })();
   const radarNutrScore = (() => {
     const meals = (today.nutrition.breakfast ? 15 : 0) + (today.nutrition.lunch ? 15 : 0) + (today.nutrition.dinner ? 15 : 0);
@@ -3509,7 +3608,47 @@ export default function App() {
                       )}
                     </Card>
                   )}
+                  {/* Compteur de pas */}
+                  <Card>
+                    <ST>Pas du jour</ST>
+                    <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14 }}>
+                      <div style={{ flex: 1 }}>
+                        <input
+                          type="number"
+                          value={today.sport.steps || ""}
+                          placeholder="0"
+                          min={0}
+                          max={99999}
+                          onChange={e => update("sport", "steps", +e.target.value)}
+                          onFocus={e => e.target.select()}
+                          style={{ background: "transparent", border: "none", outline: "none", fontSize: 38, fontWeight: 900, color: C.red, width: "100%", fontFamily: "inherit" }}
+                        />
+                        <p style={{ margin: "2px 0 0", fontSize: 12, color: C.muted }}>Saisie manuelle · objectif 10 000 pas</p>
+                      </div>
+                      <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.surfaceAlt, border: `3px solid ${(today.sport.steps || 0) >= 10000 ? C.green : (today.sport.steps || 0) >= 7000 ? C.orange : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "border-color 0.3s" }}>
+                        <span style={{ fontSize: 11, fontWeight: 900, color: (today.sport.steps || 0) >= 10000 ? C.green : C.muted }}>
+                          {today.sport.steps >= 10000 ? "✓" : `${Math.round(((today.sport.steps || 0) / 10000) * 100)}%`}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Barre de progression */}
+                    <div style={{ height: 8, borderRadius: 4, background: C.surfaceAlt, overflow: "hidden" }}>
+                      <div style={{ height: "100%", borderRadius: 4, width: `${Math.min(100, ((today.sport.steps || 0) / 10000) * 100)}%`, background: (today.sport.steps || 0) >= 10000 ? C.green : (today.sport.steps || 0) >= 7000 ? C.orange : C.red, transition: "width 0.5s cubic-bezier(0.4,0,0.2,1)" }} />
+                    </div>
+                    {/* Paliers */}
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+                      {[3000, 5000, 7500, 10000].map(target => (
+                        <div key={target} style={{ textAlign: "center" }}>
+                          <div style={{ width: 1, height: 4, background: C.border, margin: "0 auto 2px" }} />
+                          <span style={{ fontSize: 9, color: (today.sport.steps || 0) >= target ? C.red : C.subtle, fontWeight: 700 }}>{target >= 1000 ? `${target/1000}k` : target}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
                   <EvoChart data={sportH.slice(-30)} dataKey="sport.duration" color={C.red} label="Duree des seances" unit="min" />
+                  {sportH.some(d => d.sport?.steps > 0) && (
+                    <EvoChart data={sportH.slice(-30)} dataKey="sport.steps" color="#F97316" label="Pas quotidiens" unit=" pas" />
+                  )}
                 </div>
               )}
 
