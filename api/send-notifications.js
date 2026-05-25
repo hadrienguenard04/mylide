@@ -94,7 +94,7 @@ function getNotificationsToSend(cfg, timezone) {
   // Résumé quotidien
   if (cfg.daily?.on && cfg.daily?.time) {
     if (isInWindow(cfg.daily.time, timezone)) {
-      msgs.push({ title: "📊 Bilan du jour", body: "Complète ton tracker avant de dormir — 2 min suffisent.", url: "/" });
+      msgs.push({ title: "📊 Bilan du jour", body: "Complète ton tracker avant de dormir · 2 min suffisent.", url: "/" });
     }
   }
 
@@ -102,7 +102,7 @@ function getNotificationsToSend(cfg, timezone) {
   if (cfg.weekly?.on && cfg.weekly?.time) {
     const weekDay = cfg.weekly?.day ?? 0;
     if (day === weekDay && isInWindow(cfg.weekly.time, timezone)) {
-      msgs.push({ title: "📅 Résumé de la semaine", body: "Regarde tes progrès — tu avances plus vite que tu ne crois.", url: "/" });
+      msgs.push({ title: "📅 Résumé de la semaine", body: "Regarde tes progrès · tu avances plus vite que tu ne crois.", url: "/" });
     }
   }
 
