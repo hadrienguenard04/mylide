@@ -4078,7 +4078,7 @@ export default function App() {
                     <ST>{tr("todo_new")}</ST>
                     <div style={{ display: "flex", gap: 10 }}>
                       <input value={newTodo} onChange={e => setNewTodo(e.target.value)} onKeyDown={e => e.key === "Enter" && addTodo()} placeholder={tr("todo_placeholder")} style={{ ...inp, flex: 1 }} />
-                      <button onClick={addTodo} style={{ background: C.black, color: "#fff", border: "none", borderRadius: 12, padding: "0 20px", fontWeight: 800, cursor: "pointer", fontSize: 22 }}>+</button>
+                      <button onClick={addTodo} style={{ background: C.red, color: "#fff", border: "none", borderRadius: 12, padding: "0 20px", fontWeight: 800, cursor: "pointer", fontSize: 22 }}>+</button>
                     </div>
                   </Card>
                   {["today","older"].map(group => {
@@ -4468,7 +4468,7 @@ export default function App() {
             <div>
               <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
                 {[["7","7j",null],["30","30j","starter"],["90","3 mois","pro"],["365","1 an","pro"],["all","Tout","pro"]].map(([v, l, minPlan]) => (
-                  <button key={v} onClick={() => { if (minPlan && !isAtLeast(userPlan, minPlan)) { setShowSubscription(true); return; } setStatRange(v); localStorage.setItem("statRange", v); }} style={{ flex: 1, padding: "10px 3px", borderRadius: 12, cursor: "pointer", fontSize: 11, fontWeight: 700, background: statRange === v ? C.black : C.surface, color: statRange === v ? "#fff" : C.muted, opacity: minPlan && !isAtLeast(userPlan, minPlan) ? 0.5 : 1, border: statRange === v ? "none" : `1px solid ${C.border}` }}>{l}{minPlan && !isAtLeast(userPlan, minPlan) ? " 🔒" : ""}</button>
+                  <button key={v} onClick={() => { if (minPlan && !isAtLeast(userPlan, minPlan)) { setShowSubscription(true); return; } setStatRange(v); localStorage.setItem("statRange", v); }} style={{ flex: 1, padding: "10px 3px", borderRadius: 12, cursor: "pointer", fontSize: 11, fontWeight: 700, background: statRange === v ? C.red : C.surface, color: statRange === v ? "#fff" : C.muted, opacity: minPlan && !isAtLeast(userPlan, minPlan) ? 0.5 : 1, border: statRange === v ? "none" : `1px solid ${C.border}`, boxShadow: statRange === v ? `0 3px 12px ${C.red44}` : "none" }}>{l}{minPlan && !isAtLeast(userPlan, minPlan) ? " 🔒" : ""}</button>
                 ))}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
