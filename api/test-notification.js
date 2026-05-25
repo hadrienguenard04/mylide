@@ -48,9 +48,10 @@ module.exports = async function handler(req, res) {
     res.json({ ok: true });
   } catch (e) {
     console.error("Test push failed:", e.message, e.statusCode);
-    if (e.statusCode === 410 || e.statusCode === 404) {
+    // Subscription invalide ou clé VAPID changée → supprimer pour forcer renouvellement
+    if (e.statusCode === 410 || e.statusCode === 404 || (e.message || "").includes("unexpected response")) {
       await supabase.from("push_subscriptions").delete().eq("user_id", user.id);
-      return res.status(410).json({ error: "Subscription expirée. Réactive les notifications dans Paramètres." });
+      return res.status(410).json({ error: "Subscription expirée ou clé changée. Va dans Paramètres → Notifications, désactive puis réactive un type pour te réabonner." });
     }
     res.status(500).json({ error: e.message });
   }
