@@ -102,9 +102,8 @@ function PlanCard({ plan, onSubscribe, loading, currentPlan, compact = false }) 
         ) : (
           <>
             <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
-              <span style={{ fontSize: 14, color: C.muted, fontWeight: 600, textDecoration: "line-through" }}>{plan.price}€</span>
               <span style={{ fontSize: 30, fontWeight: 900, letterSpacing: -1, color: isRec ? col : C.text }}>0€</span>
-              <span style={{ fontSize: 13, color: C.muted }}>/1er mois</span>
+              <span style={{ fontSize: 13, color: C.muted }}>/ 7 jours</span>
             </div>
             <p style={{ margin: 0, fontSize: 12, color: C.muted }}>
               puis <strong style={{ color: C.text }}>{plan.price}€/mois</strong>{" · "}Résiliable à tout moment
@@ -292,7 +291,7 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel,
                 </span>
               )}
             </div>
-            <p style={{ margin: 0, fontSize: 13, color: C.muted }}>{planPrices[currentPlan]}€/mois apres l'essai</p>
+            <p style={{ margin: 0, fontSize: 13, color: C.muted }}>{isTrialing ? `Essai gratuit · puis ${planPrices[currentPlan]}€/mois` : `${planPrices[currentPlan]}€/mois`}</p>
           </div>
         </div>
         {periodEnd && (
@@ -332,18 +331,18 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel,
         <div style={{ background: "linear-gradient(135deg, #CC293608, #CC293615)", border: "1.5px solid #CC293630", borderRadius: 14, padding: "16px", textAlign: "center" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 6 }}>
             <Icon name="heart" size={16} color="#CC2936" strokeWidth={2} />
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "#CC2936" }}>Tu vas nous manquer...</p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "#CC2936" }}>Résiliation programmée</p>
           </div>
           <p style={{ margin: "0 0 14px", fontSize: 12, color: "#888", lineHeight: 1.6 }}>
-            Tes progrès, tes stats, tes insights — tout disparaîtra le jour J.<br />
-            Tu es sûr(e) de vouloir perdre ça ?
+            Tu gardes ton accès {getPlanName(currentPlan)} jusqu'au {periodEnd}.<br />
+            Après cette date, tu repasseras en plan Gratuit.
           </p>
           <button onClick={onReactivate} style={{
             width: "100%", padding: "13px", borderRadius: 12, fontWeight: 800, fontSize: 14,
-            background: "linear-gradient(135deg, #CC2936, #8B1A22)", color: "#fff",
-            border: "none", cursor: "pointer", boxShadow: "0 4px 14px rgba(204,41,54,0.3)",
+            background: `linear-gradient(135deg, ${col}, ${col}bb)`, color: "#fff",
+            border: "none", cursor: "pointer", boxShadow: `0 4px 14px ${col}40`,
           }}>
-            Rester Premium — Ne pas perdre mes données
+            Maintenir mon plan {getPlanName(currentPlan)}
           </button>
         </div>
       ) : !showConfirm ? (
@@ -356,7 +355,10 @@ function ManageSubscription({ subscriptionData, currentPlan, onManage, onCancel,
             Confirmer la résiliation ?
           </p>
           <p style={{ margin: "0 0 14px", fontSize: 12, color: "#CC2936", textAlign: "center", lineHeight: 1.5 }}>
-            Tu gardes ton accès jusqu'à la fin de ta période en cours. Après ça, tu repasseras en plan Gratuit.
+            {isTrialing
+              ? "Ton essai se terminera immédiatement. Aucun prélèvement n'a été effectué."
+              : `Tu gardes ton accès ${getPlanName(currentPlan)} jusqu'à la fin de ta période. Après ça, tu repasseras en plan Gratuit.`
+            }
           </p>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => setShowConfirm(false)} style={{ flex: 1, padding: "11px", background: "none", border: `1.5px solid #CC293640`, borderRadius: 10, color: "#CC2936", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>

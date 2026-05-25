@@ -2071,7 +2071,7 @@ const Onboarding = ({ onComplete }) => {
   const handlePhoto = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => setPhoto(ev.target.result); r.readAsDataURL(f); };
   const togglePriority = id => setPriorities(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
   const selectAll = () => setPriorities(priorities.length === PRIORITIES.length ? [] : PRIORITIES.map(p => p.id));
-  const handleComplete = () => {
+  const handleComplete = (wantsSubscription = false) => {
     const today = new Date().toISOString().split("T")[0];
     const templates = {
       sport:     { label: "Seances sport (45min+)", sourceId: "sport_duree", target: 45, category: "Sport", color: "#CC2936" },
@@ -2094,12 +2094,12 @@ const Onboarding = ({ onComplete }) => {
       activityLevel: bodyActivityLevel || "moderate",
       goalType: nutritionGoalType || "maintenance",
     };
-    onComplete({ name, dob, photo }, createdGoals, bodyProfileData);
+    onComplete({ name, dob, photo }, createdGoals, bodyProfileData, wantsSubscription);
   };
 
   const btnPrimary = { width: "100%", padding: "16px", background: "linear-gradient(135deg, #CC2936, #8B1A22)", color: "#fff", border: "none", borderRadius: 16, fontSize: 16, fontWeight: 800, cursor: "pointer", boxShadow: "0 10px 30px rgba(204,41,54,0.35)", letterSpacing: 0.3 };
   const btnSecondary = { flex: 1, padding: "14px", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 14, fontWeight: 600, cursor: "pointer", color: C.muted, fontSize: 14 };
-  const STEPS = 4;
+  const STEPS = 5;
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'DM Sans', sans-serif" }}>
@@ -2249,8 +2249,53 @@ const Onboarding = ({ onComplete }) => {
             ); })()}
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setStep(3)} style={btnSecondary}>← Retour</button>
-              <button onClick={handleComplete} style={{ ...btnPrimary, flex: 2 }}>Lancer l'app !</button>
+              <button onClick={() => setStep(5)} style={{ ...btnPrimary, flex: 2 }}>Continuer →</button>
             </div>
+          </div>
+        )}
+        {step === 5 && (
+          <div style={{ background: C.surface, borderRadius: 24, padding: 28, boxShadow: "0 24px 64px rgba(0,0,0,0.1)", border: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", gap: 6, marginBottom: 24 }}>{Array.from({length: STEPS}, (_, i) => <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: C.red }} />)}</div>
+
+            {/* Header */}
+            <div style={{ textAlign: "center", marginBottom: 22 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 16, background: "linear-gradient(135deg, #CC2936, #8B1A22)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", boxShadow: "0 8px 24px rgba(204,41,54,0.3)" }}>
+                <Icon name="crown" size={26} color="#fff" strokeWidth={1.8} />
+              </div>
+              <h2 style={{ fontSize: 22, fontWeight: 900, margin: "0 0 8px", color: C.black, letterSpacing: -0.3 }}>Va plus loin avec MYLIDE</h2>
+              <p style={{ fontSize: 13, color: C.muted, margin: 0, lineHeight: 1.55 }}>7 jours gratuits · Sans engagement · Résiliable à tout moment</p>
+            </div>
+
+            {/* Plans */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
+              {[
+                { id: "starter", name: "Starter", price: "3,99", color: "#3B82F6", features: ["Statistiques 30j", "Export données", "Insights hebdo"] },
+                { id: "pro", name: "Pro", price: "6,99", color: "#CC2936", features: ["Stats illimitées", "Prédictions IA", "Radar historique"], rec: true },
+                { id: "premium", name: "Premium", price: "12,99", color: "#F59E0B", features: ["Tout Pro inclus", "Export PDF/Excel", "Support prioritaire"] },
+              ].map(plan => (
+                <div key={plan.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 16, border: `1.5px solid ${plan.rec ? plan.color : C.border}`, background: plan.rec ? `${plan.color}08` : C.surfaceAlt, position: "relative" }}>
+                  {plan.rec && <div style={{ position: "absolute", top: -8, right: 14, background: plan.color, color: "#fff", borderRadius: 20, padding: "2px 10px", fontSize: 9, fontWeight: 900, letterSpacing: 0.5 }}>POPULAIRE</div>}
+                  <div style={{ width: 38, height: 38, borderRadius: 12, background: `${plan.color}18`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <span style={{ fontSize: 17, fontWeight: 900, color: plan.color }}>{plan.price}€</span>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: C.black }}>{plan.name} <span style={{ fontWeight: 400, fontSize: 12, color: C.muted }}>/mois après</span></p>
+                    <p style={{ margin: "2px 0 0", fontSize: 11, color: C.muted }}>{plan.features.join(" · ")}</p>
+                  </div>
+                  <button onClick={() => handleComplete(true)} style={{ padding: "8px 14px", borderRadius: 10, background: plan.rec ? plan.color : C.surface, border: `1.5px solid ${plan.color}`, color: plan.rec ? "#fff" : plan.color, fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    Essayer
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA gratuit */}
+            <button onClick={() => handleComplete(false)} style={{ width: "100%", padding: "14px", background: "none", border: `1.5px solid ${C.border}`, borderRadius: 14, color: C.muted, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+              Continuer en version gratuite →
+            </button>
+            <p style={{ margin: "12px 0 0", fontSize: 10, color: C.muted, textAlign: "center", lineHeight: 1.6 }}>
+              Carte requise · Aucun prélèvement pendant 7 jours · Annulable à tout moment
+            </p>
           </div>
         )}
       </div>
@@ -2580,9 +2625,10 @@ export default function App() {
     setTimeout(() => setSyncStatus("idle"), 2500);
   }, []);
 
-  const handleOnboardingComplete = async (profileData, createdGoals, bodyProfileData) => {
+  const handleOnboardingComplete = async (profileData, createdGoals, bodyProfileData, wantsSubscription = false) => {
     // Afficher l'app immédiatement, sans attendre les saves réseau
     setProfile(profileData); setGoals(createdGoals); setOnboarded(true);
+    if (wantsSubscription) setTimeout(() => setShowSubscription(true), 600);
     const { data: { session } } = await supabase.auth.getSession(); const user = session?.user; if (!user) return;
     await supabase.from("profiles").upsert({ id: user.id, name: profileData.name, dob: profileData.dob, photo: profileData.photo });
 
@@ -3074,17 +3120,23 @@ export default function App() {
       {showProPopup && (
         <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 0 20px" }} onClick={() => { setShowProPopup(false); localStorage.setItem("proPopupSeen", "1"); }}>
           <div onClick={e => e.stopPropagation()} style={{ background: C.surface, borderRadius: 28, padding: "28px 24px", maxWidth: 420, width: "100%", boxShadow: "0 -8px 40px rgba(0,0,0,0.18)" }}>
-            <div style={{ fontSize: 44, textAlign: "center", marginBottom: 12 }}>🔥</div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+              <div style={{ width: 56, height: 56, borderRadius: 18, background: "linear-gradient(135deg, #CC2936, #8B1A22)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 24px rgba(204,41,54,0.35)" }}>
+                <Icon name="chart" size={28} color="#fff" strokeWidth={1.8} />
+              </div>
+            </div>
             <h2 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 900, color: C.text, textAlign: "center", letterSpacing: -0.5 }}>
               Tu utilises MYLIDE depuis 7 jours !
             </h2>
             <p style={{ margin: "0 0 20px", fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 1.6 }}>
-              Débloque les statistiques avancées, l'historique complet et bien plus - <strong style={{ color: C.text }}>gratuitement pendant 1 mois</strong>.
+              Débloque les statistiques avancées, l'historique complet et bien plus — <strong style={{ color: C.text }}>gratuitement pendant 7 jours</strong>.
             </p>
             <div style={{ background: "linear-gradient(135deg, #10B981, #059669)", borderRadius: 16, padding: "14px 18px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 28 }}>🎁</span>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Icon name="gift" size={20} color="#fff" strokeWidth={1.8} />
+              </div>
               <div>
-                <p style={{ margin: 0, fontWeight: 800, color: "#fff", fontSize: 15 }}>1 mois offert · 0€ aujourd'hui</p>
+                <p style={{ margin: 0, fontWeight: 800, color: "#fff", fontSize: 15 }}>7 jours gratuits · 0€ aujourd'hui</p>
                 <p style={{ margin: "2px 0 0", color: "rgba(255,255,255,0.85)", fontSize: 12 }}>Puis à partir de 3,99€/mois · Résiliable à tout moment</p>
               </div>
             </div>
