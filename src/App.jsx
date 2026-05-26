@@ -777,15 +777,38 @@ const FeedbackBanner = ({ msg }) => {
   );
 };
 
-const SubPageInfo = ({ onBack, profile, updateProfile }) => {
+const SubPageInfo = ({ onBack, profile, updateProfile, currentUser }) => {
   const C = useC();
   const [name, setName] = useState(profile.name || "");
   const [dob, setDob] = useState(profile.dob || "");
+  const [username, setUsername] = useState(profile.username || "");
+  const [usernameMsg, setUsernameMsg] = useState("");
+  const [savingUsername, setSavingUsername] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveOk, setSaveOk] = useState(false);
   const pRef = useRef();
   const handlePhoto = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => updateProfile("photo", ev.target.result); r.readAsDataURL(f); };
   const save = () => { setSaving(true); updateProfile("name", name); updateProfile("dob", dob); setSaving(false); setSaveOk(true); setTimeout(() => { setSaveOk(false); onBack(); }, 1200); };
+
+  const saveUsername = async () => {
+    if (!username.trim()) return;
+    const clean = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+    if (clean.length < 3) { setUsernameMsg("Minimum 3 caractères"); return; }
+    setSavingUsername(true);
+    try {
+      const { data: current } = await supabase.from("profiles").select("username, username_updated_at").eq("id", currentUser.id).single();
+      if (current?.username && clean === current.username) { setUsernameMsg("C'est déjà ton pseudo"); setSavingUsername(false); return; }
+      if (current?.username) {
+        const daysSince = current.username_updated_at ? (Date.now() - new Date(current.username_updated_at).getTime()) / 86400000 : 999;
+        if (daysSince < 30) { const d = Math.ceil(30 - daysSince); setUsernameMsg(`Modifiable dans ${d} jour${d > 1 ? "s" : ""}`); setSavingUsername(false); return; }
+      }
+      const { error } = await supabase.from("profiles").update({ username: clean, username_updated_at: new Date().toISOString() }).eq("id", currentUser.id);
+      if (error) setUsernameMsg(error.code === "23505" ? "Pseudo déjà pris" : "Erreur : " + error.message);
+      else { setUsernameMsg("✓ Pseudo enregistré"); updateProfile("username", clean); setTimeout(() => setUsernameMsg(""), 2500); }
+    } catch { setUsernameMsg("Erreur réseau"); }
+    setSavingUsername(false);
+  };
+
   const lbl = { fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "block" };
   return (
     <SubLayout onBack={onBack} title="Informations personnelles" onSave={save} saving={saving} saveOk={saveOk}>
@@ -800,6 +823,16 @@ const SubPageInfo = ({ onBack, profile, updateProfile }) => {
       <div style={{ marginBottom: 16 }}><label style={lbl}>Prénom</label><input value={name} onChange={e => setName(e.target.value)} placeholder="Ton prénom" style={settingsInp} /></div>
       <div style={{ marginBottom: 16 }}><label style={lbl}>Date de naissance</label><input type="date" value={dob} onChange={e => setDob(e.target.value)} style={settingsInp} /></div>
       {dob && <div style={{ background: C.surfaceAlt, borderRadius: 12, padding: "12px 16px", marginTop: 4 }}><p style={{ margin: 0, fontSize: 13, color: C.muted }}>Âge calculé : <strong style={{ color: C.black }}>{Math.floor((Date.now() - new Date(dob)) / 3.156e10)} ans</strong></p></div>}
+      <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
+        <label style={lbl}>Pseudo MYLIDE</label>
+        {profile.username && <p style={{ margin: "0 0 8px", fontSize: 13, color: C.muted }}>Actuel · <strong style={{ color: C.black }}>@{profile.username}</strong> · modifiable 1×/mois</p>}
+        <div style={{ display: "flex", gap: 8 }}>
+          <input value={username} onChange={e => setUsername(e.target.value)} placeholder="ex : hadrien_fit" onKeyDown={e => e.key === "Enter" && saveUsername()} style={{ ...settingsInp, flex: 1 }} />
+          <button onClick={saveUsername} disabled={savingUsername} style={{ padding: "0 18px", borderRadius: 14, background: C.red, color: "#fff", border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>{savingUsername ? "…" : "OK"}</button>
+        </div>
+        <p style={{ margin: "6px 0 0", fontSize: 11, color: C.muted }}>Lettres, chiffres, _ uniquement</p>
+        {usernameMsg && <p style={{ margin: "4px 0 0", fontSize: 12, color: usernameMsg.startsWith("✓") ? C.green : C.red }}>{usernameMsg}</p>}
+      </div>
     </SubLayout>
   );
 };
@@ -1544,7 +1577,7 @@ const DeleteAccountModal = ({ profile, onClose, onConfirmDelete }) => {
 };
 
 // ── SETTINGS PAGE ──────────────────────────────────────────────────────────
-const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, updateProfile, isPro, userPlan, setShowSubscription, nutritionGoals, setNutritionGoals, onSignOut, setLang, setShowDataExport, setShowDeleteAccount, setShowFAQ, setShowLegal }) => {
+const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, updateProfile, currentUser, isPro, userPlan, setShowSubscription, nutritionGoals, setNutritionGoals, onSignOut, setLang, setShowDataExport, setShowDeleteAccount, setShowFAQ, setShowLegal }) => {
   const C = useC();
   const [sub, setSub] = useState(null);
   const [userEmail, setUserEmail] = useState("");
@@ -1597,7 +1630,7 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
     </div>
   );
 
-  if (sub === "info") return <SubPageInfo onBack={() => setSub(null)} profile={profile} updateProfile={updateProfile} />;
+  if (sub === "info") return <SubPageInfo onBack={() => setSub(null)} profile={profile} updateProfile={updateProfile} currentUser={currentUser} />;
   if (sub === "body") return <SubPageBody onBack={() => setSub(null)} nutritionGoals={nutritionGoals} setNutritionGoals={setNutritionGoals} />;
   if (sub === "email") return <SubPageEmail onBack={() => setSub(null)} currentEmail={userEmail} setCurrentEmail={setUserEmail} />;
   if (sub === "password") return <SubPagePassword onBack={() => setSub(null)} />;
@@ -2756,19 +2789,15 @@ const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPending
         {/* AJOUTER */}
         {tab === "ajouter" && (
           <div>
-            {/* Username */}
-            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "14px 16px", marginBottom: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.black }}>{profile.username ? "Ton pseudo" : "Choisis ton pseudo"}</p>
-                {profile.username && <span style={{ fontSize: 16, fontWeight: 900, color: C.red }}>@{profile.username}</span>}
+            {/* Username — lecture seule, modification dans Paramètres */}
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "14px 16px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: C.black }}>Ton pseudo</p>
+                <p style={{ margin: 0, fontSize: 11, color: C.muted }}>Modifiable dans Paramètres → Infos personnelles</p>
               </div>
-              {!profile.username && <p style={{ margin: "0 0 10px", fontSize: 12, color: C.muted }}>Indispensable pour que tes amis te retrouvent</p>}
-              <div style={{ display: "flex", gap: 8 }}>
-                <input value={username} onChange={e => setUsername(e.target.value)} placeholder={profile.username ? "Nouveau pseudo…" : "ex : hadrien_fit"} onKeyDown={e => e.key === "Enter" && saveUsername()} style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.surfaceAlt, color: C.black, fontSize: 14, fontFamily: "inherit", outline: "none" }} />
-                <button onClick={saveUsername} disabled={savingUsername} style={{ padding: "10px 16px", borderRadius: 10, background: C.red, color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>{savingUsername ? "…" : profile.username ? "Modifier" : "OK"}</button>
-              </div>
-              <p style={{ margin: "6px 0 0", fontSize: 11, color: C.muted }}>Lettres, chiffres, _ · modifiable 1x/mois</p>
-              {usernameMsg && <p style={{ margin: "4px 0 0", fontSize: 12, color: usernameMsg.startsWith("✓") ? C.green : C.red }}>{usernameMsg}</p>}
+              {profile.username
+                ? <span style={{ fontSize: 15, fontWeight: 900, color: C.red }}>@{profile.username}</span>
+                : <span style={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>Non défini</span>}
             </div>
 
             {/* Search */}
@@ -3161,17 +3190,32 @@ export default function App() {
       }
     }
 
-    // Objectifs
-    await supabase.from("goals").delete().eq("user_id", user.id);
-    if (g.length) await supabase.from("goals").insert(g.map(goal => ({ user_id: user.id, data: goal })));
+    // Objectifs — snapshot complet
+    try {
+      const { error: delGoals } = await supabase.from("goals").delete().eq("user_id", user.id);
+      if (!delGoals && g.length) {
+        const { error: insGoals } = await supabase.from("goals").insert(g.map(goal => ({ user_id: user.id, data: goal })));
+        if (insGoals) console.error("[saveAll] goals insert failed:", insGoals.message);
+      }
+    } catch (e) { console.error("[saveAll] goals error:", e.message); }
 
-    // Patrimoine - delete+insert pour éviter les doublons
-    await supabase.from("patrimoine").delete().eq("user_id", user.id);
-    if (p && p.length) await supabase.from("patrimoine").insert({ user_id: user.id, data: p });
+    // Patrimoine
+    try {
+      const { error: delPat } = await supabase.from("patrimoine").delete().eq("user_id", user.id);
+      if (!delPat && p && p.length) {
+        const { error: insPat } = await supabase.from("patrimoine").insert({ user_id: user.id, data: p });
+        if (insPat) console.error("[saveAll] patrimoine insert failed:", insPat.message);
+      }
+    } catch (e) { console.error("[saveAll] patrimoine error:", e.message); }
 
     // Todos
-    await supabase.from("todos").delete().eq("user_id", user.id);
-    if (t.length) await supabase.from("todos").insert(t.map(todo => ({ user_id: user.id, data: todo })));
+    try {
+      const { error: delTodos } = await supabase.from("todos").delete().eq("user_id", user.id);
+      if (!delTodos && t.length) {
+        const { error: insTodos } = await supabase.from("todos").insert(t.map(todo => ({ user_id: user.id, data: todo })));
+        if (insTodos) console.error("[saveAll] todos insert failed:", insTodos.message);
+      }
+    } catch (e) { console.error("[saveAll] todos error:", e.message); }
 
     setSyncStatus("saved");
     setTimeout(() => setSyncStatus("idle"), 2500);
@@ -3601,7 +3645,7 @@ export default function App() {
               await supabase.from("profiles").update({ user_prefs: prefs }).eq("id", currentUser.id);
             } catch {}
           }
-        }} darkMode={darkMode} themeMode={themeMode} setThemeMode={setThemeMode} profile={profile} isPro={isPro} userPlan={userPlan} setShowSubscription={setShowSubscription} nutritionGoals={nutritionGoals} setNutritionGoals={setNutritionGoals} onSignOut={handleSignOut} updateProfile={updateProfile} setLang={setLang} setShowDataExport={setShowDataExport} setShowDeleteAccount={setShowDeleteAccount} setShowFAQ={setShowFAQ} setShowLegal={setShowLegal} />}
+        }} darkMode={darkMode} themeMode={themeMode} setThemeMode={setThemeMode} profile={profile} currentUser={currentUser} isPro={isPro} userPlan={userPlan} setShowSubscription={setShowSubscription} nutritionGoals={nutritionGoals} setNutritionGoals={setNutritionGoals} onSignOut={handleSignOut} updateProfile={updateProfile} setLang={setLang} setShowDataExport={setShowDataExport} setShowDeleteAccount={setShowDeleteAccount} setShowFAQ={setShowFAQ} setShowLegal={setShowLegal} />}
       {showLegal && <LegalPage onBack={() => setShowLegal(false)} />}
       {showDataExport && <DataExportModal history={history} profile={profile} nutritionGoals={nutritionGoals} goals={goals} patrimoine={patrimoine} onClose={() => setShowDataExport(false)} />}
       {showDeleteAccount && <DeleteAccountModal profile={profile} onClose={() => setShowDeleteAccount(false)} onConfirmDelete={async () => {
