@@ -3126,7 +3126,8 @@ export default function App() {
     setSyncStatus("saving");
 
     // Profil
-    await supabase.from("profiles").upsert({ id: user.id, name: pr.name, dob: pr.dob, photo: pr.photo });
+    const { error: profileSaveErr } = await supabase.from("profiles").upsert({ id: user.id, name: pr.name, dob: pr.dob, photo: pr.photo });
+    if (profileSaveErr) console.error("[saveAll] Profile upsert failed:", profileSaveErr.message, profileSaveErr.code);
 
     // Journal du jour : SELECT l'ID existant → upsert par PK (comme profiles).
     // Ne nécessite aucune contrainte UNIQUE, fonctionne avec n'importe quel schéma.
@@ -3181,7 +3182,8 @@ export default function App() {
     setProfile(profileData); setGoals(createdGoals); setOnboarded(true);
     if (wantsSubscription) setTimeout(() => setShowSubscription(true), 600);
     const { data: { session } } = await supabase.auth.getSession(); const user = session?.user; if (!user) return;
-    await supabase.from("profiles").upsert({ id: user.id, name: profileData.name, dob: profileData.dob, photo: profileData.photo });
+    const { error: profileErr } = await supabase.from("profiles").upsert({ id: user.id, name: profileData.name, dob: profileData.dob, photo: profileData.photo });
+    if (profileErr) console.error("[onboarding] Profile upsert failed:", profileErr.message, profileErr.code);
 
     // Sauvegarder le profil physique dans nutritionGoals
     if (bodyProfileData) {
