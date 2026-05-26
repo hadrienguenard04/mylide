@@ -724,8 +724,11 @@ const SplashScreen = ({ onDone }) => {
   }, []);
   return (
     <div style={{ position: "fixed", inset: 0, background: "#0C0C0C", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 9999, transition: "opacity 0.4s", opacity: phase === 2 ? 0 : 1 }}>
-      <div style={{ transform: phase >= 1 ? "scale(1)" : "scale(0.7)", opacity: phase >= 1 ? 1 : 0, transition: "all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
-        <div style={{ width: 110, height: 110, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24, filter: "drop-shadow(0 20px 40px rgba(204,41,54,0.55))" }}><img src={kojihLogo} alt="Kojih" style={{ width: "100%", height: "100%", objectFit: "contain" }} /></div>
+      <div style={{ opacity: phase >= 1 ? 1 : 0, transition: "opacity 0.4s ease" }}>
+        <div style={{ position: "relative", width: 110, height: 110, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+            <div style={{ position: "absolute", width: 90, height: 90, borderRadius: "50%", background: "rgba(204,41,54,0.55)", filter: "blur(28px)", top: "50%", left: "50%", transform: "translate(-50%, -50%)" }} />
+            <img src={kojihLogo} alt="Mylide" style={{ width: "100%", height: "100%", objectFit: "contain", position: "relative", zIndex: 1 }} />
+          </div>
         <p style={{ color: "#FFFFFF", fontSize: 28, fontWeight: 900, textAlign: "center", margin: "0 0 6px", letterSpacing: -0.5 }}>Mylide</p>
         <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, textAlign: "center", margin: 0, letterSpacing: 2, textTransform: "uppercase" }}>Kojihsports</p>
       </div>
