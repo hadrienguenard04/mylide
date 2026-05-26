@@ -139,6 +139,37 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: error.message });
   }
 
+  // ── Notifications demandes d'amis ─────────────────────────────────────────
+  // Pour chaque user qui a une push subscription, vérifier s'il a des demandes
+  // d'amis en attente non notifiées (created_at dans les 20 dernières minutes)
+  const windowAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+  try {
+    const { data: pendingRequests } = await supabase
+      .from("friendships")
+      .select("addressee_id, requester:requester_id(name)")
+      .eq("status", "pending")
+      .gte("created_at", windowAgo);
+
+    if (pendingRequests && pendingRequests.length > 0) {
+      for (const req of pendingRequests) {
+        const sub = subs?.find(s => s.user_id === req.addressee_id);
+        if (!sub?.subscription) continue;
+        const requesterName = req.requester?.name?.split(" ")[0] || "Quelqu'un";
+        try {
+          await webpush.sendNotification(sub.subscription, JSON.stringify({
+            title: "👥 Demande d'ami",
+            body: `${requesterName} veut t'ajouter en ami sur MYLIDE`,
+            url: "/",
+          }));
+        } catch (e) {
+          if (e.statusCode === 410 || e.statusCode === 404) {
+            await supabase.from("push_subscriptions").delete().eq("user_id", req.addressee_id);
+          }
+        }
+      }
+    }
+  } catch (e) { console.error("Friend request notifications error:", e.message); }
+
   let sent = 0, failed = 0, skipped = 0;
 
   for (const row of subs || []) {

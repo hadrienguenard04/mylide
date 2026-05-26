@@ -2885,7 +2885,7 @@ export default function App() {
       setCurrentUser(user);
       const { data: profileData } = await supabase.from("profiles").select("*").eq("id", user.id).single();
       if (profileData) {
-        setProfile({ name: profileData.name || "", dob: profileData.dob || "", photo: profileData.photo || "" });
+        setProfile({ name: profileData.name || "", dob: profileData.dob || "", photo: profileData.photo || "", username: profileData.username || "" });
         const plan = profileData.plan || "free";
         setUserPlan(plan);
         setIsPro(isAtLeast(plan, "pro"));
@@ -2913,6 +2913,11 @@ export default function App() {
           if (p.lang)      { localStorage.setItem("lang", p.lang); _lang = p.lang; }
         }
         setOnboarded(true);
+        // Charger le nombre de demandes d'amis en attente
+        try {
+          const { count } = await supabase.from("friendships").select("id", { count: "exact", head: true }).eq("addressee_id", user.id).eq("status", "pending");
+          if (count > 0) setFriendsPendingCount(count);
+        } catch {}
         // Détecter retour Stripe
         const params = new URLSearchParams(window.location.search);
         if (params.get("payment") === "success") setShowSubscription(true);
