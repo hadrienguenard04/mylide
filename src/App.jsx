@@ -2568,7 +2568,7 @@ const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPending
     setSearching(true); setSearchResults(null);
     try {
       const q = search.trim();
-      const { data } = await supabase.from("profiles").select("id, name, photo, username").or(`username.ilike.${q},name.ilike.%${q}%`).neq("id", currentUser.id).limit(5);
+      const { data } = await supabase.from("profiles").select("id, name, photo, username").or(`username.ilike.%${q}%,name.ilike.%${q}%`).neq("id", currentUser.id).limit(5);
       setSearchResults(data && data.length > 0 ? data : []);
     } catch { setSearchResults([]); }
     setSearching(false);
