@@ -611,6 +611,7 @@ const Ico = {
   down: (col,sz=16) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
   edit: (col,sz=16) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
   trash: (col,sz=16) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>,
+  friends: (col,sz=22) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
 };
 
 const TRANSLATIONS = {
@@ -2482,6 +2483,335 @@ const Onboarding = ({ onComplete }) => {
   );
 };
 
+// ── FRIENDS PAGE ───────────────────────────────────────────────────────────
+const DEFAULT_VISIBILITY = { training: false, steps: false, regularity: false, daily_check: false, sleep: false };
+
+const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPendingCount }) => {
+  const C = useC();
+  const [tab, setTab] = useState("feed");
+  const [friends, setFriends] = useState([]);
+  const [pending, setPending] = useState([]);
+  const [feed, setFeed] = useState([]);
+  const [search, setSearch] = useState("");
+  const [searchResults, setSearchResults] = useState(null);
+  const [searching, setSearching] = useState(false);
+  const [encouraged, setEncouraged] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [inviteCopied, setInviteCopied] = useState(false);
+  const [username, setUsername] = useState(profile.username || "");
+  const [savingUsername, setSavingUsername] = useState(false);
+  const [usernameMsg, setUsernameMsg] = useState("");
+  const [visibility, setVisibility] = useState(() => { try { return JSON.parse(localStorage.getItem("friendVisibility")) || DEFAULT_VISIBILITY; } catch { return DEFAULT_VISIBILITY; } });
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const todayStr = new Date().toISOString().split("T")[0];
+  const inviteLink = `https://mylide.app?invite=${profile.username || currentUser?.id?.slice(0, 8) || "ami"}`;
+
+  useEffect(() => { if (currentUser) loadAll(); }, [currentUser]);
+
+  const loadAll = async () => {
+    setLoading(true);
+    try {
+      const { data: fships } = await supabase
+        .from("friendships")
+        .select("id, status, requester_id, addressee_id, requester:requester_id(id, name, photo, username), addressee:addressee_id(id, name, photo, username)")
+        .or(`requester_id.eq.${currentUser.id},addressee_id.eq.${currentUser.id}`);
+
+      if (fships) {
+        const accepted = fships.filter(f => f.status === "accepted").map(f =>
+          f.requester_id === currentUser.id ? { ...f.addressee, friendship_id: f.id } : { ...f.requester, friendship_id: f.id }
+        );
+        const incomingPending = fships.filter(f => f.status === "pending" && f.addressee_id === currentUser.id).map(f => ({ ...f.requester, friendship_id: f.id }));
+        setFriends(accepted);
+        setPending(incomingPending);
+        onPendingCount?.(incomingPending.length);
+
+        if (accepted.length > 0) {
+          const ids = accepted.map(f => f.id);
+          const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
+          const { data: signals } = await supabase.from("daily_signals").select("*").in("user_id", ids).gte("date", weekAgo).order("date", { ascending: false });
+          if (signals) buildFeed(signals, accepted);
+        }
+        const { data: encs } = await supabase.from("encouragements").select("to_user_id").eq("from_user_id", currentUser.id).eq("date", todayStr);
+        if (encs) { const enc = {}; encs.forEach(e => { enc[e.to_user_id] = true; }); setEncouraged(enc); }
+      }
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  };
+
+  const buildFeed = (signals, acceptedFriends) => {
+    const items = [];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+    signals.forEach(s => {
+      const friend = acceptedFriends.find(f => f.id === s.user_id);
+      if (!friend) return;
+      const vis = s.friend_visibility || {};
+      const name = (friend.name || "Ton ami").split(" ")[0];
+      const dateLabel = s.date === todayStr ? "aujourd'hui" : s.date === yesterday ? "hier" : null;
+      if (!dateLabel) return;
+      if (vis.training && s.training_done) items.push({ id: `${s.id}_t`, userId: s.user_id, friend, name, msg: "a validé son entraînement", date: dateLabel, icon: "🏋️" });
+      if (vis.daily_check && s.daily_filled) items.push({ id: `${s.id}_d`, userId: s.user_id, friend, name, msg: "a rempli son tracker", date: dateLabel, icon: "✓" });
+      if (vis.steps && s.steps >= 7500) items.push({ id: `${s.id}_s`, userId: s.user_id, friend, name, msg: "a atteint son objectif de pas", date: dateLabel, icon: "👟" });
+      if (vis.sleep && s.sleep_ok) items.push({ id: `${s.id}_sl`, userId: s.user_id, friend, name, msg: "a bien dormi", date: dateLabel, icon: "🌙" });
+      if (vis.regularity && s.active_days_week >= 5) items.push({ id: `${s.id}_r`, userId: s.user_id, friend, name, msg: `actif ${s.active_days_week}j cette semaine`, date: dateLabel, icon: "📈" });
+    });
+    setFeed(items.slice(0, 15));
+  };
+
+  const sendEncouragement = async (friendId) => {
+    if (encouraged[friendId]) return;
+    setEncouraged(e => ({ ...e, [friendId]: true }));
+    try { await supabase.from("encouragements").upsert({ from_user_id: currentUser.id, to_user_id: friendId, date: todayStr }, { onConflict: "from_user_id,to_user_id,date" }); } catch {}
+  };
+
+  const searchUser = async () => {
+    if (!search.trim()) return;
+    setSearching(true); setSearchResults(null);
+    try {
+      const q = search.trim();
+      const { data } = await supabase.from("profiles").select("id, name, photo, username").or(`username.ilike.${q},name.ilike.%${q}%`).neq("id", currentUser.id).limit(5);
+      setSearchResults(data && data.length > 0 ? data : []);
+    } catch { setSearchResults([]); }
+    setSearching(false);
+  };
+
+  const sendRequest = async (userId) => {
+    try {
+      await supabase.from("friendships").upsert({ requester_id: currentUser.id, addressee_id: userId, status: "pending" }, { onConflict: "requester_id,addressee_id" });
+      setSearchResults(prev => prev?.map(u => u.id === userId ? { ...u, requested: true } : u));
+    } catch {}
+  };
+
+  const acceptFriend = async (fship_id) => { await supabase.from("friendships").update({ status: "accepted" }).eq("id", fship_id); loadAll(); };
+  const declineFriend = async (fship_id) => { await supabase.from("friendships").delete().eq("id", fship_id); loadAll(); };
+  const removeFriend = async (fship_id) => { await supabase.from("friendships").delete().eq("id", fship_id); setFriends(f => f.filter(fr => fr.friendship_id !== fship_id)); };
+
+  const copyInvite = async () => {
+    try { await navigator.clipboard.writeText(inviteLink); setInviteCopied(true); setTimeout(() => setInviteCopied(false), 2000); } catch {}
+  };
+
+  const saveUsername = async () => {
+    if (!username.trim()) return;
+    const clean = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+    if (clean.length < 3) { setUsernameMsg("Minimum 3 caractères"); return; }
+    setSavingUsername(true);
+    try {
+      const { error } = await supabase.from("profiles").update({ username: clean }).eq("id", currentUser.id);
+      if (error) setUsernameMsg("Ce pseudo est déjà pris");
+      else { setUsernameMsg("✓ Pseudo enregistré"); onUpdateProfile?.("username", clean); setTimeout(() => setUsernameMsg(""), 2000); }
+    } catch { setUsernameMsg("Erreur"); }
+    setSavingUsername(false);
+  };
+
+  const saveVisibility = async (newVis) => {
+    setVisibility(newVis);
+    localStorage.setItem("friendVisibility", JSON.stringify(newVis));
+    try { await supabase.from("profiles").update({ friend_visibility: newVis }).eq("id", currentUser.id); } catch {}
+  };
+
+  const FriendAvatar = ({ p, size = 42 }) => p?.photo
+    ? <img src={p.photo} alt="" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: `2px solid ${C.border}`, flexShrink: 0 }} />
+    : <div style={{ width: size, height: size, borderRadius: "50%", background: `linear-gradient(135deg, ${C.red}, #8B1A22)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: size * 0.38, flexShrink: 0 }}>{(p?.name?.[0] || "?").toUpperCase()}</div>;
+
+  const tabs = [
+    { id: "feed", label: "Activité" },
+    { id: "amis", label: "Amis" + (friends.length > 0 ? ` · ${friends.length}` : "") },
+    { id: "ajouter", label: "Ajouter" },
+  ];
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: C.bg, zIndex: 100, display: "flex", flexDirection: "column" }}>
+      {/* Header */}
+      <div style={{ padding: "calc(var(--sat) + 14px) 20px 0", background: C.navBg, borderBottom: `1px solid ${C.border}`, backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+          <button onClick={onClose} style={{ background: C.surfaceAlt, border: "none", borderRadius: 12, width: 40, height: 40, cursor: "pointer", fontSize: 20, color: C.black, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>←</button>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.black, letterSpacing: -0.3 }}>Amis</p>
+            <p style={{ margin: 0, fontSize: 11, color: C.muted }}>Avancez ensemble</p>
+          </div>
+          <button onClick={() => setShowPrivacy(v => !v)} style={{ background: showPrivacy ? `${C.red}18` : C.surfaceAlt, border: "none", borderRadius: 12, width: 40, height: 40, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Icon name="settings" size={16} color={showPrivacy ? C.red : C.muted} />
+          </button>
+        </div>
+        <div style={{ display: "flex" }}>
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, padding: "10px 4px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, fontWeight: tab === t.id ? 800 : 600, color: tab === t.id ? C.red : C.muted, borderBottom: `2px solid ${tab === t.id ? C.red : "transparent"}`, transition: "all 0.2s", fontFamily: "inherit", position: "relative" }}>
+              {t.label}
+              {t.id === "amis" && pending.length > 0 && <span style={{ marginLeft: 5, background: C.red, color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 800 }}>{pending.length}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Scrollable content */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 40px" }}>
+
+        {/* Privacy panel */}
+        {showPrivacy && (
+          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "16px", marginBottom: 14 }}>
+            <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 800, color: C.black }}>Confidentialité</p>
+            <p style={{ margin: "0 0 14px", fontSize: 12, color: C.muted }}>Ce que tes amis peuvent voir · tout est privé par défaut</p>
+            {[
+              { key: "training", label: "Entraînements validés" },
+              { key: "steps", label: "Objectif de pas atteint" },
+              { key: "daily_check", label: "Tracker rempli" },
+              { key: "sleep", label: "Sommeil" },
+              { key: "regularity", label: "Régularité hebdo" },
+            ].map(({ key, label }) => (
+              <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: `1px solid ${C.border}` }}>
+                <span style={{ fontSize: 14, color: C.black }}>{label}</span>
+                <Toggle value={visibility[key]} onChange={() => saveVisibility({ ...visibility, [key]: !visibility[key] })} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* FEED */}
+        {tab === "feed" && (
+          loading ? <p style={{ textAlign: "center", color: C.muted, padding: "40px 0", fontSize: 14 }}>Chargement…</p>
+          : friends.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "48px 20px" }}>
+              <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>{Ico.friends(C.muted, 28)}</div>
+              <p style={{ fontSize: 16, fontWeight: 700, color: C.black, margin: "0 0 8px" }}>Aucun ami pour l'instant</p>
+              <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, margin: "0 0 20px" }}>Invite tes proches et avancez ensemble vers vos objectifs.</p>
+              <button onClick={() => setTab("ajouter")} style={{ padding: "12px 28px", borderRadius: 14, background: C.red, color: "#fff", border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>Ajouter un ami</button>
+            </div>
+          ) : feed.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "48px 20px" }}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: C.black, margin: "0 0 8px" }}>Tout est calme ici</p>
+              <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>L'activité de tes amis apparaîtra ici quand ils partagent leurs progrès.</p>
+            </div>
+          ) : feed.map(item => (
+            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 12, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "13px 14px", marginBottom: 10 }}>
+              <FriendAvatar p={item.friend} size={44} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.black }}><span style={{ color: C.red }}>{item.name}</span> {item.msg}</p>
+                <p style={{ margin: "3px 0 0", fontSize: 11, color: C.muted }}>{item.date}</p>
+              </div>
+              <span style={{ fontSize: 22, flexShrink: 0 }}>{item.icon}</span>
+            </div>
+          ))
+        )}
+
+        {/* AMIS */}
+        {tab === "amis" && (
+          <div>
+            {pending.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 10px" }}>Demandes reçues</p>
+                {pending.map(p => (
+                  <div key={p.friendship_id} style={{ display: "flex", alignItems: "center", gap: 12, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "12px 14px", marginBottom: 8 }}>
+                    <FriendAvatar p={p} size={44} />
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.black }}>{p.name}</p>
+                      {p.username && <p style={{ margin: "2px 0 0", fontSize: 12, color: C.muted }}>@{p.username}</p>}
+                    </div>
+                    <button onClick={() => acceptFriend(p.friendship_id)} style={{ padding: "8px 12px", borderRadius: 10, background: C.red, color: "#fff", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Accepter</button>
+                    <button onClick={() => declineFriend(p.friendship_id)} style={{ padding: "8px 12px", borderRadius: 10, background: C.surfaceAlt, color: C.muted, border: `1px solid ${C.border}`, fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit", marginLeft: 4 }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {loading ? <p style={{ textAlign: "center", color: C.muted, padding: "40px 0" }}>Chargement…</p>
+            : friends.length === 0 && pending.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "48px 20px" }}>
+                <p style={{ fontSize: 15, fontWeight: 700, color: C.black, margin: "0 0 12px" }}>Aucun ami encore</p>
+                <button onClick={() => setTab("ajouter")} style={{ padding: "12px 28px", borderRadius: 14, background: C.red, color: "#fff", border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>Ajouter un ami</button>
+              </div>
+            ) : (
+              <>
+                {friends.length > 0 && <p style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 10px" }}>Mes amis · {friends.length}</p>}
+                {friends.map(f => (
+                  <div key={f.friendship_id} style={{ display: "flex", alignItems: "center", gap: 12, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "13px 14px", marginBottom: 8 }}>
+                    <FriendAvatar p={f} size={44} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.black }}>{f.name}</p>
+                      {f.username && <p style={{ margin: "2px 0 0", fontSize: 12, color: C.muted }}>@{f.username}</p>}
+                    </div>
+                    <button onClick={() => sendEncouragement(f.id)} style={{ padding: "8px 12px", borderRadius: 10, background: encouraged[f.id] ? `${C.green}18` : C.surfaceAlt, color: encouraged[f.id] ? C.green : C.muted, border: `1px solid ${encouraged[f.id] ? C.green : C.border}`, fontWeight: 700, fontSize: 12, cursor: encouraged[f.id] ? "default" : "pointer", fontFamily: "inherit", transition: "all 0.25s", whiteSpace: "nowrap" }}>
+                      {encouraged[f.id] ? "✓ Encouragé" : "👋 Encourager"}
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* AJOUTER */}
+        {tab === "ajouter" && (
+          <div>
+            {/* Username setup */}
+            {!profile.username && (
+              <div style={{ background: `${C.red}10`, border: `1px solid ${C.red}22`, borderRadius: 16, padding: "14px 16px", marginBottom: 14 }}>
+                <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 800, color: C.black }}>Choisis ton pseudo</p>
+                <p style={{ margin: "0 0 10px", fontSize: 12, color: C.muted }}>Indispensable pour que tes amis te retrouvent</p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input value={username} onChange={e => setUsername(e.target.value)} placeholder="ex : hadrien_fit" onKeyDown={e => e.key === "Enter" && saveUsername()} style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.surfaceAlt, color: C.black, fontSize: 14, fontFamily: "inherit", outline: "none" }} />
+                  <button onClick={saveUsername} disabled={savingUsername} style={{ padding: "10px 16px", borderRadius: 10, background: C.red, color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>{savingUsername ? "…" : "OK"}</button>
+                </div>
+                {usernameMsg && <p style={{ margin: "6px 0 0", fontSize: 12, color: usernameMsg.startsWith("✓") ? C.green : C.red }}>{usernameMsg}</p>}
+              </div>
+            )}
+
+            {/* Search */}
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "16px", marginBottom: 14 }}>
+              <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: C.black }}>Rechercher par pseudo</p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="@pseudo ou prénom…" onKeyDown={e => e.key === "Enter" && searchUser()} style={{ flex: 1, padding: "11px 14px", borderRadius: 12, border: `1px solid ${C.border}`, background: C.surfaceAlt, color: C.black, fontSize: 14, fontFamily: "inherit", outline: "none" }} />
+                <button onClick={searchUser} disabled={searching} style={{ padding: "11px 18px", borderRadius: 12, background: C.red, color: "#fff", border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>{searching ? "…" : "→"}</button>
+              </div>
+              {searchResults !== null && (
+                <div style={{ marginTop: 10 }}>
+                  {searchResults.length === 0
+                    ? <p style={{ fontSize: 13, color: C.muted, textAlign: "center", padding: "8px 0" }}>Aucun utilisateur trouvé</p>
+                    : searchResults.map(u => (
+                      <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderTop: `1px solid ${C.border}` }}>
+                        <FriendAvatar p={u} size={40} />
+                        <div style={{ flex: 1 }}>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.black }}>{u.name}</p>
+                          {u.username && <p style={{ margin: "2px 0 0", fontSize: 12, color: C.muted }}>@{u.username}</p>}
+                        </div>
+                        <button onClick={() => sendRequest(u.id)} disabled={u.requested} style={{ padding: "8px 14px", borderRadius: 10, background: u.requested ? C.surfaceAlt : C.red, color: u.requested ? C.muted : "#fff", border: "none", fontWeight: 700, fontSize: 12, cursor: u.requested ? "default" : "pointer", fontFamily: "inherit" }}>
+                          {u.requested ? "Envoyé ✓" : "Ajouter"}
+                        </button>
+                      </div>
+                    ))
+                  }
+                </div>
+              )}
+            </div>
+
+            {/* Invite link */}
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "16px" }}>
+              <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 800, color: C.black }}>Inviter un ami sur MYLIDE</p>
+              <p style={{ margin: "0 0 12px", fontSize: 12, color: C.muted }}>Partage ce lien · gratuit pour démarrer</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8 }}>
+                <span style={{ flex: 1, fontSize: 12, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inviteLink}</span>
+                <button onClick={copyInvite} style={{ padding: "6px 12px", borderRadius: 8, background: inviteCopied ? C.green : C.red, color: "#fff", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit", flexShrink: 0, transition: "background 0.2s" }}>
+                  {inviteCopied ? "✓ Copié" : "Copier"}
+                </button>
+              </div>
+              {typeof navigator !== "undefined" && navigator.share && (
+                <button onClick={() => navigator.share({ title: "MYLIDE", text: "Rejoins-moi sur MYLIDE · on avance ensemble !", url: inviteLink }).catch(() => {})} style={{ width: "100%", padding: "12px", borderRadius: 12, background: C.surfaceAlt, border: `1px solid ${C.border}`, color: C.black, fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                  Partager l'app →
+                </button>
+              )}
+            </div>
+
+            {/* Show current username */}
+            {profile.username && (
+              <div style={{ background: C.surfaceAlt, borderRadius: 14, padding: "11px 16px", marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 13, color: C.muted }}>Ton pseudo</span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: C.black }}>@{profile.username}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ── APP ────────────────────────────────────────────────────────────────────
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -2514,6 +2844,8 @@ export default function App() {
   const [newGoal, setNewGoal] = useState({ label: "", category: "", color: "#CC2936", sourceId: "manual", target: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reverse: false, manualProgress: 0 });
   const [renamingPoche, setRenamingPoche] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showFriends, setShowFriends] = useState(false);
+  const [friendsPendingCount, setFriendsPendingCount] = useState(0);
   const [syncStatus, setSyncStatus] = useState("idle"); // "idle" | "saving" | "saved" | "error"
   const [healthConsentGiven, setHealthConsentGiven] = useState(() => localStorage.getItem("healthConsentGiven") === "true");
   const [showHealthConsent, setShowHealthConsent] = useState(false);
@@ -2850,6 +3182,27 @@ export default function App() {
   const update = (section, field, val) => { setToday(prev => { const updated = { ...prev, [section]: { ...prev[section], [field]: val } }; if (section === "sleep") updated.sleep.duration = calcDuration(updated.sleep.bedtime, updated.sleep.wakeup); updated.score = calcScore(updated); return updated; }); setSaved(false); };
   const updateNested = (section, sub, field, val) => { setToday(prev => { const updated = { ...prev, [section]: { ...prev[section], [sub]: { ...prev[section][sub], [field]: val } } }; updated.score = calcScore(updated); return updated; }); setSaved(false); };
 
+  const syncDailySignal = async () => {
+    if (!currentUser) return;
+    try {
+      const vis = (() => { try { return JSON.parse(localStorage.getItem("friendVisibility")) || DEFAULT_VISIBILITY; } catch { return DEFAULT_VISIBILITY; } })();
+      const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+      weekStart.setHours(0, 0, 0, 0);
+      const activeDays = history.filter(d => new Date(d.date) >= weekStart && (d.score || 0) > 15).length + (today.score > 15 ? 1 : 0);
+      await supabase.from("daily_signals").upsert({
+        user_id: currentUser.id,
+        date: todayDate,
+        training_done: (today.sport?.sessions?.length > 0) || false,
+        steps: today.sport?.steps || 0,
+        sleep_ok: (today.sleep?.duration >= 7) || false,
+        daily_filled: today.score > 10,
+        active_days_week: Math.min(activeDays, 7),
+        friend_visibility: vis,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id,date" });
+    } catch {}
+  };
+
   const saveDay = () => {
     // Annuler l'auto-save en cours pour éviter une double écriture concurrente
     clearTimeout(autoSaveRef.current);
@@ -2859,6 +3212,7 @@ export default function App() {
     setHistory(newHistory);
     saveAll(newHistory, todosRef.current, goalsRef.current, patrimoineRef.current, profileRef.current);
     setSaved(true); setTimeout(() => setSaved(false), 2500);
+    syncDailySignal();
   };
 
   const addTodo = () => { if (!newTodo.trim()) return; const t = [...todos, { id: Date.now(), text: newTodo, done: false, date: new Date().toISOString().split("T")[0] }]; setTodos(t); saveAll(history, t, goals, patrimoine, profile); setNewTodo(""); };
@@ -3188,6 +3542,7 @@ export default function App() {
 
       {editingGoal && <EditGoalModal goal={editingGoal} onSave={saveEditedGoal} onClose={() => setEditingGoal(null)} />}
       {showSubscription && <Subscription onClose={() => setShowSubscription(false)} userPlan={userPlan} userId={currentUser?.id} userEmail={currentUser?.email} subscriptionData={subscriptionData} />}
+      {showFriends && <FriendsPage onClose={() => setShowFriends(false)} currentUser={currentUser} profile={profile} onUpdateProfile={updateProfile} onPendingCount={setFriendsPendingCount} />}
       {showSettings && <SettingsPage onClose={async () => {
           setShowSettings(false);
           // Sync préférences localStorage → Supabase au moment de la fermeture
@@ -3355,7 +3710,13 @@ export default function App() {
               <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: C.black, letterSpacing: -0.3, lineHeight: 1.2 }}>{tr("hello")} {profile.name}</p>
             </div>
           </div>
-          <ScoreRing score={today.score} delta={intel.scoreDelta} streak={streak} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={() => setShowFriends(true)} style={{ position: "relative", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+              {Ico.friends(C.muted, 19)}
+              {friendsPendingCount > 0 && <span style={{ position: "absolute", top: 7, right: 7, width: 8, height: 8, borderRadius: "50%", background: C.red, border: `2px solid ${C.navBg}` }} />}
+            </button>
+            <ScoreRing score={today.score} delta={intel.scoreDelta} streak={streak} />
+          </div>
         </div>
         {intel.alerts.length > 0 && <div style={{ marginTop: 10 }}><MsgBox type={intel.alerts[0].type} msg={intel.alerts[0].msg} /></div>}
         {intel.alerts.length === 0 && intel.advice.length > 0 && <div style={{ marginTop: 10 }}><MsgBox type="advice" msg={intel.advice[0]} /></div>}
