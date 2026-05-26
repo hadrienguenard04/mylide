@@ -2595,9 +2595,21 @@ const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPending
     if (clean.length < 3) { setUsernameMsg("Minimum 3 caractères"); return; }
     setSavingUsername(true);
     try {
-      const { error } = await supabase.from("profiles").update({ username: clean }).eq("id", currentUser.id);
+      // Vérifier les restrictions avant de sauvegarder
+      const { data: current } = await supabase.from("profiles").select("username, username_updated_at").eq("id", currentUser.id).single();
+      if (current?.username) {
+        // Déjà un pseudo — vérifier le délai de 30 jours
+        const lastChange = current.username_updated_at ? new Date(current.username_updated_at) : null;
+        const daysSince = lastChange ? (Date.now() - lastChange.getTime()) / 86400000 : 999;
+        if (daysSince < 30) {
+          const daysLeft = Math.ceil(30 - daysSince);
+          setUsernameMsg(`Changement possible dans ${daysLeft} jour${daysLeft > 1 ? "s" : ""}`);
+          setSavingUsername(false); return;
+        }
+      }
+      const { error } = await supabase.from("profiles").update({ username: clean, username_updated_at: new Date().toISOString() }).eq("id", currentUser.id);
       if (error) setUsernameMsg("Ce pseudo est déjà pris");
-      else { setUsernameMsg("✓ Pseudo enregistré"); onUpdateProfile?.("username", clean); setTimeout(() => setUsernameMsg(""), 2000); }
+      else { setUsernameMsg("✓ Pseudo enregistré"); onUpdateProfile?.("username", clean); setTimeout(() => setUsernameMsg(""), 2500); }
     } catch { setUsernameMsg("Erreur"); }
     setSavingUsername(false);
   };
@@ -2749,7 +2761,8 @@ const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPending
                   <input value={username} onChange={e => setUsername(e.target.value)} placeholder="ex : hadrien_fit" onKeyDown={e => e.key === "Enter" && saveUsername()} style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.surfaceAlt, color: C.black, fontSize: 14, fontFamily: "inherit", outline: "none" }} />
                   <button onClick={saveUsername} disabled={savingUsername} style={{ padding: "10px 16px", borderRadius: 10, background: C.red, color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>{savingUsername ? "…" : "OK"}</button>
                 </div>
-                {usernameMsg && <p style={{ margin: "6px 0 0", fontSize: 12, color: usernameMsg.startsWith("✓") ? C.green : C.red }}>{usernameMsg}</p>}
+                <p style={{ margin: "6px 0 0", fontSize: 11, color: C.muted }}>Lettres, chiffres, _ · modifiable 1x/mois</p>
+                {usernameMsg && <p style={{ margin: "4px 0 0", fontSize: 12, color: usernameMsg.startsWith("✓") ? C.green : C.red }}>{usernameMsg}</p>}
               </div>
             )}
 
