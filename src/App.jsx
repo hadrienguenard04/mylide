@@ -2853,6 +2853,29 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
   const [friendsPendingCount, setFriendsPendingCount] = useState(0);
+
+  // Realtime + visibilité : met à jour le badge dès qu'une demande arrive
+  useEffect(() => {
+    if (!currentUser) return;
+    const checkPending = async () => {
+      try {
+        const { count } = await supabase.from("friendships").select("id", { count: "exact", head: true }).eq("addressee_id", currentUser.id).eq("status", "pending");
+        setFriendsPendingCount(count || 0);
+      } catch {}
+    };
+    // Realtime — déclenche dès qu'une ligne est insérée dans friendships
+    const channel = supabase.channel("friend-requests-" + currentUser.id)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "friendships", filter: `addressee_id=eq.${currentUser.id}` },
+        () => { checkPending(); }
+      ).subscribe();
+    // Fallback — vérifie aussi quand l'utilisateur revient sur l'app
+    const handleVisibility = () => { if (!document.hidden) checkPending(); };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      supabase.removeChannel(channel);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [currentUser]);
   const [syncStatus, setSyncStatus] = useState("idle"); // "idle" | "saving" | "saved" | "error"
   const [healthConsentGiven, setHealthConsentGiven] = useState(() => localStorage.getItem("healthConsentGiven") === "true");
   const [showHealthConsent, setShowHealthConsent] = useState(false);
