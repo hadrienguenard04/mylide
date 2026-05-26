@@ -2608,8 +2608,12 @@ const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPending
         }
       }
       const { error } = await supabase.from("profiles").update({ username: clean, username_updated_at: new Date().toISOString() }).eq("id", currentUser.id);
-      if (error) setUsernameMsg("Ce pseudo est déjà pris");
-      else { setUsernameMsg("✓ Pseudo enregistré"); onUpdateProfile?.("username", clean); setTimeout(() => setUsernameMsg(""), 2500); }
+      if (error) {
+        console.error("Username save error:", error.message, error.code);
+        if (error.code === "23505" || error.message?.includes("unique")) setUsernameMsg("Ce pseudo est déjà pris");
+        else if (error.message?.includes("username_updated_at")) setUsernameMsg("Exécute le SQL de migration dans Supabase (username_updated_at)");
+        else setUsernameMsg("Erreur : " + error.message);
+      } else { setUsernameMsg("✓ Pseudo enregistré"); onUpdateProfile?.("username", clean); setTimeout(() => setUsernameMsg(""), 2500); }
     } catch { setUsernameMsg("Erreur"); }
     setSavingUsername(false);
   };
