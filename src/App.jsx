@@ -2752,19 +2752,20 @@ const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPending
         {/* AJOUTER */}
         {tab === "ajouter" && (
           <div>
-            {/* Username setup */}
-            {!profile.username && (
-              <div style={{ background: `${C.red}10`, border: `1px solid ${C.red}22`, borderRadius: 16, padding: "14px 16px", marginBottom: 14 }}>
-                <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 800, color: C.black }}>Choisis ton pseudo</p>
-                <p style={{ margin: "0 0 10px", fontSize: 12, color: C.muted }}>Indispensable pour que tes amis te retrouvent</p>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input value={username} onChange={e => setUsername(e.target.value)} placeholder="ex : hadrien_fit" onKeyDown={e => e.key === "Enter" && saveUsername()} style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.surfaceAlt, color: C.black, fontSize: 14, fontFamily: "inherit", outline: "none" }} />
-                  <button onClick={saveUsername} disabled={savingUsername} style={{ padding: "10px 16px", borderRadius: 10, background: C.red, color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>{savingUsername ? "…" : "OK"}</button>
-                </div>
-                <p style={{ margin: "6px 0 0", fontSize: 11, color: C.muted }}>Lettres, chiffres, _ · modifiable 1x/mois</p>
-                {usernameMsg && <p style={{ margin: "4px 0 0", fontSize: 12, color: usernameMsg.startsWith("✓") ? C.green : C.red }}>{usernameMsg}</p>}
+            {/* Username */}
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "14px 16px", marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.black }}>{profile.username ? "Ton pseudo" : "Choisis ton pseudo"}</p>
+                {profile.username && <span style={{ fontSize: 16, fontWeight: 900, color: C.red }}>@{profile.username}</span>}
               </div>
-            )}
+              {!profile.username && <p style={{ margin: "0 0 10px", fontSize: 12, color: C.muted }}>Indispensable pour que tes amis te retrouvent</p>}
+              <div style={{ display: "flex", gap: 8 }}>
+                <input value={username} onChange={e => setUsername(e.target.value)} placeholder={profile.username ? "Nouveau pseudo…" : "ex : hadrien_fit"} onKeyDown={e => e.key === "Enter" && saveUsername()} style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.border}`, background: C.surfaceAlt, color: C.black, fontSize: 14, fontFamily: "inherit", outline: "none" }} />
+                <button onClick={saveUsername} disabled={savingUsername} style={{ padding: "10px 16px", borderRadius: 10, background: C.red, color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>{savingUsername ? "…" : profile.username ? "Modifier" : "OK"}</button>
+              </div>
+              <p style={{ margin: "6px 0 0", fontSize: 11, color: C.muted }}>Lettres, chiffres, _ · modifiable 1x/mois</p>
+              {usernameMsg && <p style={{ margin: "4px 0 0", fontSize: 12, color: usernameMsg.startsWith("✓") ? C.green : C.red }}>{usernameMsg}</p>}
+            </div>
 
             {/* Search */}
             <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "16px", marginBottom: 14 }}>
@@ -2811,13 +2812,6 @@ const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPending
               )}
             </div>
 
-            {/* Show current username */}
-            {profile.username && (
-              <div style={{ background: C.surfaceAlt, borderRadius: 14, padding: "11px 16px", marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 13, color: C.muted }}>Ton pseudo</span>
-                <span style={{ fontSize: 14, fontWeight: 800, color: C.black }}>@{profile.username}</span>
-              </div>
-            )}
           </div>
         )}
       </div>
