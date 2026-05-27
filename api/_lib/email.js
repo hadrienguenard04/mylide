@@ -10,11 +10,11 @@
 // Expéditeur : noreply@mylide.app (une fois le domaine vérifié)
 // En attendant la vérification : utiliser onboarding@resend.dev (sandbox)
 
+const { Resend } = require("resend");
 const FROM_EMAIL = "MYLIDE <noreply@mylide.app>";
-const RESEND_API_URL = "https://api.resend.com/emails";
 
 /**
- * Envoie un email via Resend.
+ * Envoie un email via Resend SDK.
  * Retourne { success, error }
  */
 async function sendEmail({ to, subject, html }) {
@@ -25,21 +25,20 @@ async function sendEmail({ to, subject, html }) {
   }
 
   try {
-    const res = await fetch(RESEND_API_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
+    const resend = new Resend(apiKey);
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject,
+      html,
     });
 
-    if (!res.ok) {
-      const err = await res.text();
-      console.error("Resend error:", err);
-      return { success: false, error: err };
+    if (error) {
+      console.error("Resend error:", error);
+      return { success: false, error: error.message };
     }
 
+    console.log("Email sent:", data?.id);
     return { success: true };
   } catch (e) {
     console.error("Email send error:", e.message);
