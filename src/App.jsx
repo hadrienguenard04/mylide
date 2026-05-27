@@ -2968,8 +2968,8 @@ export default function App() {
           if (p.sleepTime) localStorage.setItem("sleepTime", p.sleepTime);
           if (p.lang)      { localStorage.setItem("lang", p.lang); _lang = p.lang; }
         }
-        // Vérifier le flag onboarding_completed
-        if (!profileData.onboarding_completed) { setOnboarded(false); return; }
+        // Vérifier le flag onboarding_completed (seulement si explicitement false)
+        if (profileData.onboarding_completed === false) { setOnboarded(false); return; }
         setOnboarded(true);
         // Charger le nombre de demandes d'amis en attente
         try {
