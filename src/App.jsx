@@ -2586,8 +2586,9 @@ const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPending
         if (accepted.length > 0) {
           const ids = accepted.map(f => f.id).filter(Boolean);
           if (ids.length > 0) {
-            const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
-            const { data: signals } = await supabase.from("daily_signals").select("*").in("user_id", ids).gte("date", weekAgo).order("date", { ascending: false });
+            const { data: signals, error: sErr } = await supabase.rpc("get_friend_signals", { friend_ids: ids });
+            if (sErr) console.error("[FriendsPage] signals error:", sErr.message);
+            console.log("[FriendsPage] signals:", signals?.length, signals);
             if (signals) buildFeed(signals, accepted);
           }
         }
