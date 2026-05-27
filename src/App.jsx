@@ -2623,7 +2623,15 @@ const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPending
   const sendEncouragement = async (friendId) => {
     if (encouraged[friendId]) return;
     setEncouraged(e => ({ ...e, [friendId]: true }));
-    try { await supabase.from("encouragements").upsert({ from_user_id: currentUser.id, to_user_id: friendId, date: todayStr }, { onConflict: "from_user_id,to_user_id,date" }); } catch {}
+    try {
+      await supabase.from("encouragements").upsert({ from_user_id: currentUser.id, to_user_id: friendId, date: todayStr }, { onConflict: "from_user_id,to_user_id,date" });
+      const fromName = (profile?.name || "Un ami").split(" ")[0];
+      fetch("/api/send-encouragement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to_user_id: friendId, from_name: fromName }),
+      }).catch(() => {});
+    } catch {}
   };
 
   const searchUser = async () => {
