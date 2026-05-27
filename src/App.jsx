@@ -3293,17 +3293,13 @@ export default function App() {
     // Email de bienvenue (plan free) — envoyé une seule fois
     try {
       const { data: { session: sess } } = await supabase.auth.getSession();
-      console.log("[welcome] session access_token:", sess?.access_token ? "ok" : "absent");
       if (sess?.access_token) {
-        const resp = await fetch("/api/send-welcome", {
+        fetch("/api/send-welcome", {
           method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sess.access_token}` },
-          body: JSON.stringify({ userId: user.id }),
-        });
-        const json = await resp.json();
-        console.log("[welcome] response:", json);
+          headers: { "Authorization": `Bearer ${sess.access_token}` },
+        }).catch(() => {});
       }
-    } catch (e) { console.error("[welcome] fetch error:", e.message); }
+    } catch (e) {}
 
     // Sauvegarder le profil physique dans nutritionGoals
     if (bodyProfileData) {

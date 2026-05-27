@@ -260,9 +260,39 @@ function emailAccountDeleted({ name }) {
   `);
 }
 
+// ── EMAIL 7 : Bienvenue inscription free ─────────────────────────────────────
+function emailWelcomeFree({ name }) {
+  return wrapEmail(`
+    <h2 style="margin: 0 0 12px; font-size: 22px; font-weight: 900; color: #1A1A1A;">
+      Bienvenue sur MYLIDE, ${name} ! 🎉
+    </h2>
+    <p style="margin: 0 0 20px; color: #6B6B6B; font-size: 14px; line-height: 1.7;">
+      Ton compte est prêt. Commence à tracker ta nutrition, tes entraînements, ton sommeil et bien plus — tout au même endroit.
+    </p>
+    <div style="background: #F8F8F6; border-radius: 14px; padding: 18px 20px; margin-bottom: 24px;">
+      <p style="margin: 0 0 10px; font-size: 13px; font-weight: 700; color: #1A1A1A;">Ce qui t'attend :</p>
+      ${["Tracker nutrition, sport, sommeil & mental", "Score de vie quotidien personnalisé", "Objectifs avec suivi de progression", "Gestion de patrimoine & finances", "Amis & encouragements mutuels"].map(f =>
+        `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">
+          <span style="color:#CC2936;font-weight:700;">→</span>
+          <span style="font-size:13px;color:#1A1A1A;">${f}</span>
+        </div>`
+      ).join("")}
+    </div>
+    <div style="text-align:center;margin-bottom:16px;">
+      <a href="https://mylide.app" style="display:inline-block;background:linear-gradient(135deg,#CC2936,#8B1A22);color:#fff;text-decoration:none;border-radius:12px;padding:14px 32px;font-weight:800;font-size:15px;">
+        Ouvrir MYLIDE →
+      </a>
+    </div>
+    <p style="margin:0;font-size:12px;color:#6B6B6B;text-align:center;line-height:1.7;">
+      Des questions ? <a href="mailto:contact@mylide.app" style="color:#CC2936;text-decoration:none;">contact@mylide.app</a>
+    </p>
+  `);
+}
+
 module.exports = {
   sendEmail,
   emailWelcome,
+  emailWelcomeFree,
   emailTrialEnding,
   emailPaymentConfirmed,
   emailPaymentFailed,
