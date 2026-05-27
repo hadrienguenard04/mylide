@@ -3291,14 +3291,19 @@ export default function App() {
     if (profileErr) console.error("[onboarding] Profile upsert failed:", profileErr.message, profileErr.code);
 
     // Email de bienvenue (plan free) — envoyé une seule fois
-    const { data: { session: sess } } = await supabase.auth.getSession();
-    if (sess?.access_token) {
-      fetch("/api/send-welcome", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sess.access_token}` },
-        body: JSON.stringify({ userId: user.id }),
-      }).catch(() => {});
-    }
+    try {
+      const { data: { session: sess } } = await supabase.auth.getSession();
+      console.log("[welcome] session access_token:", sess?.access_token ? "ok" : "absent");
+      if (sess?.access_token) {
+        const resp = await fetch("/api/send-welcome", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sess.access_token}` },
+          body: JSON.stringify({ userId: user.id }),
+        });
+        const json = await resp.json();
+        console.log("[welcome] response:", json);
+      }
+    } catch (e) { console.error("[welcome] fetch error:", e.message); }
 
     // Sauvegarder le profil physique dans nutritionGoals
     if (bodyProfileData) {
