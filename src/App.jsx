@@ -2524,6 +2524,7 @@ const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPending
   const [tab, setTab] = useState(initialTab);
   const [friends, setFriends] = useState([]);
   const [pending, setPending] = useState([]);
+  const [sentPending, setSentPending] = useState([]);
   const [feed, setFeed] = useState([]);
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState(null);
@@ -2544,30 +2545,58 @@ const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPending
   const loadAll = async () => {
     setLoading(true);
     try {
-      const { data: fships } = await supabase
-        .from("friendships")
-        .select("id, status, requester_id, addressee_id, requester:requester_id(id, name, photo, username), addressee:addressee_id(id, name, photo, username)")
-        .or(`requester_id.eq.${currentUser.id},addressee_id.eq.${currentUser.id}`);
+      // Étape 1 : friendships via RPC (bypasse RLS et les problèmes d'API key)
+      const { data: fships, error: fErr } = await supabase.rpc("get_my_friendships");
+      if (fErr) { console.error("[FriendsPage] RPC friendships error:", fErr.message); setLoading(false); return; }
+      console.log("[FriendsPage] fships:", fships?.length, fships);
 
-      if (fships) {
-        const accepted = fships.filter(f => f.status === "accepted").map(f =>
-          f.requester_id === currentUser.id ? { ...f.addressee, friendship_id: f.id } : { ...f.requester, friendship_id: f.id }
-        );
-        const incomingPending = fships.filter(f => f.status === "pending" && f.addressee_id === currentUser.id).map(f => ({ ...f.requester, friendship_id: f.id }));
+      if (fships && fships.length > 0) {
+        // Étape 2 : profils via RPC
+        const otherIds = [...new Set(
+          fships.flatMap(f => [f.requester_id, f.addressee_id]).filter(id => id !== currentUser.id)
+        )];
+
+        let pMap = {};
+        if (otherIds.length > 0) {
+          const { data: profilesRaw, error: pErr } = await supabase.rpc("get_profiles_by_ids", { ids: otherIds });
+          if (pErr) console.error("[FriendsPage] RPC profiles error:", pErr.message);
+          (profilesRaw || []).forEach(p => { pMap[p.id] = p; });
+        }
+
+        const accepted = fships
+          .filter(f => f.status === "accepted")
+          .map(f => {
+            const otherId = f.requester_id === currentUser.id ? f.addressee_id : f.requester_id;
+            return { ...(pMap[otherId] || { id: otherId, name: "Ami" }), friendship_id: f.id };
+          });
+        const incomingPending = fships
+          .filter(f => f.status === "pending" && f.addressee_id === currentUser.id)
+          .map(f => ({ ...(pMap[f.requester_id] || { id: f.requester_id, name: "Quelqu'un" }), friendship_id: f.id }));
+        const outgoingPending = fships
+          .filter(f => f.status === "pending" && f.requester_id === currentUser.id)
+          .map(f => ({ ...(pMap[f.addressee_id] || { id: f.addressee_id, name: "Quelqu'un" }), friendship_id: f.id }));
+
+        console.log("[FriendsPage] accepted:", accepted.length, "incoming:", incomingPending.length, "outgoing:", outgoingPending.length);
+
         setFriends(accepted);
         setPending(incomingPending);
+        setSentPending(outgoingPending);
         onPendingCount?.(incomingPending.length);
 
         if (accepted.length > 0) {
-          const ids = accepted.map(f => f.id);
-          const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
-          const { data: signals } = await supabase.from("daily_signals").select("*").in("user_id", ids).gte("date", weekAgo).order("date", { ascending: false });
-          if (signals) buildFeed(signals, accepted);
+          const ids = accepted.map(f => f.id).filter(Boolean);
+          if (ids.length > 0) {
+            const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
+            const { data: signals } = await supabase.from("daily_signals").select("*").in("user_id", ids).gte("date", weekAgo).order("date", { ascending: false });
+            if (signals) buildFeed(signals, accepted);
+          }
         }
         const { data: encs } = await supabase.from("encouragements").select("to_user_id").eq("from_user_id", currentUser.id).eq("date", todayStr);
         if (encs) { const enc = {}; encs.forEach(e => { enc[e.to_user_id] = true; }); setEncouraged(enc); }
+      } else {
+        setFriends([]); setPending([]); setSentPending([]); onPendingCount?.(0);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("[FriendsPage] loadAll crash:", e); }
     setLoading(false);
   };
 
@@ -2616,6 +2645,7 @@ const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPending
 
   const acceptFriend = async (fship_id) => { await supabase.from("friendships").update({ status: "accepted" }).eq("id", fship_id); loadAll(); };
   const declineFriend = async (fship_id) => { await supabase.from("friendships").delete().eq("id", fship_id); loadAll(); };
+  const cancelRequest = async (fship_id) => { await supabase.from("friendships").delete().eq("id", fship_id); setSentPending(s => s.filter(r => r.friendship_id !== fship_id)); };
   const removeFriend = async (fship_id) => { await supabase.from("friendships").delete().eq("id", fship_id); setFriends(f => f.filter(fr => fr.friendship_id !== fship_id)); };
 
   const copyInvite = async () => {
@@ -2761,26 +2791,46 @@ const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPending
               </div>
             )}
             {loading ? <p style={{ textAlign: "center", color: C.muted, padding: "40px 0" }}>Chargement…</p>
-            : friends.length === 0 && pending.length === 0 ? (
+            : friends.length === 0 && pending.length === 0 && sentPending.length === 0 ? (
               <div style={{ textAlign: "center", padding: "48px 20px" }}>
                 <p style={{ fontSize: 15, fontWeight: 700, color: C.black, margin: "0 0 12px" }}>Aucun ami encore</p>
                 <button onClick={() => setTab("ajouter")} style={{ padding: "12px 28px", borderRadius: 14, background: C.red, color: "#fff", border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>Ajouter un ami</button>
               </div>
             ) : (
               <>
-                {friends.length > 0 && <p style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 10px" }}>Mes amis · {friends.length}</p>}
-                {friends.map(f => (
-                  <div key={f.friendship_id} style={{ display: "flex", alignItems: "center", gap: 12, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "13px 14px", marginBottom: 8 }}>
-                    <FriendAvatar p={f} size={44} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.black }}>{f.name}</p>
-                      {f.username && <p style={{ margin: "2px 0 0", fontSize: 12, color: C.muted }}>@{f.username}</p>}
-                    </div>
-                    <button onClick={() => sendEncouragement(f.id)} style={{ padding: "8px 12px", borderRadius: 10, background: encouraged[f.id] ? `${C.green}18` : C.surfaceAlt, color: encouraged[f.id] ? C.green : C.muted, border: `1px solid ${encouraged[f.id] ? C.green : C.border}`, fontWeight: 700, fontSize: 12, cursor: encouraged[f.id] ? "default" : "pointer", fontFamily: "inherit", transition: "all 0.25s", whiteSpace: "nowrap" }}>
-                      {encouraged[f.id] ? "✓ Encouragé" : "👋 Encourager"}
-                    </button>
+                {friends.length > 0 && (
+                  <>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 10px" }}>Mes amis · {friends.length}</p>
+                    {friends.map(f => (
+                      <div key={f.friendship_id} style={{ display: "flex", alignItems: "center", gap: 12, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "13px 14px", marginBottom: 8 }}>
+                        <FriendAvatar p={f} size={44} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.black }}>{f.name}</p>
+                          {f.username && <p style={{ margin: "2px 0 0", fontSize: 12, color: C.muted }}>@{f.username}</p>}
+                        </div>
+                        <button onClick={() => sendEncouragement(f.id)} style={{ padding: "8px 12px", borderRadius: 10, background: encouraged[f.id] ? `${C.green}18` : C.surfaceAlt, color: encouraged[f.id] ? C.green : C.muted, border: `1px solid ${encouraged[f.id] ? C.green : C.border}`, fontWeight: 700, fontSize: 12, cursor: encouraged[f.id] ? "default" : "pointer", fontFamily: "inherit", transition: "all 0.25s", whiteSpace: "nowrap" }}>
+                          {encouraged[f.id] ? "✓ Encouragé" : "👋 Encourager"}
+                        </button>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {sentPending.length > 0 && (
+                  <div style={{ marginTop: friends.length > 0 ? 20 : 0 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 10px" }}>Demandes envoyées · {sentPending.length}</p>
+                    {sentPending.map(r => (
+                      <div key={r.friendship_id} style={{ display: "flex", alignItems: "center", gap: 12, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "12px 14px", marginBottom: 8 }}>
+                        <FriendAvatar p={r} size={44} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.black }}>{r.name}</p>
+                          {r.username && <p style={{ margin: "2px 0 0", fontSize: 12, color: C.muted }}>@{r.username}</p>}
+                        </div>
+                        <span style={{ padding: "6px 11px", borderRadius: 10, background: `${C.orange}18`, color: C.orange, fontWeight: 700, fontSize: 12, whiteSpace: "nowrap", marginRight: 6 }}>En attente</span>
+                        <button onClick={() => cancelRequest(r.friendship_id)} style={{ padding: "6px 10px", borderRadius: 10, background: C.surfaceAlt, color: C.muted, border: `1px solid ${C.border}`, fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>✕</button>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </>
             )}
           </div>
