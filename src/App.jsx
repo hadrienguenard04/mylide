@@ -2519,9 +2519,9 @@ const Onboarding = ({ onComplete }) => {
 // ── FRIENDS PAGE ───────────────────────────────────────────────────────────
 const DEFAULT_VISIBILITY = { training: false, steps: false, regularity: false, daily_check: false, sleep: false };
 
-const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPendingCount }) => {
+const FriendsPage = ({ onClose, currentUser, profile, onUpdateProfile, onPendingCount, initialTab = "feed" }) => {
   const C = useC();
-  const [tab, setTab] = useState("feed");
+  const [tab, setTab] = useState(initialTab);
   const [friends, setFriends] = useState([]);
   const [pending, setPending] = useState([]);
   const [feed, setFeed] = useState([]);
@@ -3629,7 +3629,7 @@ export default function App() {
 
       {editingGoal && <EditGoalModal goal={editingGoal} onSave={saveEditedGoal} onClose={() => setEditingGoal(null)} />}
       {showSubscription && <Subscription onClose={() => setShowSubscription(false)} userPlan={userPlan} userId={currentUser?.id} userEmail={currentUser?.email} subscriptionData={subscriptionData} />}
-      {showFriends && <FriendsPage onClose={() => setShowFriends(false)} currentUser={currentUser} profile={profile} onUpdateProfile={updateProfile} onPendingCount={setFriendsPendingCount} />}
+      {showFriends && <FriendsPage onClose={() => setShowFriends(false)} currentUser={currentUser} profile={profile} onUpdateProfile={updateProfile} onPendingCount={setFriendsPendingCount} initialTab={friendsPendingCount > 0 ? "amis" : "feed"} />}
       {showSettings && <SettingsPage onClose={async () => {
           setShowSettings(false);
           // Sync préférences localStorage → Supabase au moment de la fermeture
