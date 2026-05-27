@@ -2968,6 +2968,8 @@ export default function App() {
           if (p.sleepTime) localStorage.setItem("sleepTime", p.sleepTime);
           if (p.lang)      { localStorage.setItem("lang", p.lang); _lang = p.lang; }
         }
+        // Vérifier le flag onboarding_completed
+        if (!profileData.onboarding_completed) { setOnboarded(false); return; }
         setOnboarded(true);
         // Charger le nombre de demandes d'amis en attente
         try {
@@ -3226,7 +3228,7 @@ export default function App() {
     setProfile(profileData); setGoals(createdGoals); setOnboarded(true);
     if (wantsSubscription) setTimeout(() => setShowSubscription(true), 600);
     const { data: { session } } = await supabase.auth.getSession(); const user = session?.user; if (!user) return;
-    const { error: profileErr } = await supabase.from("profiles").upsert({ id: user.id, name: profileData.name, dob: profileData.dob, photo: profileData.photo });
+    const { error: profileErr } = await supabase.from("profiles").upsert({ id: user.id, name: profileData.name, dob: profileData.dob, photo: profileData.photo, onboarding_completed: true });
     if (profileErr) console.error("[onboarding] Profile upsert failed:", profileErr.message, profileErr.code);
 
     // Sauvegarder le profil physique dans nutritionGoals
