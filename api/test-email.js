@@ -5,7 +5,7 @@ module.exports = async function handler(req, res) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const { data, error } = await resend.emails.send({
     from: "MYLIDE <onboarding@resend.dev>",
-    to: "hadrienguenard04@gmail.com",
+    to: "kojihsports@gmail.com",
     subject: "Test MYLIDE",
     html: "<p>Si tu reçois ce mail, Resend fonctionne ✅</p>",
   });
