@@ -3290,6 +3290,16 @@ export default function App() {
     const { error: profileErr } = await supabase.from("profiles").upsert({ id: user.id, name: profileData.name, dob: profileData.dob, photo: profileData.photo, onboarding_completed: true });
     if (profileErr) console.error("[onboarding] Profile upsert failed:", profileErr.message, profileErr.code);
 
+    // Email de bienvenue (plan free) — envoyé une seule fois
+    const { data: { session: sess } } = await supabase.auth.getSession();
+    if (sess?.access_token) {
+      fetch("/api/send-welcome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sess.access_token}` },
+        body: JSON.stringify({ userId: user.id }),
+      }).catch(() => {});
+    }
+
     // Sauvegarder le profil physique dans nutritionGoals
     if (bodyProfileData) {
       const ng = {
