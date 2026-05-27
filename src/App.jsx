@@ -3216,7 +3216,7 @@ export default function App() {
     setSyncStatus("saving");
 
     // Profil
-    const { error: profileSaveErr } = await supabase.from("profiles").upsert({ id: user.id, name: pr.name, dob: pr.dob, photo: pr.photo });
+    const { error: profileSaveErr } = await supabase.from("profiles").upsert({ id: user.id, name: pr.name, dob: pr.dob || null, photo: pr.photo || null });
     if (profileSaveErr) console.error("[saveAll] Profile upsert failed:", profileSaveErr.message, profileSaveErr.code);
 
     // Journal du jour : SELECT l'ID existant → upsert par PK (comme profiles).
@@ -3287,7 +3287,7 @@ export default function App() {
     setProfile(profileData); setGoals(createdGoals); setOnboarded(true);
     if (wantsSubscription) setTimeout(() => setShowSubscription(true), 600);
     const { data: { session } } = await supabase.auth.getSession(); const user = session?.user; if (!user) return;
-    const { error: profileErr } = await supabase.from("profiles").upsert({ id: user.id, name: profileData.name, dob: profileData.dob, photo: profileData.photo, onboarding_completed: true });
+    const { error: profileErr } = await supabase.from("profiles").upsert({ id: user.id, name: profileData.name, dob: profileData.dob || null, photo: profileData.photo || null, onboarding_completed: true });
     if (profileErr) console.error("[onboarding] Profile upsert failed:", profileErr.message, profileErr.code);
 
     // Email de bienvenue (plan free) — envoyé une seule fois
