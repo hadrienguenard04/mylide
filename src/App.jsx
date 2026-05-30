@@ -334,6 +334,7 @@ const DATA_SOURCES = [
   { id: "lecture",      label: "Lecture/jour",        unit: "p",   path: "mind.reading",       isDaily: true, labelEx: "Ex: Lire 20 pages/jour",     example: "Ex: 20" },
   { id: "screen",       label: "Temps ecran/jour",    unit: "h",   path: "work.screenTime",    isDaily: true, reverse: true, labelEx: "Ex: Moins de 2h d'ecran", example: "Ex: 2" },
   { id: "focus",        label: "Focus/jour",          unit: "/5",  path: "work.focus",         isDaily: true, labelEx: "Ex: Focus a 4/5 chaque jour", example: "Ex: 4" },
+  { id: "pas",          label: "Pas/jour",            unit: "pas", path: "sport.steps",        isDaily: true, labelEx: "Ex: 10 000 pas/jour",         example: "Ex: 10000" },
 ];
 
 const getNestedVal = (obj, path) => path?.split(".").reduce((o, k) => o?.[k] ?? 0, obj) ?? 0;
@@ -1864,7 +1865,7 @@ const inp = {
 };
 
 // ── STEPS CHART PRO ───────────────────────────────────────────────────────────
-const StepsChartPro = ({ history, userPlan, onUpgrade }) => {
+const StepsChartPro = ({ history, userPlan, stepsGoal = 10000, onUpgrade }) => {
   const C = useC();
   const { darkMode } = useTheme();
   const [range, setRange] = useState("7");
@@ -1884,7 +1885,7 @@ const StepsChartPro = ({ history, userPlan, onUpgrade }) => {
     const best = Math.max(...vals);
     const worst = Math.min(...vals);
     const bestDay = rangeData.find(d => (d.sport?.steps || 0) === best);
-    const daysAboveGoal = vals.filter(v => v >= 10000).length;
+    const daysAboveGoal = vals.filter(v => v >= stepsGoal).length;
     // Trend: compare first half vs second half average
     const mid = Math.floor(vals.length / 2);
     const firstHalf = vals.slice(0, mid);
@@ -1900,10 +1901,11 @@ const StepsChartPro = ({ history, userPlan, onUpgrade }) => {
     const msgs = [];
     if (stats.trendPct >= 10) msgs.push({ icon: "📈", msg: `Ton activité augmente de ${stats.trendPct}% sur la période.` });
     else if (stats.trendPct <= -10) msgs.push({ icon: "📉", msg: `Ton activité a baissé de ${Math.abs(stats.trendPct)}% sur la période. Continue tes efforts !` });
-    if (stats.avg >= 10000) msgs.push({ icon: "🏆", msg: `Bravo ! Tu dépasses ton objectif en moyenne (${(stats.avg/1000).toFixed(1)}k pas/jour).` });
-    else if (stats.avg >= 7500) msgs.push({ icon: "👟", msg: `Tu es régulier autour de ${(stats.avg/1000).toFixed(1)}k pas — encore un effort pour atteindre 10k !` });
-    else msgs.push({ icon: "💡", msg: `Ton average est de ${(stats.avg/1000).toFixed(1)}k pas. Vise 10k pour maximiser ton score.` });
-    if (stats.daysAboveGoal > 0) msgs.push({ icon: "✅", msg: `Tu as atteint 10 000 pas ${stats.daysAboveGoal} jour${stats.daysAboveGoal > 1 ? "s" : ""} sur ${stats.total}.` });
+    const goalK = (stepsGoal/1000).toFixed(0);
+    if (stats.avg >= stepsGoal) msgs.push({ icon: "🏆", msg: `Bravo ! Tu dépasses ton objectif en moyenne (${(stats.avg/1000).toFixed(1)}k pas/jour).` });
+    else if (stats.avg >= stepsGoal * 0.75) msgs.push({ icon: "👟", msg: `Tu es proche de ton objectif (${(stats.avg/1000).toFixed(1)}k/jour) — encore un effort pour atteindre ${goalK}k !` });
+    else msgs.push({ icon: "💡", msg: `Ton average est de ${(stats.avg/1000).toFixed(1)}k pas. Vise ${goalK}k pour maximiser ton score.` });
+    if (stats.daysAboveGoal > 0) msgs.push({ icon: "✅", msg: `Tu as atteint ${goalK} 000 pas ${stats.daysAboveGoal} jour${stats.daysAboveGoal > 1 ? "s" : ""} sur ${stats.total}.` });
     // Check training correlation
     const trainingDays = rangeData.filter(d => (d.sport?.sessions?.length || 0) > 0);
     if (trainingDays.length >= 3) {
@@ -1959,11 +1961,11 @@ const StepsChartPro = ({ history, userPlan, onUpgrade }) => {
               <XAxis dataKey="date" tick={{ fill: C.muted, fontSize: 9 }} tickFormatter={d => d.slice(5)} axisLine={false} tickLine={false} interval={Math.max(0, Math.floor(rangeData.length / 6) - 1)} />
               <YAxis tick={{ fill: C.muted, fontSize: 9 }} width={32} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} axisLine={false} tickLine={false} />
               <Tooltip contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 12, color: C.text, boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }} formatter={v => [`${v.toLocaleString()} pas`, "Pas"]} labelFormatter={l => l} />
-              <ReferenceLine y={10000} stroke={C.green} strokeDasharray="4 4" strokeWidth={1.5} />
+              <ReferenceLine y={stepsGoal} stroke={C.green} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: `${(stepsGoal/1000).toFixed(0)}k`, position: "insideTopRight", fill: C.green, fontSize: 9, fontWeight: 700 }} />
               <Bar dataKey="sport.steps" fill={COLOR_STEPS} radius={[3, 3, 0, 0]}
                 cell={(entry, index) => {
                   const val = rangeData[index]?.sport?.steps || 0;
-                  return <rect fill={val >= 10000 ? C.green : val >= 7000 ? COLOR_STEPS : `${COLOR_STEPS}80`} />;
+                  return <rect fill={val >= stepsGoal ? C.green : val >= stepsGoal * 0.7 ? COLOR_STEPS : `${COLOR_STEPS}80`} />;
                 }}
               />
             </BarChart>
@@ -3115,6 +3117,8 @@ export default function App() {
   const [newPoche, setNewPoche] = useState({ name: "", amount: 0, color: "#2563eb" });
   const [flowPocket, setFlowPocket] = useState({ income: "", expense: "", invested: "" });
   const [statRange, setStatRange] = useState(() => localStorage.getItem("statRange") || "7");
+  const [stepsGoal, setStepsGoal] = useState(() => parseInt(localStorage.getItem("stepsGoal") || "10000"));
+  const [editingStepsGoal, setEditingStepsGoal] = useState(false);
   const [profile, setProfile] = useState({ name: "", dob: "", photo: "" });
   const [sim, setSim] = useState(() => { try { const s = JSON.parse(localStorage.getItem("simData")); return s && s.years ? s : { amount: 10000, monthly: 200, rate: 10, years: 10 }; } catch { return { amount: 10000, monthly: 200, rate: 10, years: 10 }; } });
   const [newGoal, setNewGoal] = useState({ label: "", category: "", color: "#CC2936", sourceId: "manual", target: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reverse: false, manualProgress: 0 });
@@ -4389,7 +4393,25 @@ export default function App() {
                   )}
                   {/* Compteur de pas */}
                   <Card>
-                    <ST>Pas du jour</ST>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <ST style={{ margin: 0 }}>Pas du jour</ST>
+                      <button onClick={() => setEditingStepsGoal(v => !v)} style={{ background: editingStepsGoal ? C.redLight : C.surfaceAlt, border: `1px solid ${editingStepsGoal ? C.red : C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, color: editingStepsGoal ? C.red : C.muted, cursor: "pointer", fontFamily: "inherit" }}>
+                        🎯 Objectif : {stepsGoal >= 1000 ? `${(stepsGoal/1000).toFixed(0)}k` : stepsGoal}
+                      </button>
+                    </div>
+                    {editingStepsGoal && (
+                      <div style={{ background: C.surfaceAlt, borderRadius: 12, padding: "12px 14px", marginBottom: 14 }}>
+                        <p style={{ margin: "0 0 8px", fontSize: 12, color: C.muted }}>Choisir mon objectif quotidien</p>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          {[5000, 7500, 8000, 10000, 12000, 15000].map(g => (
+                            <button key={g} onClick={() => { setStepsGoal(g); localStorage.setItem("stepsGoal", String(g)); setEditingStepsGoal(false); }}
+                              style={{ padding: "7px 12px", borderRadius: 10, border: stepsGoal === g ? "none" : `1px solid ${C.border}`, background: stepsGoal === g ? C.red : C.surface, color: stepsGoal === g ? "#fff" : C.text, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                              {g >= 1000 ? `${(g/1000).toFixed(1)}k` : g}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14 }}>
                       <div style={{ flex: 1 }}>
                         <input
@@ -4402,26 +4424,29 @@ export default function App() {
                           onFocus={e => e.target.select()}
                           style={{ background: "transparent", border: "none", outline: "none", fontSize: 38, fontWeight: 900, color: C.red, width: "100%", fontFamily: "inherit" }}
                         />
-                        <p style={{ margin: "2px 0 0", fontSize: 12, color: C.muted }}>Saisie manuelle · objectif 10 000 pas</p>
+                        <p style={{ margin: "2px 0 0", fontSize: 12, color: C.muted }}>Saisie manuelle · objectif {stepsGoal >= 1000 ? `${(stepsGoal/1000).toFixed(0)} 000` : stepsGoal} pas</p>
                       </div>
-                      <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.surfaceAlt, border: `3px solid ${(today.sport.steps || 0) >= 10000 ? C.green : (today.sport.steps || 0) >= 7000 ? C.orange : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "border-color 0.3s" }}>
-                        <span style={{ fontSize: 11, fontWeight: 900, color: (today.sport.steps || 0) >= 10000 ? C.green : C.muted }}>
-                          {today.sport.steps >= 10000 ? "✓" : `${Math.round(((today.sport.steps || 0) / 10000) * 100)}%`}
+                      <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.surfaceAlt, border: `3px solid ${(today.sport.steps || 0) >= stepsGoal ? C.green : (today.sport.steps || 0) >= stepsGoal * 0.7 ? C.orange : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "border-color 0.3s" }}>
+                        <span style={{ fontSize: 11, fontWeight: 900, color: (today.sport.steps || 0) >= stepsGoal ? C.green : C.muted }}>
+                          {(today.sport.steps || 0) >= stepsGoal ? "✓" : `${Math.round(((today.sport.steps || 0) / stepsGoal) * 100)}%`}
                         </span>
                       </div>
                     </div>
                     {/* Barre de progression */}
                     <div style={{ height: 8, borderRadius: 4, background: C.surfaceAlt, overflow: "hidden" }}>
-                      <div style={{ height: "100%", borderRadius: 4, width: `${Math.min(100, ((today.sport.steps || 0) / 10000) * 100)}%`, background: (today.sport.steps || 0) >= 10000 ? C.green : (today.sport.steps || 0) >= 7000 ? C.orange : C.red, transition: "width 0.5s cubic-bezier(0.4,0,0.2,1)" }} />
+                      <div style={{ height: "100%", borderRadius: 4, width: `${Math.min(100, ((today.sport.steps || 0) / stepsGoal) * 100)}%`, background: (today.sport.steps || 0) >= stepsGoal ? C.green : (today.sport.steps || 0) >= stepsGoal * 0.7 ? C.orange : C.red, transition: "width 0.5s cubic-bezier(0.4,0,0.2,1)" }} />
                     </div>
-                    {/* Paliers */}
+                    {/* Paliers dynamiques */}
                     <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
-                      {[3000, 5000, 7500, 10000].map(target => (
-                        <div key={target} style={{ textAlign: "center" }}>
-                          <div style={{ width: 1, height: 4, background: C.border, margin: "0 auto 2px" }} />
-                          <span style={{ fontSize: 9, color: (today.sport.steps || 0) >= target ? C.red : C.subtle, fontWeight: 700 }}>{target >= 1000 ? `${target/1000}k` : target}</span>
-                        </div>
-                      ))}
+                      {[0.3, 0.5, 0.75, 1].map(pct => {
+                        const t = Math.round(stepsGoal * pct);
+                        return (
+                          <div key={pct} style={{ textAlign: "center" }}>
+                            <div style={{ width: 1, height: 4, background: C.border, margin: "0 auto 2px" }} />
+                            <span style={{ fontSize: 9, color: (today.sport.steps || 0) >= t ? C.red : C.subtle, fontWeight: 700 }}>{t >= 1000 ? `${(t/1000).toFixed(1)}k` : t}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </Card>
                   <EvoChart data={sportH.slice(-30)} dataKey="sport.duration" color={C.red} label="Duree des seances" unit="min" />
@@ -5289,7 +5314,7 @@ export default function App() {
               <EvoChart data={rangeH} dataKey="score" color={C.red} label="Score global" unit="" height={170} />
               <EvoChart data={sleepH.slice(-parseInt(statRange))} dataKey="sleep.duration" color={C.purple} label="Sommeil" unit="h" />
               <EvoChart data={sportH.slice(-parseInt(statRange))} dataKey="sport.duration" color={C.red} label="Sport" unit="min" />
-              <StepsChartPro history={history} userPlan={userPlan} onUpgrade={() => setShowSubscription(true)} />
+              <StepsChartPro history={history} userPlan={userPlan} stepsGoal={stepsGoal} onUpgrade={() => setShowSubscription(true)} />
               <EvoChart data={history.filter(d => d.body?.weight > 0).slice(-parseInt(statRange))} dataKey="body.weight" color={C.orange} label="Poids" unit="kg" />
               <EvoChart data={moodH.slice(-parseInt(statRange))} dataKey="mind.mood" color={C.purple} label="Humeur" unit="/5" />
               <EvoChart data={history.filter(d => d.nutrition?.protein > 0).slice(-parseInt(statRange))} dataKey="nutrition.protein" color={C.purple} label="Protéines" unit="g" />
