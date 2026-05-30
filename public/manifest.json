@@ -7,6 +7,7 @@
   "orientation": "portrait",
   "background_color": "#CC2936",
   "theme_color": "#CC2936",
+  "id": "/",
   "lang": "fr",
   "categories": ["health", "fitness", "lifestyle"],
   "icons": [
@@ -28,12 +29,5 @@
       "type": "image/png"
     }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshot-mobile.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ]
+  "screenshots": []
 }
