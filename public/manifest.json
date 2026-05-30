@@ -1,7 +1,7 @@
 {
   "name": "MYLIDE",
   "short_name": "MYLIDE",
-  "description": "Ton tracker de vie intelligent — nutrition, sport, sommeil, finances et bien-être au même endroit.",
+  "description": "Ton tracker de vie intelligent : nutrition, sport, sommeil, finances et bien-être au même endroit.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

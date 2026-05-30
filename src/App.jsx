@@ -3832,7 +3832,7 @@ export default function App() {
               Tu utilises MYLIDE depuis 7 jours !
             </h2>
             <p style={{ margin: "0 0 20px", fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 1.6 }}>
-              Débloque les statistiques avancées, l'historique complet et bien plus — <strong style={{ color: C.text }}>gratuitement pendant 7 jours</strong>.
+              Débloque les statistiques avancées, l'historique complet et bien plus : <strong style={{ color: C.text }}>gratuitement pendant 7 jours</strong>.
             </p>
             <div style={{ background: "linear-gradient(135deg, #10B981, #059669)", borderRadius: 16, padding: "14px 18px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
