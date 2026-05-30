@@ -11,7 +11,7 @@
 // En attendant la vérification : utiliser onboarding@resend.dev (sandbox)
 
 const { Resend } = require("resend");
-const FROM_EMAIL = "MYLIDE <onboarding@resend.dev>";
+const FROM_EMAIL = "MYLIDE <noreply@mylide.app>";
 
 /**
  * Envoie un email via Resend SDK.
