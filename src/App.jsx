@@ -3718,8 +3718,7 @@ export default function App() {
   const handleSignOut = async () => { await supabase.auth.signOut(); localStorage.removeItem("kojihlife_v9"); setOnboarded(false); };
 
   const intel = getIntelligence(history, totalPatrimoine, goals);
-  const dynamicWaterGoal = calcWaterTarget({ weight: currentWeight, sex: nutritionGoals.sex, activityLevel: nutritionGoals.activityLevel, hasSport: (today.sport?.sessions?.length || 0) > 0, sportDuration: today.sport?.duration || 0 });
-  const temporalInsights = getTemporalIntelligence(today, history, goals, dynamicWaterGoal);
+  const temporalInsights = getTemporalIntelligence(today, history, goals);
   const age = calcAge(profile.dob);
   const rangeH = statRange === "all" ? history : history.slice(-parseInt(statRange));
   const streak = (() => { let c = 0; for (let i = history.length - 1; i >= 0; i--) { if (history[i].score > 0) c++; else break; } return c; })();
@@ -3759,6 +3758,14 @@ export default function App() {
   const scienceMacros = useMemo(() => calcMacros(
     currentWeight, tdee, nutritionGoals.goalType, sportCalBurnScience, nutritionGoals.sex || "male"
   ), [currentWeight, tdee, nutritionGoals.goalType, sportCalBurnScience, nutritionGoals.sex]);
+
+  const dynamicWaterGoal = calcWaterTarget({
+    weight: currentWeight,
+    sex: nutritionGoals.sex,
+    activityLevel: nutritionGoals.activityLevel,
+    hasSport: (today.sport?.sessions?.length || 0) > 0,
+    sportDuration: today.sport?.duration || 0,
+  });
 
   const weeklyFreq = useMemo(() => getWeeklySportFreq(history), [history]);
 
