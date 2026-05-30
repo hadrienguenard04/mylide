@@ -45,7 +45,7 @@ async function registerPush(notifPrefs, wakeTime = "07:00", sleepTime = "23:00",
 }
 import Subscription from "./Subscription";
 import { useTheme, useC } from "./theme.jsx";
-import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, BarChart, Bar, Legend } from "recharts";
+import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, BarChart, Bar, Legend, ReferenceLine } from "recharts";
 import kojihLogo from "./assets/logo.png";
 
 // ── THEMES ────────────────────────────────────────────────────────────────
@@ -1861,6 +1861,183 @@ const inp = {
   appearance: "none",
   fontFamily: "inherit",
   transition: "border-color 0.15s ease",
+};
+
+// ── STEPS CHART PRO ───────────────────────────────────────────────────────────
+const StepsChartPro = ({ history, userPlan, onUpgrade }) => {
+  const C = useC();
+  const { darkMode } = useTheme();
+  const [range, setRange] = useState("7");
+  const isPro = isAtLeast(userPlan, "pro");
+
+  const stepsHistory = useMemo(() => history.filter(d => (d.sport?.steps || 0) > 0), [history]);
+
+  const rangeData = useMemo(() => {
+    const n = range === "all" ? 9999 : parseInt(range);
+    return stepsHistory.slice(-n);
+  }, [stepsHistory, range]);
+
+  const stats = useMemo(() => {
+    if (rangeData.length === 0) return null;
+    const vals = rangeData.map(d => d.sport?.steps || 0);
+    const avg = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+    const best = Math.max(...vals);
+    const worst = Math.min(...vals);
+    const bestDay = rangeData.find(d => (d.sport?.steps || 0) === best);
+    const daysAboveGoal = vals.filter(v => v >= 10000).length;
+    // Trend: compare first half vs second half average
+    const mid = Math.floor(vals.length / 2);
+    const firstHalf = vals.slice(0, mid);
+    const secondHalf = vals.slice(mid);
+    const avgFirst = firstHalf.reduce((a, b) => a + b, 0) / (firstHalf.length || 1);
+    const avgSecond = secondHalf.reduce((a, b) => a + b, 0) / (secondHalf.length || 1);
+    const trendPct = avgFirst > 0 ? Math.round(((avgSecond - avgFirst) / avgFirst) * 100) : 0;
+    return { avg, best, worst, bestDay, daysAboveGoal, trendPct, total: vals.length };
+  }, [rangeData]);
+
+  const insights = useMemo(() => {
+    if (!stats || !isPro || rangeData.length < 5) return [];
+    const msgs = [];
+    if (stats.trendPct >= 10) msgs.push({ icon: "📈", msg: `Ton activité augmente de ${stats.trendPct}% sur la période.` });
+    else if (stats.trendPct <= -10) msgs.push({ icon: "📉", msg: `Ton activité a baissé de ${Math.abs(stats.trendPct)}% sur la période. Continue tes efforts !` });
+    if (stats.avg >= 10000) msgs.push({ icon: "🏆", msg: `Bravo ! Tu dépasses ton objectif en moyenne (${(stats.avg/1000).toFixed(1)}k pas/jour).` });
+    else if (stats.avg >= 7500) msgs.push({ icon: "👟", msg: `Tu es régulier autour de ${(stats.avg/1000).toFixed(1)}k pas — encore un effort pour atteindre 10k !` });
+    else msgs.push({ icon: "💡", msg: `Ton average est de ${(stats.avg/1000).toFixed(1)}k pas. Vise 10k pour maximiser ton score.` });
+    if (stats.daysAboveGoal > 0) msgs.push({ icon: "✅", msg: `Tu as atteint 10 000 pas ${stats.daysAboveGoal} jour${stats.daysAboveGoal > 1 ? "s" : ""} sur ${stats.total}.` });
+    // Check training correlation
+    const trainingDays = rangeData.filter(d => (d.sport?.sessions?.length || 0) > 0);
+    if (trainingDays.length >= 3) {
+      const avgTraining = trainingDays.reduce((a, d) => a + (d.sport?.steps || 0), 0) / trainingDays.length;
+      const nonTraining = rangeData.filter(d => !(d.sport?.sessions?.length > 0));
+      const avgNonTraining = nonTraining.length ? nonTraining.reduce((a, d) => a + (d.sport?.steps || 0), 0) / nonTraining.length : 0;
+      if (avgTraining > avgNonTraining * 1.3) msgs.push({ icon: "🏋️", msg: `Tu marches ${Math.round(((avgTraining - avgNonTraining) / avgNonTraining) * 100)}% plus les jours d'entraînement.` });
+    }
+    return msgs.slice(0, 3);
+  }, [stats, isPro, rangeData]);
+
+  const RANGES = [
+    { v: "7", l: "7j", pro: false },
+    { v: "30", l: "30j", pro: false },
+    { v: "90", l: "3 mois", pro: true },
+    { v: "365", l: "1 an", pro: true },
+  ];
+
+  const COLOR_STEPS = "#F97316";
+
+  if (stepsHistory.length === 0) return null;
+
+  return (
+    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "18px 16px", marginBottom: 12 }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: 1.2, fontWeight: 600 }}>👟 Pas quotidiens</p>
+          {stats && <p style={{ margin: "3px 0 0", fontSize: 22, fontWeight: 900, color: COLOR_STEPS }}>{(stats.avg/1000).toFixed(1)}k <span style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>moy/jour</span></p>}
+        </div>
+        {!isPro && <span style={{ fontSize: 11, background: `${C.red}15`, color: C.red, borderRadius: 8, padding: "4px 10px", fontWeight: 700 }}>PRO 🔒</span>}
+      </div>
+
+      {/* Range tabs */}
+      <div style={{ display: "flex", gap: 5, marginBottom: 14 }}>
+        {RANGES.map(({ v, l, pro }) => {
+          const locked = pro && !isPro;
+          return (
+            <button key={v} onClick={() => { if (locked) { onUpgrade?.(); return; } setRange(v); }}
+              style={{ flex: 1, padding: "8px 4px", borderRadius: 10, border: range === v ? "none" : `1px solid ${C.border}`, background: range === v ? COLOR_STEPS : C.surfaceAlt, color: range === v ? "#fff" : locked ? C.subtle : C.muted, fontSize: 11, fontWeight: 700, cursor: locked ? "pointer" : "pointer", opacity: locked ? 0.6 : 1, fontFamily: "inherit" }}>
+              {l}{locked ? " 🔒" : ""}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Chart */}
+      <div style={{ position: "relative" }}>
+        <div style={{ filter: (!isPro && (range === "90" || range === "365")) ? "blur(6px)" : "none", pointerEvents: "none" }}>
+          <ResponsiveContainer width="100%" height={160}>
+            <BarChart data={rangeData} barSize={rangeData.length > 60 ? 3 : rangeData.length > 20 ? 6 : 12}>
+              <CartesianGrid stroke={C.border} vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fill: C.muted, fontSize: 9 }} tickFormatter={d => d.slice(5)} axisLine={false} tickLine={false} interval={Math.max(0, Math.floor(rangeData.length / 6) - 1)} />
+              <YAxis tick={{ fill: C.muted, fontSize: 9 }} width={32} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 12, color: C.text, boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }} formatter={v => [`${v.toLocaleString()} pas`, "Pas"]} labelFormatter={l => l} />
+              <ReferenceLine y={10000} stroke={C.green} strokeDasharray="4 4" strokeWidth={1.5} />
+              <Bar dataKey="sport.steps" fill={COLOR_STEPS} radius={[3, 3, 0, 0]}
+                cell={(entry, index) => {
+                  const val = rangeData[index]?.sport?.steps || 0;
+                  return <rect fill={val >= 10000 ? C.green : val >= 7000 ? COLOR_STEPS : `${COLOR_STEPS}80`} />;
+                }}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        {/* Lock overlay for non-pro advanced ranges */}
+        {!isPro && (range === "90" || range === "365") && (
+          <div onClick={() => onUpgrade?.()} style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", gap: 8 }}>
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 24px", textAlign: "center", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
+              <div style={{ fontSize: 28, marginBottom: 6 }}>🔒</div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.black }}>Disponible avec PRO</p>
+              <p style={{ margin: "4px 0 10px", fontSize: 12, color: C.muted }}>Historique {range === "90" ? "3 mois" : "1 an"} + analyses avancées</p>
+              <div style={{ background: C.red, color: "#fff", borderRadius: 10, padding: "8px 20px", fontSize: 13, fontWeight: 800 }}>Passer à PRO →</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Stats grid */}
+      {stats && isPro && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 14 }}>
+          {[
+            { label: "Moyenne", value: `${(stats.avg/1000).toFixed(1)}k` },
+            { label: "Record", value: `${(stats.best/1000).toFixed(1)}k` },
+            { label: "Objectif ✓", value: `${stats.daysAboveGoal}j` },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ background: C.surfaceAlt, borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
+              <div style={{ fontSize: 16, fontWeight: 900, color: COLOR_STEPS }}>{value}</div>
+              <div style={{ fontSize: 9, color: C.muted, marginTop: 2, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Free stats (limited) */}
+      {stats && !isPro && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 14 }}>
+          {[
+            { label: "Moyenne 7j", value: `${(stats.avg/1000).toFixed(1)}k` },
+            { label: "Record", value: `${(stats.best/1000).toFixed(1)}k` },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ background: C.surfaceAlt, borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
+              <div style={{ fontSize: 16, fontWeight: 900, color: COLOR_STEPS }}>{value}</div>
+              <div style={{ fontSize: 9, color: C.muted, marginTop: 2, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Smart insights */}
+      {insights.length > 0 && (
+        <div style={{ marginTop: 14, borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+          <p style={{ margin: "0 0 8px", fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: 1, fontWeight: 700 }}>Analyses intelligentes</p>
+          {insights.map((ins, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderBottom: i < insights.length - 1 ? `1px solid ${C.border}` : "none" }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>{ins.icon}</span>
+              <p style={{ margin: 0, fontSize: 13, color: C.text, lineHeight: 1.5 }}>{ins.msg}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Upgrade teaser for non-pro */}
+      {!isPro && (
+        <div onClick={() => onUpgrade?.()} style={{ marginTop: 14, background: `${C.red}10`, border: `1px solid ${C.red}25`, borderRadius: 12, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+          <div>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.black }}>🔒 Analyses intelligentes</p>
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: C.muted }}>Tendances · corrélations sport · historique complet</p>
+          </div>
+          <span style={{ fontSize: 12, color: C.red, fontWeight: 800, flexShrink: 0 }}>PRO →</span>
+        </div>
+      )}
+    </div>
+  );
 };
 
 const EvoChart = ({ data, dataKey, color, label, unit, height = 150 }) => {
@@ -5112,6 +5289,7 @@ export default function App() {
               <EvoChart data={rangeH} dataKey="score" color={C.red} label="Score global" unit="" height={170} />
               <EvoChart data={sleepH.slice(-parseInt(statRange))} dataKey="sleep.duration" color={C.purple} label="Sommeil" unit="h" />
               <EvoChart data={sportH.slice(-parseInt(statRange))} dataKey="sport.duration" color={C.red} label="Sport" unit="min" />
+              <StepsChartPro history={history} userPlan={userPlan} onUpgrade={() => setShowSubscription(true)} />
               <EvoChart data={history.filter(d => d.body?.weight > 0).slice(-parseInt(statRange))} dataKey="body.weight" color={C.orange} label="Poids" unit="kg" />
               <EvoChart data={moodH.slice(-parseInt(statRange))} dataKey="mind.mood" color={C.purple} label="Humeur" unit="/5" />
               <EvoChart data={history.filter(d => d.nutrition?.protein > 0).slice(-parseInt(statRange))} dataKey="nutrition.protein" color={C.purple} label="Protéines" unit="g" />
