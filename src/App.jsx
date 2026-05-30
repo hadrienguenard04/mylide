@@ -1636,7 +1636,6 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
   if (sub === "email") return <SubPageEmail onBack={() => setSub(null)} currentEmail={userEmail} setCurrentEmail={setUserEmail} />;
   if (sub === "password") return <SubPagePassword onBack={() => setSub(null)} />;
   if (sub === "phone") return <SubPagePhone onBack={() => setSub(null)} profile={profile} updateProfile={updateProfile} />;
-  if (sub === "language") return <SubPageLanguage onBack={() => setSub(null)} setLang={setLang} />;
   if (sub === "notif") return <SubPageNotif onBack={() => setSub(null)} />;
   if (sub === "cgu") return <SubPageLegal onBack={() => setSub(null)} title="Conditions d'utilisation" sections={CGU_SECTIONS} />;
   if (sub === "privacy") return <SubPageLegal onBack={() => setSub(null)} title="Politique de confidentialité" sections={PRIVACY_SECTIONS} />;
@@ -1688,7 +1687,6 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
           <Row icon={<Icon name="message" size={17} color={C.muted} strokeWidth={1.8}/>} label={tr("row_email")} desc={userEmail || "..."} onClick={() => setSub("email")} />
           <Row icon={<Icon name="lock" size={17} color={C.muted} strokeWidth={1.8}/>} label={tr("row_password")} desc={tr("row_password_desc")} onClick={() => setSub("password")} />
           <Row icon={<Icon name="bell" size={17} color={C.muted} strokeWidth={1.8}/>} label={tr("row_phone")} desc={profile.phone || tr("row_phone_add")} onClick={() => setSub("phone")} />
-          <Row icon={<Icon name="settings" size={17} color={C.muted} strokeWidth={1.8}/>} label={tr("row_lang")} desc={currentLang} onClick={() => setSub("language")} />
           <Row icon={<Icon name="refresh" size={17} color={C.muted} strokeWidth={1.8}/>} label={tr("row_logout")} desc={tr("row_logout_desc")} onClick={onSignOut} last />
         </Sec>
 
