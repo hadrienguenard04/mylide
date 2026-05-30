@@ -9,7 +9,7 @@ import {
   GOAL_CONFIG, ACTIVITY_LEVELS,
   calcBMR, calcTDEE, calcSportBurn, calcMacros,
   estimateProgress, detectContradictions, formatProgress, validateDateTarget,
-  inferActivityLevel, getWeeklySportFreq, getGoalMessage,
+  inferActivityLevel, getWeeklySportFreq, getGoalMessage, calcWaterTarget,
 } from "./nutritionScience.js";
 
 const VAPID_PUBLIC_KEY = "BD1163GBvUcRa73jWQncoH1awx662axyd7RCZ7FQlyha-mmYsEdCu--kB9yl__7cJ6VpZb0MzzD9qTuGWp1djxo";
@@ -225,7 +225,7 @@ if (false) { const _MEAL_DB_STUB = {
   ],
 }; } // end if(false) — ancien MEAL_DB supprimé
 
-function getTemporalIntelligence(today, history, goals) {
+function getTemporalIntelligence(today, history, goals, waterGoal = 2.5) {
   const now = new Date(); const hour = now.getHours(); const minute = now.getMinutes();
   const timeDecimal = hour + minute / 60; const insights = [];
   const protGoal = goals.find(g => g.sourceId === "proteines");
@@ -242,7 +242,7 @@ function getTemporalIntelligence(today, history, goals) {
       else insights.push({ type: "advice", msg: `${protCurrent}g/${protTarget}g : ${protRemaining}g restants. Tu as le temps !`, priority: 4, suggestions: protRemaining > 40 ? getMealSuggestions(protRemaining, hour) : [] });
     }
   }
-  const waterTarget = 2.5; const waterCurrent = today.nutrition.water || 0; const waterRemaining = waterTarget - waterCurrent;
+  const waterTarget = waterGoal; const waterCurrent = today.nutrition.water || 0; const waterRemaining = waterTarget - waterCurrent;
   if (waterCurrent > 0 && waterRemaining > 0) {
     if (timeDecimal >= 21) insights.push({ type: "warning", msg: `${waterRemaining.toFixed(1)}L restants. Apres 21h, boire trop perturbe le sommeil.`, priority: 2 });
     else { const hoursLeft = 21 - timeDecimal; const rateNeeded = waterRemaining / hoursLeft; if (rateNeeded > 0.5) insights.push({ type: "advice", msg: `Bois ~${(rateNeeded * 0.5).toFixed(1)}L toutes les 30min pour atteindre ${waterTarget}L avant 21h.`, priority: 5 }); }
@@ -250,7 +250,7 @@ function getTemporalIntelligence(today, history, goals) {
   if (timeDecimal >= 21 && timeDecimal < 23) insights.push({ type: "info", msg: `Si tu dors a 23h, reveil 7h = 8h de sommeil. Ideal ! Commence ta routine soir.`, priority: 3 });
   const currentScore = today.score; const potentialExtra = [];
   if (!today.nutrition.breakfast) potentialExtra.push(4); if (!today.nutrition.lunch) potentialExtra.push(4); if (!today.nutrition.dinner) potentialExtra.push(4);
-  if (today.nutrition.water < 2.5 && timeDecimal < 21) potentialExtra.push(5);
+  if (today.nutrition.water < waterGoal && timeDecimal < 21) potentialExtra.push(5);
   if (!today.mind.meditation && timeDecimal < 23) potentialExtra.push(5); if (!today.mind.reading && timeDecimal < 23) potentialExtra.push(5);
   const maxPossible = currentScore + potentialExtra.reduce((a, b) => a + b, 0);
   if (timeDecimal >= 18 && maxPossible > currentScore) insights.push({ type: "info", msg: `Score actuel : ${currentScore}/100. Potentiel ce soir : ${Math.min(100, maxPossible)}/100 !`, priority: 4 });
@@ -335,6 +335,7 @@ const DATA_SOURCES = [
   { id: "screen",       label: "Temps ecran/jour",    unit: "h",   path: "work.screenTime",    isDaily: true, reverse: true, labelEx: "Ex: Moins de 2h d'ecran", example: "Ex: 2" },
   { id: "focus",        label: "Focus/jour",          unit: "/5",  path: "work.focus",         isDaily: true, labelEx: "Ex: Focus a 4/5 chaque jour", example: "Ex: 4" },
   { id: "pas",          label: "Pas/jour",            unit: "pas", path: "sport.steps",        isDaily: true, labelEx: "Ex: 10 000 pas/jour",         example: "Ex: 10000" },
+  { id: "eau",          label: "Eau/jour",            unit: "L",   path: "nutrition.water",    isDaily: true, labelEx: "Ex: Boire 2.5L/jour",         example: "Ex: 2.5" },
 ];
 
 const getNestedVal = (obj, path) => path?.split(".").reduce((o, k) => o?.[k] ?? 0, obj) ?? 0;
@@ -1861,6 +1862,126 @@ const inp = {
   appearance: "none",
   fontFamily: "inherit",
   transition: "border-color 0.15s ease",
+};
+
+// ── WATER BOTTLE ─────────────────────────────────────────────────────────────
+const WaterBottle = ({ current, target, onChange }) => {
+  const C = useC();
+  const { darkMode } = useTheme();
+  const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+  const fillColor = darkMode ? "#3B82F6" : "#2563EB";
+  const lightFill = darkMode ? "rgba(59,130,246,0.18)" : "rgba(37,99,235,0.10)";
+  const waveAnim = `@keyframes wave { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }`;
+
+  const waterMsg = (() => {
+    if (pct === 0)        return { msg: "Commencez la journée avec un grand verre d'eau.", icon: "💧" };
+    if (pct < 25)         return { msg: "Bon début. Continuez régulièrement tout au long de la journée.", icon: "💧" };
+    if (pct < 50)         return { msg: "Bon départ. Pensez à boire régulièrement.", icon: "👍" };
+    if (pct < 75)         return { msg: "Vous êtes bien lancé. Encore un peu pour rester dans le rythme.", icon: "🌊" };
+    if (pct < 100)        return { msg: "Presque atteint. Quelques verres suffisent.", icon: "⭐" };
+    if (pct === 100)      return { msg: "Objectif hydratation atteint aujourd'hui.", icon: "✅" };
+    return { msg: "Hydratation élevée. Évitez de forcer inutilement.", icon: "⚠️" };
+  })();
+
+  const quickAmounts = [0.25, 0.5, 1];
+  const bottleH = 160;
+  const fillH = Math.round((pct / 100) * bottleH);
+
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <style>{waveAnim}</style>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 20 }}>
+        {/* Bouteille SVG */}
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+          <svg width="72" height={bottleH + 24} viewBox={`0 0 72 ${bottleH + 24}`} style={{ overflow: "visible" }}>
+            <defs>
+              <clipPath id="bottleClip">
+                {/* Forme bouteille : col + corps */}
+                <path d="M28 8 L28 20 Q20 24 16 32 L16 172 Q16 180 24 180 L48 180 Q56 180 56 172 L56 32 Q52 24 44 20 L44 8 Z" />
+              </clipPath>
+              <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={fillColor} stopOpacity={0.9} />
+                <stop offset="100%" stopColor={fillColor} stopOpacity={1} />
+              </linearGradient>
+            </defs>
+
+            {/* Corps bouteille (fond) */}
+            <path d="M28 8 L28 20 Q20 24 16 32 L16 172 Q16 180 24 180 L48 180 Q56 180 56 172 L56 32 Q52 24 44 20 L44 8 Z"
+              fill={lightFill} stroke={darkMode ? "rgba(59,130,246,0.4)" : "rgba(37,99,235,0.3)"} strokeWidth={1.5} />
+
+            {/* Bouchon */}
+            <rect x="30" y="2" width="12" height="8" rx="2" fill={fillColor} opacity={0.7} />
+
+            {/* Remplissage animé */}
+            <g clipPath="url(#bottleClip)">
+              <rect x="0" y={180 - fillH} width="72" height={fillH} fill="url(#waterGrad)" opacity={0.85} />
+              {/* Vague douce */}
+              {pct > 0 && pct < 100 && (
+                <g style={{ animation: "wave 2s linear infinite" }}>
+                  <path d={`M0 ${180 - fillH} Q18 ${180 - fillH - 4} 36 ${180 - fillH} Q54 ${180 - fillH + 4} 72 ${180 - fillH} Q90 ${180 - fillH - 4} 108 ${180 - fillH} Q126 ${180 - fillH + 4} 144 ${180 - fillH} L144 180 L0 180 Z`}
+                    fill={fillColor} opacity={0.6} />
+                </g>
+              )}
+            </g>
+
+            {/* Graduations */}
+            {[25, 50, 75].map(p => (
+              <line key={p} x1="52" y1={180 - Math.round(p / 100 * bottleH)} x2="58" y2={180 - Math.round(p / 100 * bottleH)}
+                stroke={darkMode ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"} strokeWidth={1} />
+            ))}
+
+            {/* % au centre */}
+            <text x="36" y={180 - fillH / 2 + 5} textAnchor="middle" fontSize={fillH > 25 ? "13" : "10"}
+              fontWeight="900" fill="#fff" style={{ pointerEvents: "none" }}>
+              {pct > 10 ? `${pct}%` : ""}
+            </text>
+          </svg>
+
+          {/* Valeur actuelle / objectif */}
+          <div style={{ textAlign: "center" }}>
+            <span style={{ fontSize: 20, fontWeight: 900, color: fillColor }}>{current.toFixed(2).replace(/\.?0+$/, "") || "0"}</span>
+            <span style={{ fontSize: 12, color: C.muted }}>/{target}L</span>
+          </div>
+        </div>
+
+        {/* Contrôles */}
+        <div style={{ flex: 1 }}>
+          {/* Message */}
+          <div style={{ background: lightFill, border: `1px solid ${fillColor}30`, borderRadius: 12, padding: "10px 12px", marginBottom: 14 }}>
+            <p style={{ margin: 0, fontSize: 13, color: C.text, lineHeight: 1.5 }}>
+              <span style={{ marginRight: 6 }}>{waterMsg.icon}</span>{waterMsg.msg}
+            </p>
+          </div>
+
+          {/* Quick-add chips */}
+          <p style={{ margin: "0 0 8px", fontSize: 11, color: C.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.8 }}>Ajouter</p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+            {quickAmounts.map(a => (
+              <button key={a} onClick={() => onChange(Math.round((current + a) * 100) / 100)}
+                style={{ padding: "8px 14px", borderRadius: 10, background: C.surfaceAlt, border: `1.5px solid ${C.border}`, color: C.text, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}>
+                +{a}L
+              </button>
+            ))}
+            {current > 0 && (
+              <button onClick={() => onChange(Math.max(0, Math.round((current - 0.25) * 100) / 100))}
+                style={{ padding: "8px 10px", borderRadius: 10, background: C.surfaceAlt, border: `1px solid ${C.border}`, color: C.muted, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                −
+              </button>
+            )}
+          </div>
+
+          {/* Input manuel */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input type="number" value={current || ""} min={0} max={6} step={0.25}
+              onChange={e => onChange(Math.max(0, Math.min(6, +e.target.value)))}
+              placeholder="0"
+              style={{ width: 80, padding: "8px 12px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: C.surfaceAlt, color: C.text, fontSize: 15, fontWeight: 700, fontFamily: "inherit", outline: "none" }} />
+            <span style={{ fontSize: 13, color: C.muted }}>litres aujourd'hui</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // ── STEPS CHART PRO ───────────────────────────────────────────────────────────
@@ -3597,7 +3718,8 @@ export default function App() {
   const handleSignOut = async () => { await supabase.auth.signOut(); localStorage.removeItem("kojihlife_v9"); setOnboarded(false); };
 
   const intel = getIntelligence(history, totalPatrimoine, goals);
-  const temporalInsights = getTemporalIntelligence(today, history, goals);
+  const dynamicWaterGoal = calcWaterTarget({ weight: currentWeight, sex: nutritionGoals.sex, activityLevel: nutritionGoals.activityLevel, hasSport: (today.sport?.sessions?.length || 0) > 0, sportDuration: today.sport?.duration || 0 });
+  const temporalInsights = getTemporalIntelligence(today, history, goals, dynamicWaterGoal);
   const age = calcAge(profile.dob);
   const rangeH = statRange === "all" ? history : history.slice(-parseInt(statRange));
   const streak = (() => { let c = 0; for (let i = history.length - 1; i >= 0; i--) { if (history[i].score > 0) c++; else break; } return c; })();
@@ -4471,6 +4593,30 @@ export default function App() {
                   calTarget, protTarget, fatTarget, carbsTarget,
                 };
 
+                // Objectif eau personnalisé
+                const waterTarget = calcWaterTarget({
+                  weight: currentWeight,
+                  sex: nutritionGoals.sex,
+                  activityLevel: nutritionGoals.activityLevel,
+                  hasSport: (today.sport?.sessions?.length || 0) > 0,
+                  sportDuration: today.sport?.duration || 0,
+                });
+
+                // Score de fiabilité des données nutritionnelles
+                const dataFields = [
+                  { key: "sex",     label: "Sexe",         val: nutritionGoals.sex },
+                  { key: "height",  label: "Taille",        val: nutritionGoals.height },
+                  { key: "weight",  label: "Poids actuel",  val: currentWeight },
+                  { key: "age",     label: "Âge",           val: age },
+                  { key: "activity",label: "Activité",      val: nutritionGoals.activityLevel },
+                  { key: "goal",    label: "Objectif",      val: nutritionGoals.goalType },
+                ];
+                const completedFields = dataFields.filter(f => !!f.val);
+                const reliabilityPct = Math.round((completedFields.length / dataFields.length) * 100);
+                const reliability = reliabilityPct >= 90 ? "élevée" : reliabilityPct >= 60 ? "moyenne" : "faible";
+                const reliabilityColor = reliabilityPct >= 90 ? C.green : reliabilityPct >= 60 ? C.orange : C.red;
+                const missingFields = dataFields.filter(f => !f.val);
+
                 const MacroBar = ({ label, current, target, color, unit = "g" }) => {
                   const pct = target > 0 ? Math.min(110, Math.round((current / target) * 100)) : 0;
                   const over = current > target * 1.05;
@@ -4502,6 +4648,50 @@ export default function App() {
                 return (
                   <div>
                     {_nutritionDisclaimer}
+
+                    {/* Score de fiabilité */}
+                    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: C.text }}>Fiabilité de l'estimation</p>
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: C.muted }}>
+                          {missingFields.length === 0
+                            ? "Profil complet · recommandations précises"
+                            : `Données manquantes : ${missingFields.map(f => f.label).join(", ")}`}
+                        </p>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ width: 60, height: 6, borderRadius: 3, background: C.surfaceAlt, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${reliabilityPct}%`, background: reliabilityColor, borderRadius: 3, transition: "width 0.5s" }} />
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: reliabilityColor, whiteSpace: "nowrap" }}>{reliability}</span>
+                      </div>
+                    </div>
+
+                    {/* Messages données manquantes */}
+                    {missingFields.length > 0 && missingFields.length < 4 && (
+                      <div style={{ background: `${C.orange}08`, border: `1px solid ${C.orange}20`, borderRadius: 12, padding: "10px 14px", marginBottom: 12 }}>
+                        {missingFields.slice(0, 2).map(f => (
+                          <div key={f.key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, color: C.orange }}>→</span>
+                            <p style={{ margin: 0, fontSize: 12, color: C.text }}>
+                              <strong>{f.label} manquant</strong> · {
+                                f.key === "weight"   ? "Entre ton poids dans Corps pour des macros personnalisées." :
+                                f.key === "height"   ? "Ta taille améliore le calcul de ton métabolisme de base." :
+                                f.key === "sex"      ? "Aide à adapter les estimations de métabolisme." :
+                                f.key === "age"      ? "Ton âge ajuste les besoins énergétiques." :
+                                f.key === "activity" ? "Ton niveau d'activité calibre ton TDEE." :
+                                "Complète ton profil physique."
+                              }
+                            </p>
+                          </div>
+                        ))}
+                        <button onClick={() => { setNav("today"); setTimeout(() => { setNav("track"); setTrackTab("body"); }, 50); }}
+                          style={{ marginTop: 6, padding: "6px 14px", borderRadius: 8, background: C.orange, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                          Compléter mon profil →
+                        </button>
+                      </div>
+                    )}
+
                     <EvoChart data={waterH.slice(-30)} dataKey="nutrition.water" color={C.blue} label="Hydratation" unit="L" />
                     <EvoChart data={history.filter(d => d.nutrition?.protein > 0).slice(-30)} dataKey="nutrition.protein" color={C.purple} label="Protéines" unit="g" />
                     {temporalInsights.filter(i => i.msg.includes("prot") || i.msg.includes("repas") || i.msg.includes("eau")).map((ins, i) => <MsgBox key={i} type={ins.type} msg={ins.msg} suggestions={ins.suggestions} />)}
@@ -4646,6 +4836,21 @@ export default function App() {
                       <MacroBar label="Lipides"   current={fatCurrent} target={displayMacros.fatTarget} color={C.green} />
                     </Card>
 
+                    {/* ── Hydratation ── */}
+                    <Card>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                        <ST style={{ margin: 0 }}>Hydratation</ST>
+                        <span style={{ fontSize: 11, color: C.muted, background: C.surfaceAlt, borderRadius: 8, padding: "3px 9px", fontWeight: 600 }}>
+                          Objectif estimé : {waterTarget}L
+                        </span>
+                      </div>
+                      <WaterBottle
+                        current={today.nutrition.water || 0}
+                        target={waterTarget}
+                        onChange={val => update("nutrition", "water", val)}
+                      />
+                    </Card>
+
                     {/* ── Saisie du jour ── */}
                     <Card>
                       <ST>{tr("nutr_meals_day")}</ST>
@@ -4657,7 +4862,6 @@ export default function App() {
                       </div>
                       <ST>{tr("nutr_macros")}</ST>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                        <Field label="Eau (L)">         <input type="number" value={today.nutrition.water    || ""} min={0} max={5}    step={0.25} onChange={e => update("nutrition","water",   +e.target.value)} style={inp} /></Field>
                         <Field label="Calories (kcal)"> <input type="number" value={today.nutrition.calories || ""} min={0} max={6000}             onChange={e => update("nutrition","calories",+e.target.value)} style={inp} /></Field>
                         <Field label="Protéines (g)">   <input type="number" value={today.nutrition.protein  || ""} min={0} max={400}              onChange={e => update("nutrition","protein", +e.target.value)} style={inp} /></Field>
                         <Field label="Glucides (g)">    <input type="number" value={today.nutrition.carbs    || ""} min={0} max={600}              onChange={e => update("nutrition","carbs",   +e.target.value)} style={inp} /></Field>

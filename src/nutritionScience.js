@@ -111,6 +111,35 @@ export const GOAL_CONFIG = {
   },
 };
 
+// ── OBJECTIF HYDRATATION PERSONNALISÉ ────────────────────────────────────────
+// Référence : EFSA 2010 — 35 ml/kg/jour pour adulte actif (femme légèrement moins)
+// Ajusté selon activité, sport du jour, transpiration estimée.
+// Retourne l'objectif en litres (arrondi au 0.25L le plus proche).
+export function calcWaterTarget({ weight, sex, activityLevel, hasSport = false, sportDuration = 0 }) {
+  if (!weight || weight < 30) return 2.5; // fallback si poids manquant
+  // Base EFSA : 35 ml/kg (homme), 31 ml/kg (femme — besoins légèrement inférieurs)
+  const mlPerKg = sex === "female" ? 31 : 35;
+  let baseL = (weight * mlPerKg) / 1000;
+  // Ajustement activité
+  const activityBonus = {
+    sedentary: 0,
+    light:     0.2,
+    moderate:  0.4,
+    active:    0.6,
+    very_active: 0.8,
+  }[activityLevel || "moderate"] ?? 0.3;
+  baseL += activityBonus;
+  // Ajustement sport du jour (transpiration estimée selon durée)
+  if (hasSport && sportDuration > 0) {
+    const sportBonus = Math.min(1.0, sportDuration / 60 * 0.7); // ~0.7L/heure de sport
+    baseL += sportBonus;
+  }
+  // Plancher / plafond
+  baseL = Math.max(1.5, Math.min(4.0, baseL));
+  // Arrondir au 0.25L le plus proche
+  return Math.round(baseL * 4) / 4;
+}
+
 // ── BMR - Mifflin-St Jeor (1990) ──────────────────────────────────────────────
 // Validée contre la calorimétrie indirecte. Précision ±10% en population générale.
 export function calcBMR(weight, height, age, sex) {
