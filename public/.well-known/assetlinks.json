@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.mylide.twa",
+    "sha256_cert_fingerprints": ["5A:F5:69:BE:25:C3:21:C5:09:4D:FD:B5:10:70:72:AE:C1:95:CC:94:47:6F:8B:FB:3D:93:AB:54:9C:65:A8:8A"]
+  }
+}]
