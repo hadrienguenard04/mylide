@@ -94,23 +94,52 @@ function wrapEmail(content) {
 }
 
 // ── EMAIL 1 : Bienvenue abonnement / début essai ──────────────────────────────
-function emailWelcome({ name, planName, trialEnd }) {
+function emailWelcome({ name, planName, planId, trialEnd }) {
   const dateStr = trialEnd
     ? new Date(trialEnd).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
     : null;
+
+  // Features et messages spécifiques par plan
+  const planFeatures = {
+    starter: [
+      "Statistiques sur 30 jours",
+      "Radar historique (4 semaines)",
+      "Objectifs illimités",
+      "5 poches patrimoniales",
+    ],
+    pro: [
+      "Statistiques 1 an + historique complet",
+      "Radar historique illimité",
+      "Graphiques avancés des pas",
+      "Corrélations entre domaines de vie",
+    ],
+    premium: [
+      "Toutes les fonctionnalités Pro incluses",
+      "Export PDF + Excel / CSV complet",
+      "Graphiques financiers avancés",
+      "Support prioritaire par email",
+    ],
+  };
+  const planIntro = {
+    starter: "Les outils essentiels de MYLIDE sont maintenant disponibles.",
+    pro: "Tu profites de l'expérience MYLIDE recommandée. Tes analyses avancées sont actives.",
+    premium: "Merci de soutenir le développement de MYLIDE. Tu as accès à toutes les fonctionnalités actuelles et futures.",
+  };
+  const features = planFeatures[planId] || planFeatures.pro;
+  const intro = planIntro[planId] || planIntro.pro;
 
   return wrapEmail(`
     <h2 style="margin: 0 0 8px; font-size: 22px; font-weight: 900; color: #1A1A1A;">
       Bienvenue dans MYLIDE ${planName} ! 🎉
     </h2>
     <p style="margin: 0 0 20px; color: #6B6B6B; font-size: 14px; line-height: 1.65;">
-      Salut ${name || "là"},<br><br>
-      Ton essai gratuit de 7 jours est maintenant actif. Toutes les fonctionnalités premium sont débloquées.
+      Salut ${name ? name.split(" ")[0] : "là"},<br><br>
+      ${intro}
       ${dateStr ? `<br><br><strong>Ton essai se termine le ${dateStr}.</strong> Tu peux résilier à tout moment avant cette date sans être débité.` : ""}
     </p>
     <div style="background: #F8F8F6; border-radius: 14px; padding: 18px 20px; margin-bottom: 24px;">
       <p style="margin: 0 0 10px; font-size: 13px; font-weight: 700; color: #1A1A1A;">Ce que tu as débloqué :</p>
-      ${["Statistiques avancées & historique complet", "Insights et prédictions intelligentes", "Export PDF + Excel de toutes tes données", "Radar de vie historique illimité"].map(f =>
+      ${features.map(f =>
         `<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 7px;">
           <span style="color: #10B981; font-weight: 700;">✓</span>
           <span style="font-size: 13px; color: #1A1A1A;">${f}</span>

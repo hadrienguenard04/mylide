@@ -125,7 +125,7 @@ module.exports = async function handler(req, res) {
           await sendEmail({
             to: email,
             subject: `Bienvenue dans MYLIDE ${planName} ! 🎉`,
-            html: emailWelcome({ name: profile?.name, planName, trialEnd }),
+            html: emailWelcome({ name: profile?.name, planName, planId: plan, trialEnd }),
           });
         }
 

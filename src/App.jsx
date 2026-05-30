@@ -1647,10 +1647,11 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
     ? `Membre ${planLabels[userPlan] || "Pro"} actif`
     : userPlan === "starter" ? "Passer Pro ou Premium"
     : "Passer Premium";
-  const planBannerSub = isAtLeast(userPlan, "pro")
-    ? { pro: "Plan Pro actif · 6,99€/mois", premium: "Plan Premium actif · 12,99€/mois" }[userPlan] || "Gérer mon abonnement"
-    : userPlan === "starter" ? "Déjà Starter · upgrade dès 6,99€/mois"
-    : "7 jours gratuits · à partir de 3,99€/mois";
+  const planBannerSub =
+    userPlan === "premium" ? "Plan Premium actif · 12,99€/mois" :
+    userPlan === "pro"     ? "Plan Pro actif · 6,99€/mois" :
+    userPlan === "starter" ? "Plan Starter actif · Évoluer vers Pro dès 6,99€/mois" :
+                             "Essai gratuit 7 jours · à partir de 3,99€/mois";
 
   const SubscriptionBlock = () => (
     <Sec title={tr("sec_subscription")}>
@@ -2661,8 +2662,8 @@ const Onboarding = ({ onComplete }) => {
             {/* Plans */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
               {[
-                { id: "starter", name: "Starter", price: "3,99", color: "#3B82F6", features: ["Statistiques 30j", "Export données", "Insights hebdo"] },
-                { id: "pro", name: "Pro", price: "6,99", color: "#CC2936", features: ["Stats illimitées", "Prédictions IA", "Radar historique"], rec: true },
+                { id: "starter", name: "Starter", price: "3,99", color: "#3B82F6", features: ["Statistiques 30j", "Objectifs illimités", "5 poches budget"] },
+                { id: "pro", name: "Pro", price: "6,99", color: "#CC2936", features: ["Stats 1 an", "Graphiques avancés", "Radar illimité"], rec: true },
                 { id: "premium", name: "Premium", price: "12,99", color: "#F59E0B", features: ["Tout Pro inclus", "Export PDF/Excel", "Support prioritaire"] },
               ].map(plan => (
                 <div key={plan.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 16, border: `1.5px solid ${plan.rec ? plan.color : C.border}`, background: plan.rec ? `${plan.color}08` : C.surfaceAlt, position: "relative" }}>
