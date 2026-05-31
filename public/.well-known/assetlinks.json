@@ -1,8 +1,10 @@
-﻿[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "app.mylide.twa",
-        "sha256_cert_fingerprints": ["55:E4:A7:8B:07:CA:6E:95:E9:89:A5:0A:F3:F0:40:CF:F4:68:E0:90:A5:BC:6E:69:34:18:CF:07:30:BA:7C:A8"]
-      }
-    }]
+﻿[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.mylide.pwa",
+      "sha256_cert_fingerprints": ["E6:47:95:05:5B:36:E7:8C:03:F2:B4:37:1F:74:BC:8C:9F:05:E8:50:30:F9:0D:B9:CA:11:B7:B5:09:5A:15:8D"]
+    }
+  }
+]
