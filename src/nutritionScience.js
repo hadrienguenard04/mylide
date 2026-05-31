@@ -144,6 +144,10 @@ export function calcWaterTarget({ weight, sex, activityLevel, hasSport = false, 
 // Validée contre la calorimétrie indirecte. Précision ±10% en population générale.
 export function calcBMR(weight, height, age, sex) {
   if (!weight || !height || !age || age < 1) return 0;
+  // Valeurs hors plage physiologique raisonnable → retourner 0 pour éviter des recommandations absurdes
+  if (weight < 20 || weight > 300) return 0;
+  if (height < 100 || height > 250) return 0;
+  if (age < 15 || age > 100) return 0;
   const base = 10 * weight + 6.25 * height - 5 * age;
   // Homme +5, Femme -161 (différence de masse musculaire et composition corporelle)
   return Math.round(sex === "female" ? base - 161 : base + 5);

@@ -813,7 +813,7 @@ const SubPageInfo = ({ onBack, profile, updateProfile, currentUser }) => {
 
   const lbl = { fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "block" };
   return (
-    <SubLayout onBack={onBack} title="Informations personnelles" onSave={save} saving={saving} saveOk={saveOk}>
+    <SubLayout onBack={onBack} title={tr("row_info")} onSave={save} saving={saving} saveOk={saveOk}>
       <input type="file" accept="image/*" ref={pRef} style={{ display: "none" }} onChange={handlePhoto} />
       <div onClick={() => pRef.current.click()} style={{ textAlign: "center", marginBottom: 28, cursor: "pointer" }}>
         {profile.photo ? <img src={profile.photo} style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover", border: `3px solid ${C.red}`, boxShadow: "0 4px 20px rgba(204,41,54,0.25)" }} alt="" />
@@ -855,7 +855,7 @@ const SubPageEmail = ({ onBack, currentEmail, setCurrentEmail }) => {
     else { setMsg({ type: "ok", text: `Email de confirmation envoyé à ${newEmail}. Clique sur le lien pour valider.` }); setCurrentEmail(newEmail); setNewEmail(""); }
   };
   return (
-    <SubLayout onBack={onBack} title="Adresse email" onSave={save} saving={loading} saveOk={false}>
+    <SubLayout onBack={onBack} title={tr("row_email")} onSave={save} saving={loading} saveOk={false}>
       <FeedbackBanner msg={msg} />
       <div style={{ background: C.surfaceAlt, borderRadius: 14, padding: "14px 16px", marginBottom: 20, border: `1px solid ${C.border}` }}>
         <p style={{ margin: "0 0 2px", fontSize: 12, color: C.muted, fontWeight: 600 }}>EMAIL ACTUEL</p>
@@ -885,7 +885,7 @@ const SubPagePassword = ({ onBack }) => {
     else { setSaveOk(true); setMsg({ type: "ok", text: "Mot de passe modifié avec succès !" }); setTimeout(onBack, 2000); }
   };
   return (
-    <SubLayout onBack={onBack} title="Mot de passe" onSave={save} saving={loading} saveOk={saveOk}>
+    <SubLayout onBack={onBack} title={tr("row_password")} onSave={save} saving={loading} saveOk={saveOk}>
       <FeedbackBanner msg={msg} />
       <div style={{ marginBottom: 16 }}><label style={lbl}>Nouveau mot de passe</label><input type="password" value={pwd} onChange={e => setPwd(e.target.value)} placeholder="Minimum 6 caractères" style={settingsInp} /></div>
       <div style={{ marginBottom: 16 }}><label style={lbl}>Confirmer le mot de passe</label><input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Répète le mot de passe" style={settingsInp} /></div>
@@ -1064,7 +1064,7 @@ const SubPagePhone = ({ onBack, profile, updateProfile }) => {
   const lbl = { fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, display: "block" };
   const save = () => { setSaving(true); updateProfile("phone", phone); setSaving(false); setSaveOk(true); setTimeout(() => { setSaveOk(false); onBack(); }, 1200); };
   return (
-    <SubLayout onBack={onBack} title="Numéro de téléphone" onSave={save} saving={saving} saveOk={saveOk}>
+    <SubLayout onBack={onBack} title={tr("row_phone")} onSave={save} saving={saving} saveOk={saveOk}>
       <div style={{ marginBottom: 16 }}><label style={lbl}>Numéro de téléphone</label><input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+33 6 12 34 56 78" style={settingsInp} /></div>
       <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.5 }}>Utilisé uniquement pour la récupération de compte. Non partagé avec des tiers.</p>
     </SubLayout>
@@ -3389,7 +3389,10 @@ export default function App() {
         // Popup 7 jours : montrer une seule fois après 7 jours d'utilisation aux utilisateurs free
         if (hist.length >= 7 && !localStorage.getItem("proPopupSeen")) {
           const plan = profileData?.plan || "free";
-          if (plan === "free") { setTimeout(() => setShowProPopup(true), 2000); }
+          if (plan === "free") {
+            localStorage.setItem("proPopupSeen", "1");
+            setTimeout(() => setShowProPopup(true), 2000);
+          }
         }
       }
       // Objectifs — nouvelles tables atomiques avec migration depuis les anciennes
