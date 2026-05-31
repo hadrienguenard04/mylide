@@ -3370,13 +3370,38 @@ export default function App() {
           if (plan === "free") { setTimeout(() => setShowProPopup(true), 2000); }
         }
       }
-      const { data: goalsData } = await supabase.from("goals").select("*").eq("user_id", user.id);
-      if (goalsData?.length) setGoals(goalsData.map(g => g.data));
-      const { data: patrimoineRows } = await supabase.from("patrimoine").select("*").eq("user_id", user.id).order("id", { ascending: false }).limit(1);
-      const patrimoineData = patrimoineRows?.[0];
-      if (patrimoineData?.data) { setPatrimoine(patrimoineData.data); patrimoineRef.current = patrimoineData.data; }
-      const { data: todosData } = await supabase.from("todos").select("*").eq("user_id", user.id);
-      if (todosData?.length) setTodos(todosData.map(t => t.data));
+      // Objectifs — nouvelles tables atomiques avec migration depuis les anciennes
+      const { data: newGoalsRow } = await supabase.from("user_goals").select("data").eq("user_id", user.id).single();
+      if (newGoalsRow?.data?.length) {
+        setGoals(newGoalsRow.data);
+      } else {
+        // Migration : lire depuis l'ancienne table goals si la nouvelle est vide
+        const { data: oldGoals } = await supabase.from("goals").select("*").eq("user_id", user.id);
+        if (oldGoals?.length) {
+          const migrated = oldGoals.map(g => g.data);
+          setGoals(migrated);
+          // Migrer vers la nouvelle table
+          await supabase.from("user_goals").upsert({ user_id: user.id, data: migrated, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+        }
+      }
+
+      // Patrimoine — upsert atomique (avec migration)
+      const { data: patRow } = await supabase.from("patrimoine").select("data").eq("user_id", user.id).order("id", { ascending: false }).limit(1);
+      if (patRow?.[0]?.data) { setPatrimoine(patRow[0].data); patrimoineRef.current = patRow[0].data; }
+
+      // Todos — nouvelles tables atomiques avec migration
+      const { data: newTodosRow } = await supabase.from("user_todos").select("data").eq("user_id", user.id).single();
+      if (newTodosRow?.data?.length) {
+        setTodos(newTodosRow.data);
+      } else {
+        // Migration depuis l'ancienne table todos
+        const { data: oldTodos } = await supabase.from("todos").select("*").eq("user_id", user.id);
+        if (oldTodos?.length) {
+          const migrated = oldTodos.map(t => t.data);
+          setTodos(migrated);
+          await supabase.from("user_todos").upsert({ user_id: user.id, data: migrated, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+        }
+      }
       // Marquer le chargement terminé pour l'auto-save
       loadDoneRef.current = true;
     };
@@ -3418,7 +3443,7 @@ export default function App() {
       historyRef.current = newH;
       // saveAll est async mais on l'appelle quand même - le navigateur laisse
       // quelques ms aux promesses fetch() en cours avant de fermer la page.
-      saveAll(newH, todosRef.current ?? [], goalsRef.current ?? [], patrimoineRef.current ?? {}, profileRef.current ?? {});
+      saveAll(newH, todosRef.current ?? [], goalsRef.current ?? [], patrimoineRef.current ?? [], profileRef.current ?? {});
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
 
@@ -3510,77 +3535,83 @@ export default function App() {
   }, [today]);
 
 
+  // Mutex pour éviter les sauvegardes concurrentes
+  const saveInProgressRef = useRef(false);
+
   const saveAll = useCallback(async (h, t, g, p, pr) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user;
-    if (!user) { console.warn("[saveAll] No session - skipping save"); return; }
-    setSyncStatus("saving");
+    // Éviter deux saves simultanés qui pourraient s'écraser
+    if (saveInProgressRef.current) return;
+    saveInProgressRef.current = true;
 
-    // Profil
-    const { error: profileSaveErr } = await supabase.from("profiles").upsert({ id: user.id, name: pr.name, dob: pr.dob || null, photo: pr.photo || null });
-    if (profileSaveErr) console.error("[saveAll] Profile upsert failed:", profileSaveErr.message, profileSaveErr.code);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) { console.warn("[saveAll] No session - skipping save"); return; }
+      setSyncStatus("saving");
 
-    // Journal du jour : SELECT l'ID existant → upsert par PK (comme profiles).
-    // Ne nécessite aucune contrainte UNIQUE, fonctionne avec n'importe quel schéma.
-    const todayStr = new Date().toISOString().split("T")[0];
-    const todayData = h.find(d => d.date === todayStr);
-    if (todayData) {
-      // 1) Chercher la ligne la plus récente pour (user_id, date)
-      const { data: existing } = await supabase
-        .from("daily_logs")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("date", todayStr)
-        .order("id", { ascending: false })
-        .limit(1);
-      const rowId = existing?.[0]?.id;
-      const payload = { user_id: user.id, date: todayStr, data: todayData, score: todayData.score || 0 };
+      let hasError = false;
 
-      // 2a) Ligne existante → upsert avec l'id réel (garanti de mettre à jour)
-      // 2b) Pas de ligne → insert (premier save du jour)
-      const { error: saveErr } = rowId
-        ? await supabase.from("daily_logs").upsert({ ...payload, id: rowId })
-        : await supabase.from("daily_logs").insert(payload);
+      // ── Profil ────────────────────────────────────────────────────────────
+      const { error: profileSaveErr } = await supabase.from("profiles").upsert({
+        id: user.id, name: pr?.name, dob: pr?.dob || null, photo: pr?.photo || null
+      });
+      if (profileSaveErr) { console.error("[saveAll] Profile:", profileSaveErr.message); hasError = true; }
 
-      if (saveErr) {
-        console.error("[saveAll] ERREUR save daily_logs:", saveErr);
+      // ── Journal du jour ───────────────────────────────────────────────────
+      const todayStr = new Date().toISOString().split("T")[0];
+      const todayData = Array.isArray(h) ? h.find(d => d.date === todayStr) : null;
+      if (todayData) {
+        const { data: existing } = await supabase.from("daily_logs").select("id")
+          .eq("user_id", user.id).eq("date", todayStr).order("id", { ascending: false }).limit(1);
+        const rowId = existing?.[0]?.id;
+        const payload = { user_id: user.id, date: todayStr, data: todayData, score: todayData.score || 0 };
+        const { error: saveErr } = rowId
+          ? await supabase.from("daily_logs").upsert({ ...payload, id: rowId })
+          : await supabase.from("daily_logs").insert(payload);
+        if (saveErr) {
+          console.error("[saveAll] daily_logs:", saveErr.message);
+          setSyncStatus("error"); setTimeout(() => setSyncStatus("idle"), 4000);
+          return; // Erreur critique — on arrête
+        }
+      }
+
+      // ── Objectifs — upsert atomique (1 ligne par user) ────────────────────
+      try {
+        const { error: goalsErr } = await supabase.from("user_goals").upsert(
+          { user_id: user.id, data: Array.isArray(g) ? g : [], updated_at: new Date().toISOString() },
+          { onConflict: "user_id" }
+        );
+        if (goalsErr) { console.error("[saveAll] goals:", goalsErr.message); hasError = true; }
+      } catch (e) { console.error("[saveAll] goals exception:", e.message); hasError = true; }
+
+      // ── Patrimoine — upsert atomique ──────────────────────────────────────
+      try {
+        const { error: patErr } = await supabase.from("patrimoine").upsert(
+          { user_id: user.id, data: Array.isArray(p) ? p : [], updated_at: new Date().toISOString() },
+          { onConflict: "user_id" }
+        );
+        if (patErr) { console.error("[saveAll] patrimoine:", patErr.message); hasError = true; }
+      } catch (e) { console.error("[saveAll] patrimoine exception:", e.message); hasError = true; }
+
+      // ── Todos — upsert atomique (1 ligne par user) ────────────────────────
+      try {
+        const { error: todosErr } = await supabase.from("user_todos").upsert(
+          { user_id: user.id, data: Array.isArray(t) ? t : [], updated_at: new Date().toISOString() },
+          { onConflict: "user_id" }
+        );
+        if (todosErr) { console.error("[saveAll] todos:", todosErr.message); hasError = true; }
+      } catch (e) { console.error("[saveAll] todos exception:", e.message); hasError = true; }
+
+      if (hasError) {
         setSyncStatus("error");
         setTimeout(() => setSyncStatus("idle"), 4000);
-        return;
       } else {
-        console.log("[saveAll] ✓", rowId ? "UPDATE" : "INSERT", todayStr, "poids:", todayData.body?.weight, "sport:", todayData.sport?.type || "-");
+        setSyncStatus("saved");
+        setTimeout(() => setSyncStatus("idle"), 2500);
       }
+    } finally {
+      saveInProgressRef.current = false;
     }
-
-    // Objectifs — snapshot complet
-    try {
-      const { error: delGoals } = await supabase.from("goals").delete().eq("user_id", user.id);
-      if (!delGoals && g.length) {
-        const { error: insGoals } = await supabase.from("goals").insert(g.map(goal => ({ user_id: user.id, data: goal })));
-        if (insGoals) console.error("[saveAll] goals insert failed:", insGoals.message);
-      }
-    } catch (e) { console.error("[saveAll] goals error:", e.message); }
-
-    // Patrimoine
-    try {
-      const { error: delPat } = await supabase.from("patrimoine").delete().eq("user_id", user.id);
-      if (!delPat && p && p.length) {
-        const { error: insPat } = await supabase.from("patrimoine").insert({ user_id: user.id, data: p });
-        if (insPat) console.error("[saveAll] patrimoine insert failed:", insPat.message);
-      }
-    } catch (e) { console.error("[saveAll] patrimoine error:", e.message); }
-
-    // Todos
-    try {
-      const { error: delTodos } = await supabase.from("todos").delete().eq("user_id", user.id);
-      if (!delTodos && t.length) {
-        const { error: insTodos } = await supabase.from("todos").insert(t.map(todo => ({ user_id: user.id, data: todo })));
-        if (insTodos) console.error("[saveAll] todos insert failed:", insTodos.message);
-      }
-    } catch (e) { console.error("[saveAll] todos error:", e.message); }
-
-    setSyncStatus("saved");
-    setTimeout(() => setSyncStatus("idle"), 2500);
   }, []);
 
   const handleOnboardingComplete = async (profileData, createdGoals, bodyProfileData, wantsSubscription = false) => {
@@ -3673,23 +3704,23 @@ export default function App() {
     syncDailySignal();
   };
 
-  const addTodo = () => { if (!newTodo.trim()) return; const t = [...todos, { id: Date.now(), text: newTodo, done: false, date: new Date().toISOString().split("T")[0] }]; setTodos(t); saveAll(history, t, goals, patrimoine, profile); setNewTodo(""); };
-  const toggleTodo = id => { const t = todos.map(t => t.id === id ? { ...t, done: !t.done } : t); setTodos(t); saveAll(history, t, goals, patrimoine, profile); };
-  const deleteTodo = id => { const t = todos.filter(t => t.id !== id); setTodos(t); saveAll(history, t, goals, patrimoine, profile); };
+  const addTodo = () => { if (!newTodo.trim()) return; const t = [...(todosRef.current || []), { id: Date.now(), text: newTodo, done: false, date: new Date().toISOString().split("T")[0] }]; setTodos(t); saveAll(historyRef.current, t, goalsRef.current, patrimoineRef.current, profileRef.current); setNewTodo(""); };
+  const toggleTodo = id => { const t = (todosRef.current || []).map(t => t.id === id ? { ...t, done: !t.done } : t); setTodos(t); saveAll(historyRef.current, t, goalsRef.current, patrimoineRef.current, profileRef.current); };
+  const deleteTodo = id => { const t = (todosRef.current || []).filter(t => t.id !== id); setTodos(t); saveAll(historyRef.current, t, goalsRef.current, patrimoineRef.current, profileRef.current); };
   const totalPatrimoine = patrimoine.reduce((a, b) => a + (Number(b.amount) || 0), 0);
-  const updateGoalField = (id, f, v) => { const g = goals.map(g => g.id === id ? { ...g, [f]: v } : g); setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
-  const saveEditedGoal = (edited) => { const g = goals.map(g => g.id === edited.id ? edited : g); setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
+  const updateGoalField = (id, f, v) => { const g = (goalsRef.current || []).map(g => g.id === id ? { ...g, [f]: v } : g); setGoals(g); saveAll(historyRef.current, todosRef.current, g, patrimoineRef.current, profileRef.current); };
+  const saveEditedGoal = (edited) => { const g = (goalsRef.current || []).map(g => g.id === edited.id ? edited : g); setGoals(g); saveAll(historyRef.current, todosRef.current, g, patrimoineRef.current, profileRef.current); };
   const GOAL_COLORS = ["#CC2936","#1A7A4A","#1E5FCC","#6B35C8","#D4580A","#0891b2","#be185d","#0A0A0A"];
   const randomGoalColor = () => GOAL_COLORS[Math.floor(Math.random() * GOAL_COLORS.length)];
   const addGoal = () => {
     if (!newGoal.label.trim()) return;
-    if (!isAtLeast(userPlan, "starter") && goals.length >= 3) { setShowSubscription(true); return; }
-    const g = [...goals, { ...newGoal, id: Date.now(), manualProgress: 0, color: randomGoalColor() }];
-    setGoals(g); saveAll(history, todos, g, patrimoine, profile);
+    if (!isAtLeast(userPlan, "starter") && (goalsRef.current || []).length >= 3) { setShowSubscription(true); return; }
+    const g = [...(goalsRef.current || []), { ...newGoal, id: Date.now(), manualProgress: 0, color: randomGoalColor() }];
+    setGoals(g); saveAll(historyRef.current, todosRef.current, g, patrimoineRef.current, profileRef.current);
     setNewGoal({ label: "", category: "", color: "#CC2936", sourceId: "manual", target: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reverse: false, manualProgress: 0 });
   };
-  const deleteGoal = id => { const g = goals.filter(g => g.id !== id); setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
-  const moveGoal = (idx, dir) => { const g = [...goals]; const ni = idx + dir; if (ni < 0 || ni >= g.length) return; [g[idx], g[ni]] = [g[ni], g[idx]]; setGoals(g); saveAll(history, todos, g, patrimoine, profile); };
+  const deleteGoal = id => { const g = (goalsRef.current || []).filter(g => g.id !== id); setGoals(g); saveAll(historyRef.current, todosRef.current, g, patrimoineRef.current, profileRef.current); };
+  const moveGoal = (idx, dir) => { const g = [...(goalsRef.current || [])]; const ni = idx + dir; if (ni < 0 || ni >= g.length) return; [g[idx], g[ni]] = [g[ni], g[idx]]; setGoals(g); saveAll(historyRef.current, todosRef.current, g, patrimoineRef.current, profileRef.current); };
   const updatePoche = (id, f, v) => {
     const p = patrimoine.map(x => x.id === id ? { ...x, [f]: v } : x);
     setPatrimoine(p);
@@ -3700,8 +3731,8 @@ export default function App() {
       saveAll(historyRef.current, todosRef.current, goalsRef.current, p, profileRef.current);
     }, 800);
   };
-  const addPoche = () => { if (!newPoche.name.trim()) return; const pocheLimit = isAtLeast(userPlan, "pro") ? 999 : isAtLeast(userPlan, "starter") ? 5 : 2; if (patrimoine.length >= pocheLimit) { setShowSubscription(true); return; } const p = [...patrimoine, { ...newPoche, id: Date.now(), amount: Number(newPoche.amount) }]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); setNewPoche({ name: "", amount: 0, color: "#2563eb" }); };
-  const deletePoche = id => { const p = patrimoine.filter(p => p.id !== id); setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
+  const addPoche = () => { if (!newPoche.name.trim()) return; const pocheLimit = isAtLeast(userPlan, "pro") ? 999 : isAtLeast(userPlan, "starter") ? 5 : 2; if ((patrimoineRef.current || []).length >= pocheLimit) { setShowSubscription(true); return; } const p = [...(patrimoineRef.current || []), { ...newPoche, id: Date.now(), amount: Number(newPoche.amount) }]; setPatrimoine(p); saveAll(historyRef.current, todosRef.current, goalsRef.current, p, profileRef.current); setNewPoche({ name: "", amount: 0, color: "#2563eb" }); };
+  const deletePoche = id => { const p = (patrimoineRef.current || []).filter(p => p.id !== id); setPatrimoine(p); saveAll(historyRef.current, todosRef.current, goalsRef.current, p, profileRef.current); };
   const applyFlowToPocket = (type, amount, pocheIdStr) => {
     if (!pocheIdStr || !amount) return;
     const pocheId = Number(pocheIdStr);
@@ -3711,8 +3742,8 @@ export default function App() {
     updatePoche(pocheId, "amount", Math.max(0, (poche.amount || 0) + delta));
     setFlowPocket(fp => ({ ...fp, [type]: "" }));
   };
-  const movePoche = (idx, dir) => { const p = [...patrimoine]; const ni = idx + dir; if (ni < 0 || ni >= p.length) return; [p[idx], p[ni]] = [p[ni], p[idx]]; setPatrimoine(p); saveAll(history, todos, goals, p, profile); };
-  const updateProfile = (f, v) => { const pr = { ...profile, [f]: v }; setProfile(pr); saveAll(history, todos, goals, patrimoine, pr); };
+  const movePoche = (idx, dir) => { const p = [...(patrimoineRef.current || [])]; const ni = idx + dir; if (ni < 0 || ni >= p.length) return; [p[idx], p[ni]] = [p[ni], p[idx]]; setPatrimoine(p); saveAll(historyRef.current, todosRef.current, goalsRef.current, p, profileRef.current); };
+  const updateProfile = (f, v) => { const pr = { ...(profileRef.current || {}), [f]: v }; setProfile(pr); saveAll(historyRef.current, todosRef.current, goalsRef.current, patrimoineRef.current, pr); };
   const handleProfilePhoto = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => updateProfile("photo", ev.target.result); r.readAsDataURL(f); };
   const handleSportPhoto = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => update("sport", "photoUrl", ev.target.result); r.readAsDataURL(f); };
   const handleSignOut = async () => { await supabase.auth.signOut(); localStorage.removeItem("kojihlife_v9"); setOnboarded(false); };
