@@ -3845,7 +3845,9 @@ export default function App() {
   const radarSportScore = (() => {
     if (!today.sport.type) return 5;
     if (today.sport.isRest) return today.sport.stretching ? 65 : 50;
-    const dur = today.sport.duration || 0;
+    // Pour Running, utiliser running.time comme durée si duration n'est pas rempli
+    const runningTime = today.sport.type === "Running" ? (today.sport.running?.time || 0) : 0;
+    const dur = today.sport.duration || runningTime;
     const intensity = today.sport.intensity || 0;
     const recovery = today.sport.recovery || 0;
     const base = Math.min(55, dur * 1.1); // 50min → 55pts
@@ -3924,8 +3926,9 @@ export default function App() {
     let slS = dur >= 7 && dur <= 9 ? 65 : dur >= 6.5 ? 50 : dur >= 6 ? 35 : dur > 0 ? 18 : 5;
     if (sl.quality >= 4) slS += 15; if (sl.noScreen) slS += 5;
     // Sport
+    const spDur = (sp.duration||0) || (sp.type === "Running" ? (sp.running?.time||0) : 0);
     const spS = !sp.type ? 5 : sp.isRest ? (sp.stretching ? 65 : 50) : Math.max(5, Math.min(100, Math.round(
-      Math.min(55, (sp.duration||0)*1.1) + ((sp.intensity||0)>=1 ? ((sp.intensity||0)-1)*8 : 0) + ((sp.recovery||0)>=4?10:(sp.recovery||0)>=3?5:0))));
+      Math.min(55, spDur*1.1) + ((sp.intensity||0)>=1 ? ((sp.intensity||0)-1)*8 : 0) + ((sp.recovery||0)>=4?10:(sp.recovery||0)>=3?5:0))));
     // Nutrition
     const nutrS = Math.max(5, Math.min(100, (n.breakfast?15:0)+(n.lunch?15:0)+(n.dinner?15:0)+Math.min(20,Math.round((n.water||0)*8))+(n.junk?-15:0)));
     // Work
