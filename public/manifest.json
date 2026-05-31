@@ -29,5 +29,34 @@
       "type": "image/png"
     }
   ],
-  "screenshots": []
+  "screenshots": [
+    {
+      "src": "/screenshots/phone-1-home.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Tableau de bord MYLIDE"
+    },
+    {
+      "src": "/screenshots/phone-1-sport.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Tracker sport"
+    },
+    {
+      "src": "/screenshots/phone-1-nutrition.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Nutrition & hydratation"
+    },
+    {
+      "src": "/screenshots/tablet-7-home.png",
+      "sizes": "1200x1920",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "MYLIDE sur tablette"
+    }
+  ]
 }

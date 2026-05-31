@@ -3744,8 +3744,30 @@ export default function App() {
   };
   const movePoche = (idx, dir) => { const p = [...(patrimoineRef.current || [])]; const ni = idx + dir; if (ni < 0 || ni >= p.length) return; [p[idx], p[ni]] = [p[ni], p[idx]]; setPatrimoine(p); saveAll(historyRef.current, todosRef.current, goalsRef.current, p, profileRef.current); };
   const updateProfile = (f, v) => { const pr = { ...(profileRef.current || {}), [f]: v }; setProfile(pr); saveAll(historyRef.current, todosRef.current, goalsRef.current, patrimoineRef.current, pr); };
-  const handleProfilePhoto = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => updateProfile("photo", ev.target.result); r.readAsDataURL(f); };
-  const handleSportPhoto = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => update("sport", "photoUrl", ev.target.result); r.readAsDataURL(f); };
+  const handleProfilePhoto = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/avatar.${ext}`;
+    const { error } = await supabase.storage.from("user-media").upload(path, file, { upsert: true, contentType: file.type });
+    if (error) { console.error("[photo] avatar upload:", error.message); return; }
+    const { data } = supabase.storage.from("user-media").getPublicUrl(path);
+    updateProfile("photo", data.publicUrl + `?t=${Date.now()}`);
+  };
+  const handleSportPhoto = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/sport-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("user-media").upload(path, file, { contentType: file.type });
+    if (error) { console.error("[photo] sport upload:", error.message); return; }
+    const { data } = supabase.storage.from("user-media").getPublicUrl(path);
+    update("sport", "photoUrl", data.publicUrl);
+  };
   const handleSignOut = async () => { await supabase.auth.signOut(); localStorage.removeItem("kojihlife_v9"); setOnboarded(false); };
 
   const intel = getIntelligence(history, totalPatrimoine, goals);

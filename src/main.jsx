@@ -5,6 +5,7 @@ import Auth from './Auth.jsx'
 import { supabase } from './supabase.js'
 import { useState, useEffect } from 'react'
 import { ThemeProvider, useTheme } from './theme.jsx'
+import { ErrorBoundary } from './ErrorBoundary.jsx'
 
 function Root() {
   // S'abonner au contexte thème → Root re-render sur chaque changement → App reçoit un nouveau render parent
@@ -41,8 +42,12 @@ function Root() {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ThemeProvider>
-      <Root />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <ErrorBoundary>
+          <Root />
+        </ErrorBoundary>
+      </ThemeProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 )
