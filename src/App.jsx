@@ -1237,76 +1237,6 @@ const SubPageNotif = ({ onBack }) => {
         })}
       </div>
 
-      {/* Bouton de test */}
-      {(() => {
-        const [testState, setTestState] = useState("idle"); // idle | sending | ok | error
-        const [testError, setTestError] = useState("");
-        const sendTest = async () => {
-          setTestState("sending");
-          setTestError("");
-          try {
-            // 1. Vérifier que les notifications sont supportées
-            if (!("Notification" in window)) {
-              setTestError("Notifications non supportées sur ce navigateur."); setTestState("error"); return;
-            }
-            // 2. Demander/vérifier la permission
-            const perm = Notification.permission === "granted"
-              ? "granted"
-              : await Notification.requestPermission();
-            if (perm !== "granted") {
-              setTestError("Permission refusée. Autorise les notifications dans les réglages du navigateur."); setTestState("error"); return;
-            }
-            // 3. S'assurer qu'une subscription existe
-            const sw = await navigator.serviceWorker.ready;
-            const existingSub = await sw.pushManager.getSubscription();
-            if (!existingSub) {
-              // Tenter de s'abonner
-              try {
-                await sw.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: VAPID_PUBLIC_KEY });
-                // Re-enregistrer dans Supabase
-                const v2 = (() => { try { return JSON.parse(localStorage.getItem("notifV2")); } catch { return null; } })();
-                const legacy = (() => { try { return JSON.parse(localStorage.getItem("notif")); } catch { return {}; } })();
-                await registerPush(legacy, localStorage.getItem("wakeTime") || "07:00", localStorage.getItem("sleepTime") || "23:00", v2);
-              } catch (e) {
-                setTestError(`Abonnement impossible : ${e.message}`); setTestState("error"); return;
-              }
-            }
-            // 4. Appeler l'API
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.access_token) {
-              setTestError("Non connecté. Reconnecte-toi."); setTestState("error"); return;
-            }
-            const r = await fetch("/api/test-notification", {
-              method: "POST",
-              headers: { Authorization: `Bearer ${session.access_token}` },
-            });
-            if (r.ok) {
-              setTestState("ok");
-              setTimeout(() => setTestState("idle"), 4000);
-            } else {
-              const body = await r.json().catch(() => ({}));
-              setTestError(body.error || `Erreur ${r.status}`);
-              setTestState("error");
-            }
-          } catch (e) { setTestError(e.message || "Erreur inconnue"); setTestState("error"); }
-        };
-        return (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button
-              onClick={testState === "error" ? () => { setTestState("idle"); setTestError(""); } : testState === "idle" ? sendTest : undefined}
-              disabled={testState === "sending"}
-              style={{ width: "100%", padding: "14px", background: testState === "ok" ? "#1A7A4A" : testState === "error" ? C.red : C.surfaceAlt, border: `1.5px solid ${testState === "idle" ? C.border : "transparent"}`, borderRadius: 16, fontWeight: 700, fontSize: 14, color: testState === "idle" ? C.text : "#fff", cursor: testState === "idle" ? "pointer" : testState === "error" ? "pointer" : "default", transition: "all 0.3s", fontFamily: "inherit" }}
-            >
-              {testState === "idle" ? "Envoyer une notification test" : testState === "sending" ? "Envoi en cours…" : testState === "ok" ? "✓ Notification envoyée !" : "✕ Appuie pour voir l'erreur"}
-            </button>
-            {testState === "error" && testError && (
-              <div style={{ background: `${C.red}15`, border: `1px solid ${C.red}30`, borderRadius: 12, padding: "10px 14px" }}>
-                <p style={{ margin: 0, fontSize: 12, color: C.red, fontWeight: 600, lineHeight: 1.5 }}>{testError}</p>
-              </div>
-            )}
-          </div>
-        );
-      })()}
 
       {/* Mode silencieux */}
       <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "0 16px" }}>
@@ -1645,13 +1575,13 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
   // Subtitle shown in the subscription banner — plan-aware
   const planBannerTitle = isAtLeast(userPlan, "pro")
     ? `Membre ${planLabels[userPlan] || "Pro"} actif`
-    : userPlan === "starter" ? "Passer Pro ou Premium"
-    : "Passer Premium";
+    : userPlan === "starter" ? "Évoluer vers Pro ou Premium"
+    : "Découvrir les offres";
   const planBannerSub =
     userPlan === "premium" ? "Plan Premium actif · 12,99€/mois" :
     userPlan === "pro"     ? "Plan Pro actif · 6,99€/mois" :
-    userPlan === "starter" ? "Plan Starter actif · Évoluer vers Pro dès 6,99€/mois" :
-                             "Essai gratuit 7 jours · à partir de 3,99€/mois";
+    userPlan === "starter" ? "Plan Starter actif · Pro dès 6,99€/mois" :
+                             "Essai gratuit 7 jours · Starter 3,99€ · Pro 6,99€ · Premium 12,99€";
 
   const SubscriptionBlock = () => (
     <Sec title={tr("sec_subscription")}>
@@ -4245,7 +4175,7 @@ export default function App() {
               </div>
               <div>
                 <p style={{ margin: 0, fontWeight: 800, color: "#fff", fontSize: 15 }}>7 jours gratuits · 0€ aujourd'hui</p>
-                <p style={{ margin: "2px 0 0", color: "rgba(255,255,255,0.85)", fontSize: 12 }}>Puis à partir de 3,99€/mois · sans engagement</p>
+                <p style={{ margin: "2px 0 0", color: "rgba(255,255,255,0.85)", fontSize: 12 }}>Starter 3,99€ · Pro 6,99€ · Premium 12,99€ · sans engagement</p>
               </div>
             </div>
             <button onClick={() => { setShowProPopup(false); localStorage.setItem("proPopupSeen", "1"); setShowSubscription(true); }} style={{ width: "100%", padding: "15px", background: "linear-gradient(135deg, #CC2936, #8B1A22)", color: "#fff", border: "none", borderRadius: 14, fontWeight: 800, fontSize: 16, cursor: "pointer", boxShadow: "0 6px 20px rgba(204,41,54,0.3)", marginBottom: 10 }}>
@@ -5701,12 +5631,12 @@ export default function App() {
                 {(() => {
                   const bTitle = isAtLeast(userPlan, "pro")
                     ? `Membre ${userPlan === "premium" ? "Premium" : "Pro"} actif`
-                    : userPlan === "starter" ? "Passer Pro ou Premium"
-                    : "Passer Premium";
+                    : userPlan === "starter" ? "Évoluer vers Pro ou Premium"
+                    : "Découvrir les offres";
                   const bSub = isAtLeast(userPlan, "pro")
                     ? "Gérer mon abonnement →"
-                    : userPlan === "starter" ? "Déjà Starter · upgrade dès 6,99€/mois"
-                    : "7 jours gratuits · à partir de 3,99€/mois";
+                    : userPlan === "starter" ? "Plan Starter actif · Pro dès 6,99€/mois"
+                    : "Essai 7j gratuit · Starter 3,99€ · Pro 6,99€ · Premium 12,99€";
                   const bBg = isAtLeast(userPlan, "pro")
                     ? "linear-gradient(135deg, #1a1a2e, #16213e)"
                     : "linear-gradient(135deg, #CC2936, #8B1A22)";
