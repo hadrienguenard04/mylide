@@ -3354,7 +3354,29 @@ export default function App() {
 
         setHistory(hist);
         const todayStr = new Date().toISOString().split("T")[0];
-        const todayEntry = hist.find(d => d.date === todayStr);
+        let todayEntry = hist.find(d => d.date === todayStr);
+
+        // Récupérer l'emergency save si la page a été fermée avant la fin d'une sauvegarde Supabase
+        try {
+          const raw = localStorage.getItem("mylide_emergency_save");
+          if (raw) {
+            const emergency = JSON.parse(raw);
+            localStorage.removeItem("mylide_emergency_save");
+            if (emergency?.today?.date === todayStr) {
+              const dbHasToday = !!todayEntry;
+              const emergencyNewer = !dbHasToday || emergency.savedAt > (todayEntry.savedAt || "");
+              if (emergencyNewer) {
+                todayEntry = emergency.today;
+                const restoredH = [...hist.filter(d => d.date !== todayStr), todayEntry].sort((a, b) => a.date.localeCompare(b.date));
+                setHistory(restoredH);
+                // Re-sync vers Supabase immédiatement
+                setTimeout(() => saveAll(restoredH, emergency.todos, emergency.goals, emergency.patrimoine, emergency.profile), 1000);
+                console.log("[loadData] ✓ emergency save restauré pour", todayStr);
+              }
+            }
+          }
+        } catch {}
+
         if (todayEntry) {
           if (todayEntry.sleep?.bedtime && todayEntry.sleep?.wakeup && !todayEntry.sleep?.duration)
             todayEntry.sleep.duration = calcDuration(todayEntry.sleep.bedtime, todayEntry.sleep.wakeup);
@@ -3431,7 +3453,6 @@ export default function App() {
     });
 
     // Force-save avant fermeture / rechargement de page
-    // Annule le debounce de 2 s et sauvegarde immédiatement les données en cours
     const handleBeforeUnload = () => {
       if (!loadDoneRef.current) return;
       clearTimeout(autoSaveRef.current);
@@ -3441,8 +3462,18 @@ export default function App() {
       const updated = { ...t, score: calcScore(t) };
       const newH = [...h.filter(d => d.date !== t.date), updated].sort((a, b) => a.date.localeCompare(b.date));
       historyRef.current = newH;
-      // saveAll est async mais on l'appelle quand même - le navigateur laisse
-      // quelques ms aux promesses fetch() en cours avant de fermer la page.
+      // Sauvegarde synchrone localStorage — garantie avant fermeture du navigateur
+      // (la sauvegarde Supabase async peut ne pas aboutir si la page se ferme trop vite)
+      try {
+        localStorage.setItem("mylide_emergency_save", JSON.stringify({
+          savedAt: new Date().toISOString(),
+          today: updated,
+          todos: todosRef.current ?? [],
+          goals: goalsRef.current ?? [],
+          patrimoine: patrimoineRef.current ?? [],
+          profile: profileRef.current ?? {},
+        }));
+      } catch {}
       saveAll(newH, todosRef.current ?? [], goalsRef.current ?? [], patrimoineRef.current ?? [], profileRef.current ?? {});
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -3796,6 +3827,7 @@ export default function App() {
   const currentWeight = today.body?.weight || history.slice().reverse().find(d => d.body?.weight > 0)?.body?.weight || 0;
   const inferredActivity = useMemo(() => inferActivityLevel(history), [history]);
   const activeActivity   = nutritionGoals.activityLevel || inferredActivity;
+  const profileIncomplete = !nutritionGoals.height || !age;
   const tdee = useMemo(() => calcTDEE(
     currentWeight,
     nutritionGoals.height || 175,
