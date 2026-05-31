@@ -35,13 +35,24 @@ export default function Auth() {
     setError("");
     setMessage("");
     if (!email.trim()) { setError("Entre ton email pour recevoir le lien de réinitialisation."); return; }
+    // Rate-limit côté client : 1 demande max toutes les 60 secondes
+    const lastReset = Number(localStorage.getItem("lastPasswordReset") || 0);
+    const now = Date.now();
+    if (now - lastReset < 60000) {
+      const wait = Math.ceil((60000 - (now - lastReset)) / 1000);
+      setError(`Attends encore ${wait}s avant de renvoyer un lien.`);
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}?reset=true`,
     });
     setLoading(false);
     if (error) setError(error.message);
-    else setMessage("Lien envoyé ! Vérifie ta boîte mail (et les spams).");
+    else {
+      localStorage.setItem("lastPasswordReset", String(now));
+      setMessage("Lien envoyé ! Vérifie ta boîte mail (et les spams).");
+    }
   };
 
   const handleGoogle = async () => {

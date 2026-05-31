@@ -3738,7 +3738,7 @@ export default function App() {
   const addTodo = () => { if (!newTodo.trim()) return; const t = [...(todosRef.current || []), { id: Date.now(), text: newTodo, done: false, date: new Date().toISOString().split("T")[0] }]; setTodos(t); saveAll(historyRef.current, t, goalsRef.current, patrimoineRef.current, profileRef.current); setNewTodo(""); };
   const toggleTodo = id => { const t = (todosRef.current || []).map(t => t.id === id ? { ...t, done: !t.done } : t); setTodos(t); saveAll(historyRef.current, t, goalsRef.current, patrimoineRef.current, profileRef.current); };
   const deleteTodo = id => { const t = (todosRef.current || []).filter(t => t.id !== id); setTodos(t); saveAll(historyRef.current, t, goalsRef.current, patrimoineRef.current, profileRef.current); };
-  const totalPatrimoine = patrimoine.reduce((a, b) => a + (Number(b.amount) || 0), 0);
+  const totalPatrimoine = patrimoine.reduce((a, b) => { const v = Number(b.amount); return a + (isNaN(v) ? 0 : v); }, 0);
   const updateGoalField = (id, f, v) => { const g = (goalsRef.current || []).map(g => g.id === id ? { ...g, [f]: v } : g); setGoals(g); saveAll(historyRef.current, todosRef.current, g, patrimoineRef.current, profileRef.current); };
   const saveEditedGoal = (edited) => { const g = (goalsRef.current || []).map(g => g.id === edited.id ? edited : g); setGoals(g); saveAll(historyRef.current, todosRef.current, g, patrimoineRef.current, profileRef.current); };
   const GOAL_COLORS = ["#CC2936","#1A7A4A","#1E5FCC","#6B35C8","#D4580A","#0891b2","#be185d","#0A0A0A"];
@@ -3770,7 +3770,15 @@ export default function App() {
     const poche = patrimoine.find(p => p.id === pocheId);
     if (!poche) return;
     const delta = type === "expense" ? -amount : amount;
-    updatePoche(pocheId, "amount", Math.max(0, (poche.amount || 0) + delta));
+    const currentAmount = Number(poche.amount) || 0;
+    const newAmount = currentAmount + delta;
+    if (newAmount < 0) {
+      setSyncStatus("error");
+      setTimeout(() => setSyncStatus("idle"), 3000);
+      alert(`Solde insuffisant dans "${poche.name}" (${currentAmount.toLocaleString("fr-FR")} €). Dépense annulée.`);
+      return;
+    }
+    updatePoche(pocheId, "amount", newAmount);
     setFlowPocket(fp => ({ ...fp, [type]: "" }));
   };
   const movePoche = (idx, dir) => { const p = [...(patrimoineRef.current || [])]; const ni = idx + dir; if (ni < 0 || ni >= p.length) return; [p[idx], p[ni]] = [p[ni], p[idx]]; setPatrimoine(p); saveAll(historyRef.current, todosRef.current, goalsRef.current, p, profileRef.current); };

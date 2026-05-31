@@ -121,7 +121,11 @@ function getNotificationsToSend(cfg, timezone) {
 module.exports = async function handler(req, res) {
   // Sécurité — vérifier le secret cron
   const secret = process.env.CRON_SECRET;
-  if (secret && req.headers["x-cron-secret"] !== secret) {
+  if (!secret) {
+    console.error("[send-notifications] CRON_SECRET manquant — endpoint désactivé");
+    return res.status(500).json({ error: "Server misconfigured: CRON_SECRET not set" });
+  }
+  if (req.headers["x-cron-secret"] !== secret) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
