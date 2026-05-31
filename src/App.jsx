@@ -5678,10 +5678,8 @@ export default function App() {
         </PageTransition>
       </div>
 
-      {/* Fond safe-area iOS — comble la bande blanche sous la nav sur iPhone */}
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, height: "env(safe-area-inset-bottom, 0px)", background: C.navBg, zIndex: 19 }} />
       {/* BOTTOM NAV */}
-      <div style={{ position: "fixed", bottom: "env(safe-area-inset-bottom, 0px)", left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: C.navBg, backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20, boxShadow: darkMode ? "0 -4px 24px rgba(0,0,0,0.35)" : "0 -4px 24px rgba(0,0,0,0.07)" }}>
+      <div id="bottom-nav" style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: C.navBg, backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderTop: `1px solid ${C.border}`, display: "flex", zIndex: 20, boxShadow: darkMode ? "0 -4px 24px rgba(0,0,0,0.35)" : "0 -4px 24px rgba(0,0,0,0.07)" }}>
         {NAV.map(n => {
           const active = nav === n.id;
           return (
