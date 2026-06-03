@@ -626,7 +626,7 @@ const TRANSLATIONS = {
     sport_type:"Type d'activité",sport_recovery:"Récupération",sport_photo:"Photo de progression",sport_import_photo:"Importer une photo",
     nutr_goals_title:"Objectifs nutritionnels",nutr_meals_day:"Repas du jour",nutr_macros:"Macros du jour",nutr_suggest:"Idées repas",nutr_breakfast:"Petit-déjeuner",nutr_lunch:"Déjeuner",nutr_snack:"Collation",nutr_dinner:"Dîner",
     body_weight_sec:"Poids & objectif",body_measures:"Mensurations",body_current:"Poids actuel (kg)",body_target:"Objectif poids (kg)",body_chest:"Poitrine (cm)",body_waist:"Tour de taille (cm)",body_hips:"Hanches (cm)",body_arms:"Bras (cm)",body_thighs:"Cuisses (cm)",
-    work_focus_sec:"Focus & Productivité",work_tasks:"Tâches",work_tasks_planned:"Prévues",work_tasks_done:"Faites",work_highlight:"Highlight du jour",work_screen:"Temps d'écran",work_screen_hours:"Heures aujourd'hui",
+    work_focus_sec:"Focus & Productivité",work_tasks:"Tâches",work_tasks_planned:"Prévues",work_tasks_done:"Faites",work_highlight:"Moment clé du jour",work_screen:"Temps d'écran",work_screen_hours:"Heures aujourd'hui",
     mind_mood_day:"Humeur du jour",mind_dev:"Développement",mind_reading:"Lecture (pages)",mind_meditation:"Méditation / Cohérence cardiaque",mind_skill:"Compétence travaillée",mind_gratitude:"Gratitude du jour",
     todo_new:"Nouvelle tâche",todo_placeholder:"Ajouter une tâche...",todo_today:"Aujourd'hui",todo_older:"Anciennes",
     money_total:"Patrimoine total",money_split:"Répartition",money_pockets:"Mes poches",
@@ -4014,26 +4014,26 @@ export default function App() {
       {/* Indicateur de synchronisation cloud */}
       {syncStatus !== "idle" && (
         <div style={{
-          position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)",
+          position: "fixed", bottom: 88, left: "50%", transform: "translateX(-50%)",
           zIndex: 9999, pointerEvents: "none",
           background: syncStatus === "error" ? "#CC2936" : syncStatus === "saving" ? C.surface : "#10B981",
           border: `1.5px solid ${syncStatus === "error" ? "#CC293650" : syncStatus === "saving" ? C.border : "#10B98150"}`,
-          borderRadius: 30, padding: "8px 18px",
+          borderRadius: 30, padding: "10px 20px",
           display: "flex", alignItems: "center", gap: 8,
-          boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
-          transition: "all 0.3s ease",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+          animation: "fadeInUp 0.2s ease",
         }}>
           {syncStatus === "saving" && (
             <div style={{ width: 10, height: 10, borderRadius: "50%", border: `2px solid ${C.muted}`, borderTopColor: C.red, animation: "spin 0.7s linear infinite" }} />
           )}
-          {syncStatus === "saved" && <span style={{ color: "#fff", fontSize: 13 }}>✓</span>}
-          {syncStatus === "error" && <span style={{ color: "#fff", fontSize: 13 }}>✗</span>}
-          <span style={{ fontSize: 12, fontWeight: 700, color: syncStatus === "saving" ? C.muted : "#fff", whiteSpace: "nowrap" }}>
-            {syncStatus === "saving" ? "Synchronisation..." : syncStatus === "saved" ? "Sauvegardé" : "Erreur de sauvegarde"}
+          {syncStatus === "saved" && <span style={{ color: "#fff", fontSize: 14 }}>✓</span>}
+          {syncStatus === "error" && <span style={{ color: "#fff", fontSize: 14 }}>✕</span>}
+          <span style={{ fontSize: 13, fontWeight: 700, color: syncStatus === "saving" ? C.text : "#fff", whiteSpace: "nowrap" }}>
+            {syncStatus === "saving" ? "Sauvegarde..." : syncStatus === "saved" ? "Données sauvegardées" : "Erreur — réessaie"}
           </span>
         </div>
       )}
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes fadeInUp { from { opacity:0; transform: translateX(-50%) translateY(10px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }`}</style>
 
       {editingGoal && <EditGoalModal goal={editingGoal} onSave={saveEditedGoal} onClose={() => setEditingGoal(null)} />}
       {showSubscription && <Subscription onClose={() => setShowSubscription(false)} userPlan={userPlan} userId={currentUser?.id} userEmail={currentUser?.email} subscriptionData={subscriptionData} />}
@@ -4458,8 +4458,8 @@ export default function App() {
                           <Field label="Temps (min)"><input type="number" value={today.sport.running?.time || ""} min={0} onChange={e => updateNested("sport", "running", "time", +e.target.value)} style={inp} /></Field>
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                          <Field label="FC moyenne (bpm)"><input type="number" value={today.sport.heartRate || ""} min={0} max={220} onChange={e => update("sport", "heartRate", +e.target.value)} style={inp} /></Field>
-                          <Field label="FC max (bpm)"><input type="number" value={today.sport.heartRateMax || ""} min={0} max={220} onChange={e => update("sport", "heartRateMax", +e.target.value)} style={inp} /></Field>
+                          <Field label="Fréq. cardiaque moy. (bpm)"><input type="number" value={today.sport.heartRate || ""} min={0} max={220} onChange={e => update("sport", "heartRate", +e.target.value)} style={inp} placeholder="Ex: 145" /></Field>
+                          <Field label="Fréq. cardiaque max (bpm)"><input type="number" value={today.sport.heartRateMax || ""} min={0} max={220} onChange={e => update("sport", "heartRateMax", +e.target.value)} style={inp} placeholder="Ex: 185" /></Field>
                         </div>
                         {today.sport.running?.distance > 0 && today.sport.running?.time > 0 && (
                           <div style={{ textAlign: "center", background: `${C.blue10}`, border: `1.5px solid ${C.blue22}`, borderRadius: 14, padding: 16 }}>
@@ -4490,7 +4490,7 @@ export default function App() {
                         )}
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                           <Field label="Duree (min)"><input type="number" value={today.sport.duration || ""} min={0} onChange={e => update("sport", "duration", +e.target.value)} style={inp} /></Field>
-                          <Field label="FC moyenne (bpm)"><input type="number" value={today.sport.heartRate || ""} min={0} max={220} onChange={e => update("sport", "heartRate", +e.target.value)} style={inp} /></Field>
+                          <Field label="Fréq. cardiaque moy. (bpm)"><input type="number" value={today.sport.heartRate || ""} min={0} max={220} onChange={e => update("sport", "heartRate", +e.target.value)} style={inp} placeholder="Ex: 145" /></Field>
                         </div>
                         <Field label="Notes"><input type="text" value={today.sport.notes || ""} placeholder="Poste, ressenti..." onChange={e => update("sport", "notes", e.target.value)} style={inp} /></Field>
                       </div>
@@ -4517,7 +4517,7 @@ export default function App() {
                         )}
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                           <Field label="Duree (min)"><input type="number" value={today.sport.duration || ""} min={0} onChange={e => update("sport", "duration", +e.target.value)} style={inp} /></Field>
-                          <Field label="FC moyenne (bpm)"><input type="number" value={today.sport.heartRate || ""} min={0} max={220} onChange={e => update("sport", "heartRate", +e.target.value)} style={inp} /></Field>
+                          <Field label="Fréq. cardiaque moy. (bpm)"><input type="number" value={today.sport.heartRate || ""} min={0} max={220} onChange={e => update("sport", "heartRate", +e.target.value)} style={inp} placeholder="Ex: 145" /></Field>
                         </div>
                       </div>
                     )}
@@ -4533,8 +4533,8 @@ export default function App() {
                           <Field label="Duree round (min)"><input type="number" value={today.sport.boxeRoundDuration || ""} min={0} max={10} onChange={e => update("sport", "boxeRoundDuration", +e.target.value)} style={inp} /></Field>
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                          <Field label="FC moyenne (bpm)"><input type="number" value={today.sport.heartRate || ""} min={0} max={220} onChange={e => update("sport", "heartRate", +e.target.value)} style={inp} /></Field>
-                          <Field label="FC max (bpm)"><input type="number" value={today.sport.heartRateMax || ""} min={0} max={220} onChange={e => update("sport", "heartRateMax", +e.target.value)} style={inp} /></Field>
+                          <Field label="Fréq. cardiaque moy. (bpm)"><input type="number" value={today.sport.heartRate || ""} min={0} max={220} onChange={e => update("sport", "heartRate", +e.target.value)} style={inp} placeholder="Ex: 145" /></Field>
+                          <Field label="Fréq. cardiaque max (bpm)"><input type="number" value={today.sport.heartRateMax || ""} min={0} max={220} onChange={e => update("sport", "heartRateMax", +e.target.value)} style={inp} placeholder="Ex: 185" /></Field>
                         </div>
                         <Field label="Notes"><input type="text" value={today.sport.notes || ""} placeholder="Ressenti, technique..." onChange={e => update("sport", "notes", e.target.value)} style={inp} /></Field>
                       </div>
@@ -5064,8 +5064,8 @@ export default function App() {
                   <Card>
                     <ST>Fréquence cardiaque</ST>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                      <Field label="FC repos (bpm)"><input type="number" value={today.body?.restingHR || ""} min={30} max={200} onChange={e => update("body", "restingHR", +e.target.value)} style={inp} placeholder="Ex: 55" /></Field>
-                      <Field label="FC max (bpm)"><input type="number" value={today.body?.maxHR || ""} min={100} max={220} onChange={e => update("body", "maxHR", +e.target.value)} style={inp} placeholder="Ex: 185" /></Field>
+                      <Field label="Fréq. cardiaque au repos (bpm)"><input type="number" value={today.body?.restingHR || ""} min={30} max={200} onChange={e => update("body", "restingHR", +e.target.value)} style={inp} placeholder="Ex: 55" /></Field>
+                      <Field label="Fréq. cardiaque max (bpm)"><input type="number" value={today.body?.maxHR || ""} min={100} max={220} onChange={e => update("body", "maxHR", +e.target.value)} style={inp} placeholder="Ex: 185" /></Field>
                     </div>
                     {(today.body?.restingHR > 0 || today.sport?.heartRate > 0) && (
                       <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -5110,7 +5110,7 @@ export default function App() {
                         </div>
                       </div>
                     )}
-                    <Field label={tr("work_highlight")}><input type="text" placeholder="Ma meilleure action..." value={today.work.highlight} onChange={e => update("work", "highlight", e.target.value)} style={inp} /></Field>
+                    <Field label={tr("work_highlight")}><input type="text" placeholder="Ex: J'ai terminé mon projet, eu une bonne réunion..." value={today.work.highlight} onChange={e => update("work", "highlight", e.target.value)} style={inp} /></Field>
                   </Card>
                   <Card>
                     <ST>{tr("work_screen")}</ST>
