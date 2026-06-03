@@ -3843,7 +3843,7 @@ export default function App() {
 
   // ── RADAR SCORES - multi-factor 0-100 per category ───────────────────────
   const radarSportScore = (() => {
-    if (!today.sport.type) return 5;
+    if (!today.sport.type) return 0;
     if (today.sport.isRest) return today.sport.stretching ? 65 : 50;
     // Pour Running, utiliser running.time comme durée si duration n'est pas rempli
     const runningTime = today.sport.type === "Running" ? (today.sport.running?.time || 0) : 0;
@@ -3855,7 +3855,7 @@ export default function App() {
     const rBonus = recovery >= 4 ? 10 : recovery >= 3 ? 5 : 0;
     const steps = today.sport.steps || 0;
     const stepsBonus = steps >= 10000 ? 8 : steps >= 7000 ? 5 : steps >= 5000 ? 3 : steps >= 3000 ? 1 : 0;
-    return Math.max(5, Math.min(100, Math.round(base + iBonus + rBonus + stepsBonus)));
+    return Math.max(0, Math.min(100, Math.round(base + iBonus + rBonus + stepsBonus)));
   })();
   const radarNutrScore = (() => {
     const meals = (today.nutrition.breakfast ? 15 : 0) + (today.nutrition.lunch ? 15 : 0) + (today.nutrition.dinner ? 15 : 0);
@@ -3864,7 +3864,7 @@ export default function App() {
     const protAdh = protTarget > 0 && protCurrent > 0 ? Math.min(1, protCurrent / protTarget) : 0;
     const macros = Math.round(calAdh * 12 + protAdh * 18);
     const junk = today.nutrition.junk ? -15 : 0;
-    return Math.max(5, Math.min(100, meals + water + macros + junk));
+    return Math.max(0, Math.min(100, meals + water + macros + junk));
   })();
   const radarWorkScore = (() => {
     const focus = (today.work.focus || 0) * 14; // 5/5 → 70pts
@@ -3873,13 +3873,13 @@ export default function App() {
     const screen = today.work.screenTime > 0
       ? (today.work.screenTime <= 3 ? 12 : today.work.screenTime <= 5 ? 0 : -20)
       : 0;
-    return Math.max(5, Math.min(100, focus + tasks + screen));
+    return Math.max(0, Math.min(100, focus + tasks + screen));
   })();
   const radarMindScore = (() => {
     const mood = (today.mind.mood || 0) * 14;
     const read = Math.min(15, Math.round((today.mind.reading || 0) / 4));
     const med = today.mind.meditation ? 12 : 0;
-    return Math.max(5, Math.min(100, mood + read + med));
+    return Math.max(0, Math.min(100, mood + read + med));
   })();
   const radarBodyScore = (() => {
     if (!today.body?.weight) return 10;
@@ -3892,7 +3892,7 @@ export default function App() {
   })();
 
   const radar = [
-    { s: "Sommeil", v: today.sleep.duration > 0 ? Math.max(5, sleepAnalysis.score) : 5 },
+    { s: "Sommeil", v: today.sleep.duration > 0 ? Math.max(0, sleepAnalysis.score) : 0 },
     { s: "Sport",   v: radarSportScore },
     { s: "Nutrition", v: radarNutrScore },
     { s: "Travail", v: radarWorkScore },
@@ -3918,7 +3918,7 @@ export default function App() {
   const radarDayData = radarDate === todayDate ? today : (history.find(d => d.date === radarDate) || null);
   const radarForDay = useMemo(() => {
     const d = radarDayData;
-    if (!d) return [{ s:"Sommeil",v:5 },{ s:"Sport",v:5 },{ s:"Nutrition",v:5 },{ s:"Travail",v:5 },{ s:"Mental",v:5 },{ s:"Corps",v:5 }];
+    if (!d) return [{ s:"Sommeil",v:0 },{ s:"Sport",v:0 },{ s:"Nutrition",v:0 },{ s:"Travail",v:0 },{ s:"Mental",v:0 },{ s:"Corps",v:0 }];
     if (d === today) return radar; // use already-computed scores for today
     const sl = d.sleep || {}, sp = d.sport || {}, n = d.nutrition || {}, w = d.work || {}, m = d.mind || {}, b = d.body || {};
     // Sleep
@@ -3927,14 +3927,14 @@ export default function App() {
     if (sl.quality >= 4) slS += 15; if (sl.noScreen) slS += 5;
     // Sport
     const spDur = (sp.duration||0) || (sp.type === "Running" ? (sp.running?.time||0) : 0);
-    const spS = !sp.type ? 5 : sp.isRest ? (sp.stretching ? 65 : 50) : Math.max(5, Math.min(100, Math.round(
+    const spS = !sp.type ? 0 : sp.isRest ? (sp.stretching ? 65 : 50) : Math.max(0, Math.min(100, Math.round(
       Math.min(55, spDur*1.1) + ((sp.intensity||0)>=1 ? ((sp.intensity||0)-1)*8 : 0) + ((sp.recovery||0)>=4?10:(sp.recovery||0)>=3?5:0))));
     // Nutrition
-    const nutrS = Math.max(5, Math.min(100, (n.breakfast?15:0)+(n.lunch?15:0)+(n.dinner?15:0)+Math.min(20,Math.round((n.water||0)*8))+(n.junk?-15:0)));
+    const nutrS = Math.max(0, Math.min(100, (n.breakfast?15:0)+(n.lunch?15:0)+(n.dinner?15:0)+Math.min(20,Math.round((n.water||0)*8))+(n.junk?-15:0)));
     // Work
-    const wS = Math.max(5, Math.min(100, (w.focus||0)*14 + (w.tasks>0?Math.round(Math.min(1,(w.tasksCompleted||0)/w.tasks)*18):0) + (w.screenTime>5?-20:w.screenTime>3?0:w.screenTime>0?12:0)));
+    const wS = Math.max(0, Math.min(100, (w.focus||0)*14 + (w.tasks>0?Math.round(Math.min(1,(w.tasksCompleted||0)/w.tasks)*18):0) + (w.screenTime>5?-20:w.screenTime>3?0:w.screenTime>0?12:0)));
     // Mind
-    const mS = Math.max(5, Math.min(100, (m.mood||0)*14 + Math.min(15,Math.round((m.reading||0)/4)) + (m.meditation?12:0)));
+    const mS = Math.max(0, Math.min(100, (m.mood||0)*14 + Math.min(15,Math.round((m.reading||0)/4)) + (m.meditation?12:0)));
     // Body
     const bS = b.weight > 0 ? 60 : 10;
     return [{ s:"Sommeil",v:Math.min(100,slS) },{ s:"Sport",v:spS },{ s:"Nutrition",v:nutrS },{ s:"Travail",v:wS },{ s:"Mental",v:mS },{ s:"Corps",v:bS }];
