@@ -3949,7 +3949,7 @@ export default function App() {
   const _sd = radarDayData || today;
   const STAT_CARDS = [
     { label: "Sommeil", value: _sd.sleep?.duration ? `${_sd.sleep.duration}h` : "-", icon: "sleep", color: C.purple, tab: "sleep" },
-    { label: "Sport", value: _sd.sport?.isRest ? "Repos" : _sd.sport?.duration ? `${_sd.sport.duration}m` : "-", icon: "sport", color: C.red, tab: "sport" },
+    { label: "Sport", value: _sd.sport?.isRest ? "Repos" : _sd.sport?.duration ? `${_sd.sport.duration}m` : _sd.sport?.running?.time ? `${_sd.sport.running.time}m` : _sd.sport?.type ? _sd.sport.type : "-", icon: "sport", color: C.red, tab: "sport" },
     { label: "Eau", value: _sd.nutrition?.water ? `${_sd.nutrition.water}L` : "-", icon: "water", color: C.blue, tab: "nutrition" },
     { label: "Poids", value: _sd.body?.weight ? `${_sd.body.weight}kg` : "-", icon: "scale", color: C.orange, tab: "body" },
     { label: "Focus", value: _sd.work?.focus ? `${_sd.work.focus}/5` : "-", icon: "focus", color: C.red, tab: "work" },
@@ -4342,7 +4342,7 @@ export default function App() {
           {/* TRACKER */}
           {nav === "track" && (
             <div>
-              <div style={{ display: "flex", overflowX: "auto", gap: 6, marginBottom: 16, paddingBottom: 2 }}>
+              <div style={{ display: "flex", overflowX: "auto", gap: 6, paddingBottom: 2 }}>
                 {TRACK_TABS.map(t => {
                   const active = trackTab === t.id;
                   return (
@@ -4351,6 +4351,15 @@ export default function App() {
                     </button>
                   );
                 })}
+              </div>
+              {/* Indicateur de position */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "8px 0 12px" }}>
+                {TRACK_TABS.map((t, i) => (
+                  <div key={t.id} onClick={() => setTrackTab(t.id)} style={{ width: trackTab === t.id ? 18 : 6, height: 6, borderRadius: 3, background: trackTab === t.id ? C.red : C.border, transition: "all 0.25s ease", cursor: "pointer" }} />
+                ))}
+                <span style={{ marginLeft: 8, fontSize: 11, color: C.muted, fontWeight: 600 }}>
+                  {TRACK_ORDER.indexOf(trackTab) + 1}/{TRACK_TABS.length}
+                </span>
               </div>
 
               <div style={{ background: C.bg, borderRadius: 20, marginTop: 8, padding: "4px 0 8px" }}>
