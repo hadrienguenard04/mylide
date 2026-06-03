@@ -4694,54 +4694,45 @@ export default function App() {
                   <div>
                     {_nutritionDisclaimer}
 
-                    {/* Score de fiabilité */}
-                    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: C.text }}>Fiabilité de l'estimation</p>
-                        <p style={{ margin: "2px 0 0", fontSize: 11, color: C.muted }}>
-                          {missingFields.length === 0
-                            ? "Profil complet · recommandations précises"
-                            : `Données manquantes : ${missingFields.map(f => f.label).join(", ")}`}
-                        </p>
+                    {/* ── 1. SAISIE DU JOUR — en premier ── */}
+                    <Card>
+                      <ST>{tr("nutr_meals_day")}</ST>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
+                        <Toggle value={today.nutrition.breakfast} onChange={v => update("nutrition", "breakfast", v)} label={tr("nutr_breakfast")} />
+                        <Toggle value={today.nutrition.lunch}     onChange={v => update("nutrition", "lunch",     v)} label={tr("nutr_lunch")} />
+                        <Toggle value={today.nutrition.dinner}    onChange={v => update("nutrition", "dinner",    v)} label={tr("nutr_dinner")} />
+                        <Toggle value={today.nutrition.junk}      onChange={v => update("nutrition", "junk",      v)} label="Junk food" />
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ width: 60, height: 6, borderRadius: 3, background: C.surfaceAlt, overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${reliabilityPct}%`, background: reliabilityColor, borderRadius: 3, transition: "width 0.5s" }} />
-                        </div>
-                        <span style={{ fontSize: 12, fontWeight: 800, color: reliabilityColor, whiteSpace: "nowrap" }}>{reliability}</span>
+                      <ST>{tr("nutr_macros")}</ST>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <Field label="Calories (kcal)"><input type="number" value={today.nutrition.calories || ""} min={0} max={6000} onChange={e => update("nutrition","calories",+e.target.value)} style={inp} /></Field>
+                        <Field label="Protéines (g)">  <input type="number" value={today.nutrition.protein  || ""} min={0} max={400}  onChange={e => update("nutrition","protein", +e.target.value)} style={inp} /></Field>
+                        <Field label="Glucides (g)">   <input type="number" value={today.nutrition.carbs    || ""} min={0} max={600}  onChange={e => update("nutrition","carbs",   +e.target.value)} style={inp} /></Field>
+                        <Field label="Lipides (g)">    <input type="number" value={today.nutrition.fat      || ""} min={0} max={300}  onChange={e => update("nutrition","fat",     +e.target.value)} style={inp} /></Field>
                       </div>
-                    </div>
+                    </Card>
 
-                    {/* Messages données manquantes */}
-                    {missingFields.length > 0 && missingFields.length < 4 && (
-                      <div style={{ background: `${C.orange}08`, border: `1px solid ${C.orange}20`, borderRadius: 12, padding: "10px 14px", marginBottom: 12 }}>
-                        {missingFields.slice(0, 2).map(f => (
-                          <div key={f.key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                            <span style={{ fontSize: 11, color: C.orange }}>→</span>
-                            <p style={{ margin: 0, fontSize: 12, color: C.text }}>
-                              <strong>{f.label} manquant</strong> · {
-                                f.key === "weight"   ? "Entre ton poids dans Corps pour des macros personnalisées." :
-                                f.key === "height"   ? "Ta taille améliore le calcul de ton métabolisme de base." :
-                                f.key === "sex"      ? "Aide à adapter les estimations de métabolisme." :
-                                f.key === "age"      ? "Ton âge ajuste les besoins énergétiques." :
-                                f.key === "activity" ? "Ton niveau d'activité calibre ton TDEE." :
-                                "Complète ton profil physique."
-                              }
-                            </p>
-                          </div>
-                        ))}
-                        <button onClick={() => { setNav("today"); setTimeout(() => { setNav("track"); setTrackTab("body"); }, 50); }}
-                          style={{ marginTop: 6, padding: "6px 14px", borderRadius: 8, background: C.orange, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                          Compléter mon profil →
-                        </button>
+                    {/* ── 2. HYDRATATION ── */}
+                    <Card>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                        <ST style={{ margin: 0 }}>Hydratation</ST>
+                        <span style={{ fontSize: 11, color: C.muted, background: C.surfaceAlt, borderRadius: 8, padding: "3px 9px", fontWeight: 600 }}>
+                          Objectif : {waterTarget}L
+                        </span>
                       </div>
-                    )}
+                      <WaterBottle current={today.nutrition.water || 0} target={waterTarget} onChange={val => update("nutrition", "water", val)} />
+                    </Card>
 
-                    <EvoChart data={waterH.slice(-30)} dataKey="nutrition.water" color={C.blue} label="Hydratation" unit="L" />
-                    <EvoChart data={history.filter(d => d.nutrition?.protein > 0).slice(-30)} dataKey="nutrition.protein" color={C.purple} label="Protéines" unit="g" />
-                    {temporalInsights.filter(i => i.msg.includes("prot") || i.msg.includes("repas") || i.msg.includes("eau")).map((ins, i) => <MsgBox key={i} type={ins.type} msg={ins.msg} suggestions={ins.suggestions} />)}
+                    {/* ── 3. PROGRESSION DU JOUR ── */}
+                    <Card>
+                      <ST style={{ marginBottom: 14 }}>Progression du jour</ST>
+                      <MacroBar label="Calories" current={calCurrent} target={displayMacros.calTarget} color={C.orange} unit=" kcal" />
+                      <MacroBar label="Protéines" current={protCurrent} target={displayMacros.protTarget} color={C.purple} />
+                      <MacroBar label="Glucides"  current={carbsCurrent} target={displayMacros.carbsTarget} color={C.blue} />
+                      <MacroBar label="Lipides"   current={fatCurrent} target={displayMacros.fatTarget} color={C.green} />
+                    </Card>
 
-                    {/* ── Objectif principal ── */}
+                    {/* ── 4. OBJECTIFS & PLAN ── */}
                     <Card>
                       <ST style={{ marginBottom: 14 }}>{tr("nutr_goals_title")}</ST>
 
@@ -4874,47 +4865,9 @@ export default function App() {
                         );
                       })()}
 
-                      {/* Barres de progression */}
-                      <MacroBar label="Calories" current={calCurrent} target={displayMacros.calTarget} color={C.orange} unit=" kcal" />
-                      <MacroBar label="Protéines" current={protCurrent} target={displayMacros.protTarget} color={C.purple} />
-                      <MacroBar label="Glucides"  current={carbsCurrent} target={displayMacros.carbsTarget} color={C.blue} />
-                      <MacroBar label="Lipides"   current={fatCurrent} target={displayMacros.fatTarget} color={C.green} />
                     </Card>
 
-                    {/* ── Hydratation ── */}
-                    <Card>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                        <ST style={{ margin: 0 }}>Hydratation</ST>
-                        <span style={{ fontSize: 11, color: C.muted, background: C.surfaceAlt, borderRadius: 8, padding: "3px 9px", fontWeight: 600 }}>
-                          Objectif estimé : {waterTarget}L
-                        </span>
-                      </div>
-                      <WaterBottle
-                        current={today.nutrition.water || 0}
-                        target={waterTarget}
-                        onChange={val => update("nutrition", "water", val)}
-                      />
-                    </Card>
-
-                    {/* ── Saisie du jour ── */}
-                    <Card>
-                      <ST>{tr("nutr_meals_day")}</ST>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
-                        <Toggle value={today.nutrition.breakfast} onChange={v => update("nutrition", "breakfast", v)} label={tr("nutr_breakfast")} />
-                        <Toggle value={today.nutrition.lunch}     onChange={v => update("nutrition", "lunch",     v)} label={tr("nutr_lunch")} />
-                        <Toggle value={today.nutrition.dinner}    onChange={v => update("nutrition", "dinner",    v)} label={tr("nutr_dinner")} />
-                        <Toggle value={today.nutrition.junk}      onChange={v => update("nutrition", "junk",      v)} label="Junk food" />
-                      </div>
-                      <ST>{tr("nutr_macros")}</ST>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                        <Field label="Calories (kcal)"> <input type="number" value={today.nutrition.calories || ""} min={0} max={6000}             onChange={e => update("nutrition","calories",+e.target.value)} style={inp} /></Field>
-                        <Field label="Protéines (g)">   <input type="number" value={today.nutrition.protein  || ""} min={0} max={400}              onChange={e => update("nutrition","protein", +e.target.value)} style={inp} /></Field>
-                        <Field label="Glucides (g)">    <input type="number" value={today.nutrition.carbs    || ""} min={0} max={600}              onChange={e => update("nutrition","carbs",   +e.target.value)} style={inp} /></Field>
-                        <Field label="Lipides (g)">     <input type="number" value={today.nutrition.fat      || ""} min={0} max={300}              onChange={e => update("nutrition","fat",     +e.target.value)} style={inp} /></Field>
-                      </div>
-                    </Card>
-
-                    {/* ── Suggestions de repas - carousel premium ── */}
+                    {/* ── 5. IDÉES REPAS ── */}
                     <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "18px 16px 10px", marginBottom: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
                       {/* Header */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
@@ -4953,7 +4906,53 @@ export default function App() {
                       />
                     </div>
 
-                    {/* ── Q&A nutritionnelles (Pro+) ── */}
+                    {/* ── 6. GRAPHIQUES HISTORIQUES ── */}
+                    <EvoChart data={waterH.slice(-30)} dataKey="nutrition.water" color={C.blue} label="Hydratation" unit="L" />
+                    <EvoChart data={history.filter(d => d.nutrition?.protein > 0).slice(-30)} dataKey="nutrition.protein" color={C.purple} label="Protéines" unit="g" />
+                    {temporalInsights.filter(i => i.msg.includes("prot") || i.msg.includes("repas") || i.msg.includes("eau")).map((ins, i) => <MsgBox key={i} type={ins.type} msg={ins.msg} suggestions={ins.suggestions} />)}
+
+                    {/* ── 7. FIABILITÉ + DONNÉES MANQUANTES ── */}
+                    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: C.text }}>Fiabilité de l'estimation</p>
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: C.muted }}>
+                          {missingFields.length === 0
+                            ? "Profil complet · recommandations précises"
+                            : `Données manquantes : ${missingFields.map(f => f.label).join(", ")}`}
+                        </p>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ width: 60, height: 6, borderRadius: 3, background: C.surfaceAlt, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${reliabilityPct}%`, background: reliabilityColor, borderRadius: 3, transition: "width 0.5s" }} />
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: reliabilityColor, whiteSpace: "nowrap" }}>{reliability}</span>
+                      </div>
+                    </div>
+                    {missingFields.length > 0 && missingFields.length < 4 && (
+                      <div style={{ background: `${C.orange}08`, border: `1px solid ${C.orange}20`, borderRadius: 12, padding: "10px 14px", marginBottom: 12 }}>
+                        {missingFields.slice(0, 2).map(f => (
+                          <div key={f.key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, color: C.orange }}>→</span>
+                            <p style={{ margin: 0, fontSize: 12, color: C.text }}>
+                              <strong>{f.label} manquant</strong> · {
+                                f.key === "weight"   ? "Entre ton poids dans Corps pour des macros personnalisées." :
+                                f.key === "height"   ? "Ta taille améliore le calcul de ton métabolisme de base." :
+                                f.key === "sex"      ? "Aide à adapter les estimations de métabolisme." :
+                                f.key === "age"      ? "Ton âge ajuste les besoins énergétiques." :
+                                f.key === "activity" ? "Ton niveau d'activité calibre ton TDEE." :
+                                "Complète ton profil physique."
+                              }
+                            </p>
+                          </div>
+                        ))}
+                        <button onClick={() => { setNav("today"); setTimeout(() => { setNav("track"); setTrackTab("body"); }, 50); }}
+                          style={{ marginTop: 6, padding: "6px 14px", borderRadius: 8, background: C.orange, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                          Compléter mon profil →
+                        </button>
+                      </div>
+                    )}
+
+                    {/* ── 8. Q&A TIPS ── */}
                     {isPro ? (() => {
                       const allTips = [...(NUTRITION_TIPS.all || []), ...(NUTRITION_TIPS[nutritionGoals.goalType] || [])];
                       return <NutritionTipsBlock tips={allTips} goalType={nutritionGoals.goalType} />;
