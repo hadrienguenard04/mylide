@@ -6,25 +6,38 @@ import { useC } from "./theme.jsx";
 import { MEAL_DB, MEAL_FRACTIONS, getMeals, getMealEmoji, scaleMeal } from "./mealEngine.js";
 
 // ── API Open Food Facts ────────────────────────────────────────────────────
-const OFF_API = "https://world.openfoodfacts.org/cgi/search.pl";
-
 async function searchFoods(query) {
   if (!query || query.length < 2) return [];
-  const url = `${OFF_API}?search_terms=${encodeURIComponent(query)}&json=1&page_size=12&fields=product_name,brands,nutriments,serving_size,serving_quantity,categories_tags`;
-  const res = await fetch(url);
-  const data = await res.json();
-  return (data.products || []).filter(p =>
-    p.product_name && p.nutriments?.["energy-kcal_100g"] >= 0
-  );
+  // On essaie d'abord l'API française, puis mondiale en fallback
+  const urls = [
+    `https://fr.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=15&fields=product_name,brands,nutriments,serving_size`,
+    `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=15&fields=product_name,brands,nutriments,serving_size&lc=fr`,
+  ];
+  for (const url of urls) {
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      const products = (data.products || []).filter(p => {
+        if (!p.product_name || p.product_name.trim().length < 2) return false;
+        const n = p.nutriments || {};
+        // Accepter si au moins une valeur nutritionnelle est présente
+        return (n["energy-kcal_100g"] != null || n["energy_100g"] != null || n["proteins_100g"] != null);
+      });
+      if (products.length > 0) return products;
+    } catch {}
+  }
+  return [];
 }
 
 function getMacrosPer100g(product) {
   const n = product.nutriments || {};
+  // Priorité : kcal explicite, sinon conversion depuis kJ (÷4.184)
+  const kcal = n["energy-kcal_100g"] ?? n["energy-kcal"] ?? (n["energy_100g"] ? Math.round(n["energy_100g"] / 4.184) : null) ?? 0;
   return {
-    calories: Math.round(n["energy-kcal_100g"] || n["energy_100g"] / 4.184 || 0),
-    protein:  Math.round((n["proteins_100g"]       || 0) * 10) / 10,
-    carbs:    Math.round((n["carbohydrates_100g"]   || 0) * 10) / 10,
-    fat:      Math.round((n["fat_100g"]             || 0) * 10) / 10,
+    calories: Math.round(Math.max(0, kcal)),
+    protein:  Math.round((n["proteins_100g"]     || 0) * 10) / 10,
+    carbs:    Math.round((n["carbohydrates_100g"] || 0) * 10) / 10,
+    fat:      Math.round((n["fat_100g"]           || 0) * 10) / 10,
   };
 }
 
