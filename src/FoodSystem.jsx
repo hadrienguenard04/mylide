@@ -5,6 +5,94 @@ import { useState, useCallback, useRef } from "react";
 import { useC } from "./theme.jsx";
 import { MEAL_DB, MEAL_FRACTIONS, getMeals, getMealEmoji, scaleMeal } from "./mealEngine.js";
 
+// ── BASE LOCALE CIQUAL (ingrédients bruts courants) ───────────────────────
+// Source : Ciqual 2020 — ANSES (Agence nationale de sécurité sanitaire)
+// Valeurs pour 100g
+const LOCAL_FOODS = [
+  // Oeufs
+  { name:"Oeuf entier cuit (dur/poché)", cal:155, prot:13, carbs:1.1, fat:11, tags:["oeuf","oeufs","egg"] },
+  { name:"Oeuf entier cru", cal:147, prot:13, carbs:0.7, fat:10, tags:["oeuf","oeufs","egg cru"] },
+  { name:"Blanc d'oeuf cuit", cal:52, prot:11, carbs:0.7, fat:0.2, tags:["blanc oeuf","albumine"] },
+  // Céréales & féculents
+  { name:"Flocons d'avoine", cal:367, prot:13, carbs:60, fat:7, tags:["flocon avoine","avoine","oats","porridge"] },
+  { name:"Riz blanc cru", cal:360, prot:7, carbs:78, fat:0.7, tags:["riz","riz blanc","rice"] },
+  { name:"Riz basmati cru", cal:356, prot:8, carbs:77, fat:0.7, tags:["riz basmati","basmati"] },
+  { name:"Riz complet cru", cal:355, prot:8, carbs:74, fat:2, tags:["riz complet"] },
+  { name:"Pâtes sèches (blé dur)", cal:352, prot:13, carbs:69, fat:1.5, tags:["pates","pasta","pâtes"] },
+  { name:"Pâtes cuites", cal:138, prot:5, carbs:27, fat:0.6, tags:["pates cuites","pasta cuite"] },
+  { name:"Pain complet", cal:246, prot:9, carbs:44, fat:2, tags:["pain complet","wholemeal"] },
+  { name:"Pain de mie complet", cal:257, prot:9, carbs:44, fat:3.5, tags:["pain mie"] },
+  { name:"Quinoa cru", cal:368, prot:14, carbs:60, fat:6, tags:["quinoa"] },
+  { name:"Lentilles cuites", cal:116, prot:9, carbs:20, fat:0.4, tags:["lentille","lentilles"] },
+  { name:"Pois chiches cuits", cal:164, prot:9, carbs:27, fat:2.6, tags:["pois chiche","chickpea"] },
+  { name:"Haricots rouges cuits", cal:127, prot:8.7, carbs:22, fat:0.5, tags:["haricot rouge","red bean"] },
+  // Légumes
+  { name:"Patate douce crue", cal:86, prot:1.6, carbs:20, fat:0.1, tags:["patate douce","sweet potato"] },
+  { name:"Patate douce cuite", cal:76, prot:1.6, carbs:17, fat:0.1, tags:["patate douce cuite"] },
+  { name:"Pomme de terre cuite", cal:87, prot:2, carbs:19, fat:0.1, tags:["pomme de terre","potato","patate"] },
+  { name:"Brocoli cuit", cal:28, prot:2.8, carbs:3, fat:0.3, tags:["brocoli","broccoli"] },
+  { name:"Épinards cuits", cal:23, prot:2.9, carbs:1.4, fat:0.4, tags:["epinard","spinach"] },
+  { name:"Tomate fraîche", cal:18, prot:0.9, carbs:3.5, fat:0.2, tags:["tomate","tomato"] },
+  { name:"Avocat", cal:160, prot:2, carbs:2, fat:15, tags:["avocat","avocado"] },
+  { name:"Carotte fraîche", cal:41, prot:0.9, carbs:9, fat:0.2, tags:["carotte","carrot"] },
+  { name:"Courgette cuite", cal:19, prot:1.4, carbs:2.5, fat:0.3, tags:["courgette","zucchini"] },
+  { name:"Champignons de Paris", cal:22, prot:3, carbs:0.5, fat:0.3, tags:["champignon","mushroom"] },
+  { name:"Haricots verts cuits", cal:28, prot:1.9, carbs:4, fat:0.2, tags:["haricot vert","green bean"] },
+  // Fruits
+  { name:"Banane", cal:90, prot:1.1, carbs:21, fat:0.3, tags:["banane","banana"] },
+  { name:"Pomme", cal:52, prot:0.3, carbs:12, fat:0.2, tags:["pomme","apple"] },
+  { name:"Fraises", cal:32, prot:0.7, carbs:7, fat:0.3, tags:["fraise","strawberry"] },
+  { name:"Myrtilles", cal:57, prot:0.7, carbs:13, fat:0.3, tags:["myrtille","blueberry"] },
+  { name:"Fruits rouges (mélange)", cal:40, prot:0.8, carbs:9, fat:0.3, tags:["fruits rouges","berries"] },
+  { name:"Orange", cal:47, prot:0.9, carbs:11, fat:0.1, tags:["orange"] },
+  { name:"Mangue", cal:60, prot:0.8, carbs:14, fat:0.4, tags:["mangue","mango"] },
+  // Viandes
+  { name:"Blanc de poulet cru", cal:110, prot:23, carbs:0, fat:2, tags:["poulet","chicken","blanc poulet"] },
+  { name:"Blanc de poulet cuit", cal:152, prot:32, carbs:0, fat:3, tags:["poulet cuit"] },
+  { name:"Boeuf haché 5% MG cuit", cal:135, prot:22, carbs:0, fat:5, tags:["boeuf","steak hache","beef","viande hachee"] },
+  { name:"Steak de boeuf maigre cuit", cal:175, prot:29, carbs:0, fat:6, tags:["steak boeuf","beef steak"] },
+  { name:"Filet de dinde cru", cal:107, prot:23, carbs:0, fat:1.5, tags:["dinde","turkey"] },
+  // Poissons
+  { name:"Saumon cru", cal:206, prot:20, carbs:0, fat:14, tags:["saumon","salmon"] },
+  { name:"Thon en conserve (naturel)", cal:116, prot:26, carbs:0, fat:1, tags:["thon","tuna"] },
+  { name:"Cabillaud cuit", cal:90, prot:20, carbs:0, fat:1, tags:["cabillaud","cod","morue"] },
+  { name:"Crevettes cuites", cal:90, prot:19, carbs:0, fat:1.3, tags:["crevette","shrimp"] },
+  // Laitages
+  { name:"Yaourt grec 0%", cal:59, prot:10, carbs:4, fat:0.3, tags:["yaourt grec","greek yogurt","skyr"] },
+  { name:"Fromage blanc 0%", cal:47, prot:8, carbs:3.7, fat:0.2, tags:["fromage blanc"] },
+  { name:"Skyr nature", cal:65, prot:11, carbs:4, fat:0.2, tags:["skyr"] },
+  { name:"Lait demi-écrémé", cal:46, prot:3.2, carbs:4.8, fat:1.5, tags:["lait","milk"] },
+  { name:"Cottage cheese", cal:98, prot:11, carbs:3, fat:4, tags:["cottage cheese","cottage"] },
+  { name:"Mozzarella", cal:280, prot:17, carbs:2, fat:22, tags:["mozzarella"] },
+  { name:"Parmesan râpé", cal:392, prot:36, carbs:0, fat:26, tags:["parmesan"] },
+  // Protéines en poudre
+  { name:"Whey protéine (poudre)", cal:370, prot:80, carbs:5, fat:4, tags:["whey","proteine poudre","protein powder"] },
+  // Noix & graines
+  { name:"Amandes", cal:575, prot:21, carbs:7, fat:50, tags:["amande","almond"] },
+  { name:"Noix", cal:654, prot:15, carbs:7, fat:65, tags:["noix","walnut"] },
+  { name:"Beurre de cacahuète", cal:598, prot:25, carbs:20, fat:50, tags:["beurre cacahuete","peanut butter"] },
+  { name:"Graines de chia", cal:486, prot:16, carbs:35, fat:30, tags:["chia"] },
+  { name:"Noix de cajou", cal:553, prot:18, carbs:27, fat:44, tags:["cajou","cashew"] },
+  // Matières grasses
+  { name:"Huile d'olive", cal:900, prot:0, carbs:0, fat:100, tags:["huile olive","olive oil"] },
+  { name:"Huile de coco", cal:862, prot:0, carbs:0, fat:96, tags:["huile coco","coconut oil"] },
+  { name:"Beurre", cal:750, prot:0.6, carbs:0.5, fat:82, tags:["beurre","butter"] },
+  // Divers
+  { name:"Granola nature", cal:450, prot:9, carbs:62, fat:16, tags:["granola","muesli"] },
+  { name:"Miel", cal:305, prot:0.3, carbs:76, fat:0, tags:["miel","honey"] },
+  { name:"Chocolat noir 70%", cal:560, prot:8, carbs:40, fat:40, tags:["chocolat noir","dark chocolate"] },
+];
+
+function searchLocalFoods(query) {
+  const q = query.toLowerCase().trim();
+  const words = q.split(/\s+/);
+  return LOCAL_FOODS.filter(f => {
+    const name = f.name.toLowerCase();
+    const tags = f.tags.join(" ");
+    return words.every(w => name.includes(w) || tags.includes(w));
+  }).map(f => ({ ...f, source: "local" }));
+}
+
 // ── API Open Food Facts ────────────────────────────────────────────────────
 async function searchFoods(query) {
   if (!query || query.length < 2) return [];
@@ -68,23 +156,35 @@ export const FoodSearchModal = ({ onClose, onAdd }) => {
     setSearched(true);
     setSelected(null);
     try {
-      const r = await searchFoods(query.trim());
-      setResults(r);
+      // 1. Cherche d'abord dans la base locale Ciqual
+      const local = searchLocalFoods(query.trim());
+      // 2. Cherche en parallèle sur Open Food Facts pour les produits packagés
+      const offPromise = searchFoods(query.trim()).catch(() => []);
+      const off = await offPromise;
+      // Fusionne : local en premier, puis OFF (sans doublons par nom)
+      const localNames = new Set(local.map(f => f.name.toLowerCase()));
+      const offFiltered = off.filter(p => !localNames.has((p.product_name || "").toLowerCase()));
+      setResults([...local, ...offFiltered]);
     } catch {
-      setResults([]);
+      setResults(searchLocalFoods(query.trim()));
     }
     setLoading(false);
   }, [query]);
 
-  const per100g = selected ? getMacrosPer100g(selected) : null;
+  const per100g = selected
+    ? (selected.source === "local"
+        ? { calories: selected.cal, protein: selected.prot, carbs: selected.carbs, fat: selected.fat }
+        : getMacrosPer100g(selected))
+    : null;
   const preview = per100g ? calcMacrosForQty(per100g, qty) : null;
 
   const handleAdd = () => {
     if (!selected || !preview) return;
+    const name = selected.source === "local" ? selected.name : selected.product_name;
     onAdd({
       id: Date.now(),
-      name: selected.product_name,
-      brand: selected.brands || "",
+      name,
+      brand: selected.source === "local" ? "Ciqual" : (selected.brands || ""),
       quantity: qty,
       unit: "g",
       calories: preview.calories,
@@ -161,8 +261,10 @@ export const FoodSearchModal = ({ onClose, onAdd }) => {
               <div style={{ background: `#CC293610`, border: "1.5px solid #CC293630", borderRadius: 16, padding: "14px 16px", marginBottom: 14 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                   <div style={{ flex: 1, marginRight: 8 }}>
-                    <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 800, color: C.text, lineHeight: 1.3 }}>{selected.product_name}</p>
-                    {selected.brands && <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{selected.brands}</p>}
+                    <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 800, color: C.text, lineHeight: 1.3 }}>{selected.source === "local" ? selected.name : selected.product_name}</p>
+                    {selected.source === "local"
+                      ? <span style={{ fontSize: 10, background: "#CC293618", color: "#CC2936", borderRadius: 6, padding: "1px 6px", fontWeight: 800 }}>Base Ciqual · données ANSES</span>
+                      : selected.brands && <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{selected.brands}</p>}
                   </div>
                   <button onClick={() => setSelected(null)} style={{ background: C.surfaceAlt, border: "none", borderRadius: 8, padding: "4px 10px", cursor: "pointer", fontSize: 11, color: C.muted }}>✕ Changer</button>
                 </div>
@@ -231,16 +333,23 @@ export const FoodSearchModal = ({ onClose, onAdd }) => {
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <p style={{ margin: "0 0 8px", fontSize: 12, color: C.muted, fontWeight: 600 }}>{results.length} résultats · Appuie pour sélectionner</p>
               {results.map((p, i) => {
-                const m = getMacrosPer100g(p);
-                if (!p.product_name) return null;
+                const isLocal = p.source === "local";
+                const name = isLocal ? p.name : p.product_name;
+                const m = isLocal
+                  ? { calories: p.cal, protein: p.prot, carbs: p.carbs, fat: p.fat }
+                  : getMacrosPer100g(p);
+                if (!name) return null;
                 return (
-                  <button key={i} onClick={() => { setSelected(p); setQty(100); }}
-                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, cursor: "pointer", textAlign: "left", fontFamily: "inherit", width: "100%", transition: "all 0.15s" }}>
-                    <div style={{ width: 38, height: 38, borderRadius: 10, background: C.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
-                      {getMealEmoji(p.product_name)}
+                  <button key={i} onClick={() => { setSelected(p); setQty(isLocal ? 100 : 100); }}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.surface, border: `1px solid ${isLocal ? "#CC293620" : C.border}`, borderRadius: 14, cursor: "pointer", textAlign: "left", fontFamily: "inherit", width: "100%", transition: "all 0.15s" }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: isLocal ? "#CC293612" : C.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
+                      {getMealEmoji(name)}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.product_name}</p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2 }}>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</p>
+                        {isLocal && <span style={{ fontSize: 9, background: "#CC293618", color: "#CC2936", borderRadius: 6, padding: "1px 5px", fontWeight: 800, flexShrink: 0 }}>Ciqual</span>}
+                      </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: "#f97316" }}>{m.calories} kcal</span>
                         <span style={{ fontSize: 11, color: C.muted }}>·</span>
