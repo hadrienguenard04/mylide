@@ -10,11 +10,11 @@ import { MEAL_DB, MEAL_FRACTIONS, getMeals, getMealEmoji, scaleMeal } from "./me
 // Valeurs pour 100g
 const LOCAL_FOODS = [
   // Oeufs
-  { name:"Oeuf entier cuit (dur/poché/brouillé)", cal:155, prot:13, carbs:1.1, fat:11, tags:["oeuf","oeufs","egg","oeuf dur","oeuf poche","oeuf brouille","oeuf cuit"] },
-  { name:"Oeuf au plat (à la poêle)", cal:185, prot:13, carbs:0.7, fat:14, tags:["oeuf au plat","oeufs au plat","fried egg"] },
-  { name:"Omelette nature", cal:158, prot:11, carbs:0.5, fat:12, tags:["omelette"] },
-  { name:"Oeuf entier cru", cal:147, prot:13, carbs:0.7, fat:10, tags:["oeuf cru","oeufs crus"] },
-  { name:"Blanc d'oeuf cuit", cal:52, prot:11, carbs:0.7, fat:0.2, tags:["blanc oeuf","albumine","blanc d oeuf"] },
+  { name:"Oeuf entier cuit (dur/poché/brouillé)", cal:155, prot:13, carbs:1.1, fat:11, tags:["oeuf","oeufs","egg","oeuf dur","oeuf poche","oeuf brouille","oeuf cuit"], unit:"oeuf", unitWeight:55 },
+  { name:"Oeuf au plat (à la poêle)", cal:185, prot:13, carbs:0.7, fat:14, tags:["oeuf au plat","oeufs au plat","fried egg"], unit:"oeuf", unitWeight:55 },
+  { name:"Omelette nature", cal:158, prot:11, carbs:0.5, fat:12, tags:["omelette"], unit:"oeuf", unitWeight:55 },
+  { name:"Oeuf entier cru", cal:147, prot:13, carbs:0.7, fat:10, tags:["oeuf cru","oeufs crus"], unit:"oeuf", unitWeight:55 },
+  { name:"Blanc d'oeuf cuit", cal:52, prot:11, carbs:0.7, fat:0.2, tags:["blanc oeuf","albumine","blanc d oeuf"], unit:"blanc", unitWeight:33 },
   // Céréales & féculents
   { name:"Flocons d'avoine", cal:367, prot:13, carbs:60, fat:7, tags:["flocon avoine","avoine","oats","porridge"] },
   { name:"Riz blanc cru", cal:360, prot:7, carbs:78, fat:0.7, tags:["riz","riz blanc","rice"] },
@@ -41,8 +41,8 @@ const LOCAL_FOODS = [
   { name:"Champignons de Paris", cal:22, prot:3, carbs:0.5, fat:0.3, tags:["champignon","mushroom"] },
   { name:"Haricots verts cuits", cal:28, prot:1.9, carbs:4, fat:0.2, tags:["haricot vert","green bean"] },
   // Fruits
-  { name:"Banane", cal:90, prot:1.1, carbs:21, fat:0.3, tags:["banane","banana"] },
-  { name:"Pomme", cal:52, prot:0.3, carbs:12, fat:0.2, tags:["pomme","apple"] },
+  { name:"Banane", cal:90, prot:1.1, carbs:21, fat:0.3, tags:["banane","banana"], unit:"banane", unitWeight:120 },
+  { name:"Pomme", cal:52, prot:0.3, carbs:12, fat:0.2, tags:["pomme","apple"], unit:"pomme", unitWeight:150 },
   { name:"Fraises", cal:32, prot:0.7, carbs:7, fat:0.3, tags:["fraise","strawberry"] },
   { name:"Myrtilles", cal:57, prot:0.7, carbs:13, fat:0.3, tags:["myrtille","blueberry"] },
   { name:"Fruits rouges (mélange)", cal:40, prot:0.8, carbs:9, fat:0.3, tags:["fruits rouges","berries"] },
@@ -149,6 +149,7 @@ export const FoodSearchModal = ({ onClose, onAdd }) => {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState(null);
   const [qty, setQty] = useState(100);
+  const [qtyMode, setQtyMode] = useState("g"); // "g" | "pieces"
   const [searched, setSearched] = useState(false);
   const inputRef = useRef();
 
@@ -185,17 +186,24 @@ export const FoodSearchModal = ({ onClose, onAdd }) => {
         ? { calories: selected.cal, protein: selected.prot, carbs: selected.carbs, fat: selected.fat }
         : getMacrosPer100g(selected))
     : null;
-  const preview = per100g ? calcMacrosForQty(per100g, qty) : null;
+  // Poids réel en grammes selon le mode
+  const hasUnits = selected?.source === "local" && selected?.unit && selected?.unitWeight;
+  const actualGrams = hasUnits && qtyMode === "pieces"
+    ? qty * selected.unitWeight
+    : qty;
+  const preview = per100g ? calcMacrosForQty(per100g, actualGrams) : null;
 
   const handleAdd = () => {
     if (!selected || !preview) return;
     const name = selected.source === "local" ? selected.name : selected.product_name;
+    const displayQty = hasUnits && qtyMode === "pieces" ? qty : actualGrams;
+    const displayUnit = hasUnits && qtyMode === "pieces" ? `${selected.unit}${qty > 1 ? "s" : ""}` : "g";
     onAdd({
       id: Date.now(),
       name,
       brand: selected.source === "local" ? "Ciqual" : (selected.brands || ""),
-      quantity: qty,
-      unit: "g",
+      quantity: displayQty,
+      unit: displayUnit,
       calories: preview.calories,
       protein: preview.protein,
       carbs: preview.carbs,
@@ -289,24 +297,54 @@ export const FoodSearchModal = ({ onClose, onAdd }) => {
                     <span key={i} style={{ fontSize: 11, fontWeight: i === 0 ? 600 : 800, color: t.color, background: i === 0 ? C.surfaceAlt : `${t.color}15`, borderRadius: 8, padding: "3px 8px" }}>{t.label}</span>
                   ))}
                 </div>
-                {/* Quantity slider */}
+                {/* Mode selector : grammes ou pièces */}
+                {hasUnits && (
+                  <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                    {["g", "pieces"].map(mode => (
+                      <button key={mode} onClick={() => { setQtyMode(mode); setQty(mode === "pieces" ? 1 : selected.unitWeight); }}
+                        style={{ flex: 1, padding: "8px", borderRadius: 12, border: `2px solid ${qtyMode === mode ? "#CC2936" : C.border}`, background: qtyMode === mode ? "#CC293612" : C.surfaceAlt, color: qtyMode === mode ? "#CC2936" : C.muted, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                        {mode === "g" ? "En grammes" : `En ${selected.unit}s`}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Quantity picker */}
                 <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: C.text }}>Quelle quantité ?</p>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <button onClick={() => setQty(q => Math.max(5, q - 25))} style={{ width: 36, height: 36, borderRadius: 10, background: C.surfaceAlt, border: "none", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: C.text }}>−</button>
-                  <input type="number" value={qty} min={5} max={2000} step={5}
-                    onChange={e => setQty(Math.max(5, Math.min(2000, Number(e.target.value))))}
+                  <button onClick={() => setQty(q => Math.max(qtyMode === "pieces" ? 1 : 5, q - (qtyMode === "pieces" ? 1 : 25)))}
+                    style={{ width: 36, height: 36, borderRadius: 10, background: C.surfaceAlt, border: "none", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: C.text }}>−</button>
+                  <input type="number" value={qty} min={qtyMode === "pieces" ? 1 : 5} max={qtyMode === "pieces" ? 30 : 2000} step={1}
+                    onChange={e => setQty(Math.max(1, Math.min(qtyMode === "pieces" ? 30 : 2000, Number(e.target.value))))}
                     style={{ flex: 1, textAlign: "center", padding: "10px", borderRadius: 12, border: `1.5px solid #CC293640`, background: C.surface, color: C.text, fontSize: 18, fontWeight: 900, fontFamily: "inherit" }} />
-                  <span style={{ fontSize: 14, color: C.muted, fontWeight: 600 }}>g</span>
-                  <button onClick={() => setQty(q => Math.min(2000, q + 25))} style={{ width: 36, height: 36, borderRadius: 10, background: C.surfaceAlt, border: "none", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: C.text }}>+</button>
+                  <span style={{ fontSize: 14, color: C.muted, fontWeight: 600 }}>
+                    {qtyMode === "pieces" ? `${selected?.unit}${qty > 1 ? "s" : ""}` : "g"}
+                  </span>
+                  <button onClick={() => setQty(q => Math.min(qtyMode === "pieces" ? 30 : 2000, q + (qtyMode === "pieces" ? 1 : 25)))}
+                    style={{ width: 36, height: 36, borderRadius: 10, background: C.surfaceAlt, border: "none", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: C.text }}>+</button>
                 </div>
+                {/* Info poids réel si mode pièces */}
+                {hasUnits && qtyMode === "pieces" && (
+                  <p style={{ margin: "6px 0 0", fontSize: 11, color: C.muted, textAlign: "center" }}>
+                    {qty} {selected.unit}{qty > 1 ? "s" : ""} = ~{actualGrams}g
+                  </p>
+                )}
                 {/* Quick qty buttons */}
                 <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                  {[50, 100, 150, 200, 250, 300].map(q => (
-                    <button key={q} onClick={() => setQty(q)}
-                      style={{ padding: "5px 12px", borderRadius: 20, border: `1.5px solid ${qty === q ? "#CC2936" : C.border}`, background: qty === q ? "#CC293615" : C.surfaceAlt, color: qty === q ? "#CC2936" : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                      {q}g
-                    </button>
-                  ))}
+                  {qtyMode === "pieces"
+                    ? [1,2,3,4,5,6].map(q => (
+                        <button key={q} onClick={() => setQty(q)}
+                          style={{ padding: "5px 12px", borderRadius: 20, border: `1.5px solid ${qty === q ? "#CC2936" : C.border}`, background: qty === q ? "#CC293615" : C.surfaceAlt, color: qty === q ? "#CC2936" : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                          {q} {selected?.unit}{q > 1 ? "s" : ""}
+                        </button>
+                      ))
+                    : [50,100,150,200,250,300].map(q => (
+                        <button key={q} onClick={() => setQty(q)}
+                          style={{ padding: "5px 12px", borderRadius: 20, border: `1.5px solid ${qty === q ? "#CC2936" : C.border}`, background: qty === q ? "#CC293615" : C.surfaceAlt, color: qty === q ? "#CC2936" : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                          {q}g
+                        </button>
+                      ))
+                  }
                 </div>
               </div>
 
@@ -349,7 +387,7 @@ export const FoodSearchModal = ({ onClose, onAdd }) => {
                   : getMacrosPer100g(p);
                 if (!name) return null;
                 return (
-                  <button key={i} onClick={() => { setSelected(p); setQty(isLocal ? 100 : 100); }}
+                  <button key={i} onClick={() => { setSelected(p); setQtyMode("pieces"); setQty(isLocal && p.unit ? 1 : 100); }}
                     style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: C.surface, border: `1px solid ${isLocal ? "#CC293620" : C.border}`, borderRadius: 14, cursor: "pointer", textAlign: "left", fontFamily: "inherit", width: "100%", transition: "all 0.15s" }}>
                     <div style={{ width: 38, height: 38, borderRadius: 10, background: isLocal ? "#CC293612" : C.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
                       {getMealEmoji(name)}
