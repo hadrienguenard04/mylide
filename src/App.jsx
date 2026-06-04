@@ -4056,14 +4056,8 @@ export default function App() {
         @keyframes slideUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
         @keyframes backdropIn { from { opacity:0; } to { opacity:1; } }
 
-        /* Cartes : apparition en cascade (nth-child gère le délai) */
-        .card-enter { animation: fadeInUp 0.28s ease both; }
-        .card-enter:nth-child(1) { animation-delay: 0ms; }
-        .card-enter:nth-child(2) { animation-delay: 50ms; }
-        .card-enter:nth-child(3) { animation-delay: 100ms; }
-        .card-enter:nth-child(4) { animation-delay: 150ms; }
-        .card-enter:nth-child(5) { animation-delay: 200ms; }
-        .card-enter:nth-child(n+6) { animation-delay: 250ms; }
+        /* Cartes : fade-in léger sans déplacement vertical pour éviter les bugs de layout */
+        .card-enter { animation: fadeIn 0.2s ease both; }
 
         /* Skeleton loading */
         .skeleton { background: linear-gradient(90deg, var(--c-surfaceAlt) 25%, var(--c-border) 50%, var(--c-surfaceAlt) 75%); background-size: 400px 100%; animation: shimmer 1.4s ease infinite; border-radius: 10px; }
