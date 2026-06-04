@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { MEAL_DB as NEW_MEAL_DB, getMeals, getMealEmoji, CAT_LABELS, CAT_ICONS } from './mealEngine.js';
+import { FoodSearchModal, FoodLog, DayPlanCard } from './FoodSystem.jsx';
 import { supabase } from "./supabase";
 import { Icon } from "./icons.jsx";
 import FAQPage from "./FAQ.jsx";
@@ -563,7 +564,7 @@ const defaultDay = () => ({
   date: new Date().toISOString().split("T")[0],
   sleep: { bedtime: "", wakeup: "", quality: 0, duration: 0, noScreen: false },
   sport: { type: "", duration: 0, intensity: 0, notes: "", isRest: false, stretching: false, running: { did: false, distance: 0, time: 0 }, recovery: 0, bodyFat: 0, muscleMass: 0, photoUrl: "", sessionName: "", heartRate: 0, heartRateMax: 0, scoreFor: 0, scoreAgainst: 0, footballType: "", tennisType: "", tennisScore: "", tennisOpponent: "", tennisResult: "", boxeType: "", boxeRounds: 0, boxeRoundDuration: 0 },
-  nutrition: { breakfast: false, lunch: false, dinner: false, water: 0, protein: 0, calories: 0, fat: 0, carbs: 0, junk: false },
+  nutrition: { breakfast: false, lunch: false, dinner: false, water: 0, protein: 0, calories: 0, fat: 0, carbs: 0, junk: false, foods: [] },
   body: { weight: 0, weightTarget: 0, chest: 0, waist: 0, hips: 0, arms: 0, thighs: 0, restingHR: 0, maxHR: 0 },
   work: { focus: 0, tasks: 0, tasksCompleted: 0, highlight: "", screenTime: 0 },
   money: { income: 0, expense: 0, invested: 0, note: "" },
@@ -3242,6 +3243,7 @@ export default function App() {
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [showFAQ, setShowFAQ] = useState(false);
   const [showProPopup, setShowProPopup] = useState(false);
+  const [showFoodSearch, setShowFoodSearch] = useState(false);
   const photoRef = useRef(); const sportPhotoRef = useRef();
   const autoSaveRef = useRef(null);
   const loadDoneRef = useRef(false);
@@ -3772,6 +3774,39 @@ export default function App() {
   };
   const handleSignOut = async () => { await supabase.auth.signOut(); localStorage.removeItem("kojihlife_v9"); setOnboarded(false); };
 
+  // ── Journal alimentaire ────────────────────────────────────────────────
+  const addFoodToLog = (food) => {
+    setToday(prev => {
+      const foods = [...(prev.nutrition.foods || []), food];
+      const totals = foods.reduce((acc, f) => ({
+        calories: acc.calories + (f.calories || 0),
+        protein:  acc.protein  + (f.protein  || 0),
+        carbs:    acc.carbs    + (f.carbs    || 0),
+        fat:      acc.fat      + (f.fat      || 0),
+      }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+      const updated = { ...prev, nutrition: { ...prev.nutrition, foods, calories: Math.round(totals.calories), protein: Math.round(totals.protein * 10) / 10, carbs: Math.round(totals.carbs * 10) / 10, fat: Math.round(totals.fat * 10) / 10 } };
+      updated.score = calcScore(updated);
+      return updated;
+    });
+    setSaved(false);
+  };
+
+  const removeFoodFromLog = (foodId) => {
+    setToday(prev => {
+      const foods = (prev.nutrition.foods || []).filter(f => f.id !== foodId);
+      const totals = foods.reduce((acc, f) => ({
+        calories: acc.calories + (f.calories || 0),
+        protein:  acc.protein  + (f.protein  || 0),
+        carbs:    acc.carbs    + (f.carbs    || 0),
+        fat:      acc.fat      + (f.fat      || 0),
+      }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+      const updated = { ...prev, nutrition: { ...prev.nutrition, foods, calories: Math.round(totals.calories), protein: Math.round(totals.protein * 10) / 10, carbs: Math.round(totals.carbs * 10) / 10, fat: Math.round(totals.fat * 10) / 10 } };
+      updated.score = calcScore(updated);
+      return updated;
+    });
+    setSaved(false);
+  };
+
   const intel = getIntelligence(history, totalPatrimoine, goals);
   const temporalInsights = getTemporalIntelligence(today, history, goals);
   const age = calcAge(profile.dob);
@@ -4139,6 +4174,7 @@ export default function App() {
         setShowDeleteAccount(false);
       }} />}
       {showFAQ && <FAQPage onBack={() => setShowFAQ(false)} />}
+      {showFoodSearch && <FoodSearchModal onClose={() => setShowFoodSearch(false)} onAdd={addFoodToLog} />}
 
       {/* ── Consentement données de santé (RGPD Art. 9) ─────────────────────── */}
       {showHealthConsent && (
@@ -4752,22 +4788,55 @@ export default function App() {
                   <div>
                     {_nutritionDisclaimer}
 
-                    {/* ── 1. SAISIE DU JOUR — en premier ── */}
+                    {/* ── 1. JOURNAL ALIMENTAIRE ── */}
                     <Card>
-                      <ST>{tr("nutr_meals_day")}</ST>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
-                        <Toggle value={today.nutrition.breakfast} onChange={v => update("nutrition", "breakfast", v)} label={tr("nutr_breakfast")} />
-                        <Toggle value={today.nutrition.lunch}     onChange={v => update("nutrition", "lunch",     v)} label={tr("nutr_lunch")} />
-                        <Toggle value={today.nutrition.dinner}    onChange={v => update("nutrition", "dinner",    v)} label={tr("nutr_dinner")} />
-                        <Toggle value={today.nutrition.junk}      onChange={v => update("nutrition", "junk",      v)} label="Junk food" />
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                        <ST style={{ margin: 0 }}>{tr("nutr_meals_day")}</ST>
+                        <button onClick={() => setShowFoodSearch(true)}
+                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 20, background: "linear-gradient(135deg,#CC2936,#8B1A22)", color: "#fff", border: "none", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+                          + Ajouter
+                        </button>
                       </div>
-                      <ST>{tr("nutr_macros")}</ST>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                        <Field label="Calories (kcal)"><input type="number" value={today.nutrition.calories || ""} min={0} max={6000} onChange={e => update("nutrition","calories",+e.target.value)} style={inp} /></Field>
-                        <Field label="Protéines (g)">  <input type="number" value={today.nutrition.protein  || ""} min={0} max={400}  onChange={e => update("nutrition","protein", +e.target.value)} style={inp} /></Field>
-                        <Field label="Glucides (g)">   <input type="number" value={today.nutrition.carbs    || ""} min={0} max={600}  onChange={e => update("nutrition","carbs",   +e.target.value)} style={inp} /></Field>
-                        <Field label="Lipides (g)">    <input type="number" value={today.nutrition.fat      || ""} min={0} max={300}  onChange={e => update("nutrition","fat",     +e.target.value)} style={inp} /></Field>
+
+                      {/* Journal si des aliments ont été ajoutés */}
+                      {(today.nutrition.foods || []).length > 0 ? (
+                        <FoodLog
+                          foods={today.nutrition.foods || []}
+                          onRemove={removeFoodFromLog}
+                          displayMacros={displayMacros}
+                          C={C}
+                        />
+                      ) : (
+                        <div onClick={() => setShowFoodSearch(true)} style={{ textAlign: "center", padding: "20px 0", cursor: "pointer", border: `2px dashed ${C.border}`, borderRadius: 14 }}>
+                          <div style={{ fontSize: 32, marginBottom: 8 }}>🔍</div>
+                          <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: C.text }}>Ajouter un aliment</p>
+                          <p style={{ margin: 0, fontSize: 12, color: C.muted }}>Recherche parmi des millions d'aliments · macros auto</p>
+                        </div>
+                      )}
+
+                      {/* Repas cochés */}
+                      <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+                        <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 0.5 }}>Repas du jour</p>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <Toggle value={today.nutrition.breakfast} onChange={v => update("nutrition", "breakfast", v)} label={tr("nutr_breakfast")} />
+                          <Toggle value={today.nutrition.lunch}     onChange={v => update("nutrition", "lunch",     v)} label={tr("nutr_lunch")} />
+                          <Toggle value={today.nutrition.dinner}    onChange={v => update("nutrition", "dinner",    v)} label={tr("nutr_dinner")} />
+                          <Toggle value={today.nutrition.junk}      onChange={v => update("nutrition", "junk",      v)} label="Junk food aujourd'hui" />
+                        </div>
                       </div>
+
+                      {/* Saisie manuelle si pas de journal */}
+                      {(today.nutrition.foods || []).length === 0 && (
+                        <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+                          <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 0.5 }}>Saisie manuelle des macros</p>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                            <Field label="Calories (kcal)"><input type="number" value={today.nutrition.calories || ""} min={0} max={6000} onChange={e => update("nutrition","calories",+e.target.value)} style={inp} /></Field>
+                            <Field label="Protéines (g)">  <input type="number" value={today.nutrition.protein  || ""} min={0} max={400}  onChange={e => update("nutrition","protein", +e.target.value)} style={inp} /></Field>
+                            <Field label="Glucides (g)">   <input type="number" value={today.nutrition.carbs    || ""} min={0} max={600}  onChange={e => update("nutrition","carbs",   +e.target.value)} style={inp} /></Field>
+                            <Field label="Lipides (g)">    <input type="number" value={today.nutrition.fat      || ""} min={0} max={300}  onChange={e => update("nutrition","fat",     +e.target.value)} style={inp} /></Field>
+                          </div>
+                        </div>
+                      )}
                     </Card>
 
                     {/* ── 2. HYDRATATION ── */}
@@ -4924,6 +4993,25 @@ export default function App() {
                       })()}
 
                     </Card>
+
+                    {/* ── 4b. PLAN DU JOUR ── */}
+                    <DayPlanCard
+                      goalType={nutritionGoals.goalType}
+                      veganOnly={veganOnly}
+                      userCalTarget={displayMacros.calTarget}
+                      protTarget={displayMacros.protTarget}
+                      displayMacros={displayMacros}
+                      C={C}
+                      onAddMeal={meal => {
+                        setToday(prev => {
+                          const n = prev.nutrition;
+                          const updated = { ...prev, nutrition: { ...n, calories: (n.calories || 0) + meal.macros.cal, protein: (n.protein || 0) + meal.macros.prot, carbs: (n.carbs || 0) + meal.macros.carbs, fat: (n.fat || 0) + meal.macros.fat } };
+                          updated.score = calcScore(updated);
+                          return updated;
+                        });
+                        setSaved(false);
+                      }}
+                    />
 
                     {/* ── 5. IDÉES REPAS ── */}
                     <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "18px 16px 10px", marginBottom: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
