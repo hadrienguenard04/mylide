@@ -10,9 +10,11 @@ import { MEAL_DB, MEAL_FRACTIONS, getMeals, getMealEmoji, scaleMeal } from "./me
 // Valeurs pour 100g
 const LOCAL_FOODS = [
   // Oeufs
-  { name:"Oeuf entier cuit (dur/poché)", cal:155, prot:13, carbs:1.1, fat:11, tags:["oeuf","oeufs","egg"] },
-  { name:"Oeuf entier cru", cal:147, prot:13, carbs:0.7, fat:10, tags:["oeuf","oeufs","egg cru"] },
-  { name:"Blanc d'oeuf cuit", cal:52, prot:11, carbs:0.7, fat:0.2, tags:["blanc oeuf","albumine"] },
+  { name:"Oeuf entier cuit (dur/poché/brouillé)", cal:155, prot:13, carbs:1.1, fat:11, tags:["oeuf","oeufs","egg","oeuf dur","oeuf poche","oeuf brouille","oeuf cuit"] },
+  { name:"Oeuf au plat (à la poêle)", cal:185, prot:13, carbs:0.7, fat:14, tags:["oeuf au plat","oeufs au plat","fried egg"] },
+  { name:"Omelette nature", cal:158, prot:11, carbs:0.5, fat:12, tags:["omelette"] },
+  { name:"Oeuf entier cru", cal:147, prot:13, carbs:0.7, fat:10, tags:["oeuf cru","oeufs crus"] },
+  { name:"Blanc d'oeuf cuit", cal:52, prot:11, carbs:0.7, fat:0.2, tags:["blanc oeuf","albumine","blanc d oeuf"] },
   // Céréales & féculents
   { name:"Flocons d'avoine", cal:367, prot:13, carbs:60, fat:7, tags:["flocon avoine","avoine","oats","porridge"] },
   { name:"Riz blanc cru", cal:360, prot:7, carbs:78, fat:0.7, tags:["riz","riz blanc","rice"] },
@@ -161,9 +163,16 @@ export const FoodSearchModal = ({ onClose, onAdd }) => {
       // 2. Cherche en parallèle sur Open Food Facts pour les produits packagés
       const offPromise = searchFoods(query.trim()).catch(() => []);
       const off = await offPromise;
-      // Fusionne : local en premier, puis OFF (sans doublons par nom)
+      // Fusionne : local en premier, puis OFF
+      // OFF filtré : le nom du produit doit contenir au moins un mot de la recherche
+      const words = query.trim().toLowerCase().split(/\s+/);
       const localNames = new Set(local.map(f => f.name.toLowerCase()));
-      const offFiltered = off.filter(p => !localNames.has((p.product_name || "").toLowerCase()));
+      const offFiltered = off.filter(p => {
+        const pName = (p.product_name || "").toLowerCase();
+        if (localNames.has(pName)) return false;
+        // Au moins un mot de la recherche doit apparaître dans le nom du produit
+        return words.some(w => w.length > 2 && pName.includes(w));
+      });
       setResults([...local, ...offFiltered]);
     } catch {
       setResults(searchLocalFoods(query.trim()));
