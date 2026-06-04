@@ -1716,17 +1716,18 @@ const SettingsPage = ({ onClose, darkMode, themeMode, setThemeMode, profile, upd
 // ── SCORE RING ─────────────────────────────────────────────────────────────
 const ScoreRing = ({ score, delta, streak }) => {
   const C = useC();
-  const r = 36; const circ = 2 * Math.PI * r; const fill = (score / 100) * circ;
-  // Utilise les CSS vars du thème (fonctionnent dans SVG sur tous les browsers modernes)
+  const animatedScore = useAnimatedNumber(score, 900);
+  const r = 36; const circ = 2 * Math.PI * r;
+  const fill = (animatedScore / 100) * circ;
   const col = score >= 80 ? C.green : score >= 60 ? C.orange : C.red;
   return (
     <div style={{ position: "relative", width: 84, height: 84, flexShrink: 0 }}>
       <svg width="84" height="84" style={{ transform: "rotate(-90deg)" }}>
         <circle cx="42" cy="42" r={r} fill="none" stroke={C.border} strokeWidth="6"/>
-        <circle cx="42" cy="42" r={r} fill="none" stroke={col} strokeWidth="6.5" strokeLinecap="round" strokeDasharray={`${fill} ${circ - fill}`} style={{ transition: "stroke-dasharray 1.1s cubic-bezier(0.4,0,0.2,1)" }}/>
+        <circle cx="42" cy="42" r={r} fill="none" stroke={col} strokeWidth="6.5" strokeLinecap="round" strokeDasharray={`${fill} ${circ - fill}`} style={{ transition: "stroke-dasharray 0.6s cubic-bezier(0.4,0,0.2,1)" }}/>
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontSize: 20, fontWeight: 900, color: col, lineHeight: 1 }}>{score}</span>
+        <span style={{ fontSize: 20, fontWeight: 900, color: col, lineHeight: 1 }}>{animatedScore}</span>
         {streak > 0 && <span style={{ fontSize: 9, color: C.orange, fontWeight: 700, marginTop: 1 }}>{streak}j</span>}
       </div>
     </div>
@@ -2155,7 +2156,7 @@ const Field = ({ label, children }) => {
   );
 };
 
-const Card = ({ children, style = {}, accent, dark }) => {
+const Card = ({ children, style = {}, accent, dark, noAnim }) => {
   const C = useC();
   const { darkMode } = useTheme();
   const bg = accent ? `linear-gradient(135deg, ${C.red} 0%, #8B1A22 100%)` : dark ? C.bg : C.surface;
@@ -2165,7 +2166,7 @@ const Card = ({ children, style = {}, accent, dark }) => {
       ? "0 2px 20px rgba(0,0,0,0.38)"
       : "0 2px 16px rgba(0,0,0,0.05)";
   return (
-    <div style={{ background: bg, border: accent || dark ? "none" : `1px solid ${C.border}`, borderRadius: 22, padding: "20px 20px", marginBottom: 14, boxShadow: shadow, ...style }}>{children}</div>
+    <div className={noAnim ? "" : "card-enter"} style={{ background: bg, border: accent || dark ? "none" : `1px solid ${C.border}`, borderRadius: 22, padding: "20px 20px", marginBottom: 14, boxShadow: shadow, ...style }}>{children}</div>
   );
 };
 
@@ -2202,8 +2203,8 @@ const EditGoalModal = ({ goal, onSave, onClose }) => {
   const C = useC();
   const [edited, setEdited] = useState({ ...goal });
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center", backdropFilter: "blur(4px)" }} onClick={onClose}>
-      <div style={{ width: "100%", maxWidth: 480, background: C.surface, borderRadius: "24px 24px 0 0", padding: 24, maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center", backdropFilter: "blur(4px)", animation: "backdropIn 0.2s ease" }} onClick={onClose}>
+      <div style={{ width: "100%", maxWidth: 480, background: C.surface, borderRadius: "24px 24px 0 0", padding: 24, maxHeight: "90vh", overflowY: "auto", animation: "slideUp 0.25s cubic-bezier(0.32,0.72,0,1)" }} onClick={e => e.stopPropagation()}>
         <div style={{ width: 40, height: 4, background: C.border, borderRadius: 2, margin: "0 auto 20px" }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: C.black }}>Modifier l'objectif</h3>
@@ -2267,9 +2268,38 @@ const useSwipe = (onLeft, onRight) => {
 
 const PageTransition = ({ children, pageKey }) => {
   const [vis, setVis] = useState(false);
-  useEffect(() => { setVis(false); const t = setTimeout(() => setVis(true), 40); return () => clearTimeout(t); }, [pageKey]);
-  return <div style={{ opacity: vis ? 1 : 0, transform: vis ? "translateY(0)" : "translateY(12px)", transition: "opacity 0.22s ease, transform 0.22s ease" }}>{children}</div>;
+  useEffect(() => { setVis(false); const t = setTimeout(() => setVis(true), 30); return () => clearTimeout(t); }, [pageKey]);
+  return <div style={{ opacity: vis ? 1 : 0, transform: vis ? "translateY(0)" : "translateY(8px)", transition: "opacity 0.18s ease, transform 0.18s ease", willChange: "opacity, transform" }}>{children}</div>;
 };
+
+// ── ANIMATED NUMBER — hook + composant ────────────────────────────────────
+const AnimatedNumber = ({ value, format = v => v, duration = 700 }) => {
+  const n = useAnimatedNumber(value, duration);
+  return format(n);
+};
+
+function useAnimatedNumber(target, duration = 700) {
+  const [current, setCurrent] = useState(target);
+  const prevRef = useRef(target);
+  const rafRef = useRef(null);
+  useEffect(() => {
+    const start = prevRef.current;
+    const end = target;
+    if (start === end) return;
+    const startTime = performance.now();
+    const animate = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCurrent(Math.round(start + (end - start) * eased));
+      if (progress < 1) { rafRef.current = requestAnimationFrame(animate); }
+      else { prevRef.current = end; }
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [target, duration]);
+  return current;
+}
 
 // ── ONBOARDING ─────────────────────────────────────────────────────────────
 // ── MEAL CAROUSEL — version premium avec onglets par catégorie ─────────────
@@ -3982,15 +4012,43 @@ export default function App() {
           --sal: env(safe-area-inset-left, 0px);
           --sar: env(safe-area-inset-right, 0px);
         }
-        /* Retour haptique visuel : léger scale sur tap */
-        button:active { transform: scale(0.97); }
+        /* ── Keyframes globaux ── */
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+        @keyframes scaleIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
+        @keyframes slideInRight { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+        @keyframes slideUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes backdropIn { from { opacity:0; } to { opacity:1; } }
+
+        /* Cartes : apparition en cascade (nth-child gère le délai) */
+        .card-enter { animation: fadeInUp 0.28s ease both; }
+        .card-enter:nth-child(1) { animation-delay: 0ms; }
+        .card-enter:nth-child(2) { animation-delay: 50ms; }
+        .card-enter:nth-child(3) { animation-delay: 100ms; }
+        .card-enter:nth-child(4) { animation-delay: 150ms; }
+        .card-enter:nth-child(5) { animation-delay: 200ms; }
+        .card-enter:nth-child(n+6) { animation-delay: 250ms; }
+
+        /* Skeleton loading */
+        .skeleton { background: linear-gradient(90deg, var(--c-surfaceAlt) 25%, var(--c-border) 50%, var(--c-surfaceAlt) 75%); background-size: 400px 100%; animation: shimmer 1.4s ease infinite; border-radius: 10px; }
+
+        /* Micro-interactions boutons */
+        button:active { transform: scale(0.96) !important; }
+        button { transition: transform 0.12s ease, opacity 0.12s ease, background 0.15s ease, box-shadow 0.15s ease !important; }
+
         /* Focus visible accessible */
         button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
           outline: 2px solid var(--c-red);
           outline-offset: 2px;
         }
-        /* Transition globale sur les éléments interactifs */
-        button, a { transition: transform 0.1s ease, opacity 0.15s ease; }
+        /* Transition globale */
+        a { transition: opacity 0.15s ease; }
+
+        /* Reduced motion — respecter les préférences système */
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+        }
         /* Inputs focus */
         input:focus, select:focus, textarea:focus {
           border-color: var(--c-red) !important;
@@ -4084,8 +4142,8 @@ export default function App() {
 
       {/* ── Consentement données de santé (RGPD Art. 9) ─────────────────────── */}
       {showHealthConsent && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 0 24px" }}>
-          <div style={{ background: C.surface, borderRadius: 28, padding: "28px 24px 24px", maxWidth: 420, width: "100%", boxShadow: "0 -8px 40px rgba(0,0,0,0.2)" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 0 24px", animation: "backdropIn 0.2s ease" }}>
+          <div style={{ background: C.surface, borderRadius: 28, padding: "28px 24px 24px", maxWidth: 420, width: "100%", boxShadow: "0 -8px 40px rgba(0,0,0,0.2)", animation: "slideUp 0.25s cubic-bezier(0.32,0.72,0,1)" }}>
             {/* Header */}
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
               <div style={{ width: 44, height: 44, borderRadius: 14, background: `${C.purple}15`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -5185,7 +5243,7 @@ export default function App() {
             <div>
               <Card accent>
                 <ST light>{tr("money_total")}</ST>
-                <p style={{ fontSize: 46, fontWeight: 900, color: "#fff", margin: "0 0 4px", lineHeight: 1, letterSpacing: -1 }}>{totalPatrimoine.toLocaleString("fr-FR")} €</p>
+                <p style={{ fontSize: 46, fontWeight: 900, color: "#fff", margin: "0 0 4px", lineHeight: 1, letterSpacing: -1 }}><AnimatedNumber value={totalPatrimoine} format={v => v.toLocaleString("fr-FR")} /> €</p>
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", margin: 0 }}>{new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p>
                 {intel.patrimoinePrediction && <div style={{ marginTop: 14, background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: "10px 14px", fontSize: 12, color: "rgba(255,255,255,0.85)", fontWeight: 500 }}>{intel.patrimoinePrediction}</div>}
               </Card>
