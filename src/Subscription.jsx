@@ -3,6 +3,7 @@ import { useC } from "./theme.jsx";
 import { PLANS, FREE_FEATURES, getPlanName, getPlanPrice, PLAN_LEVELS, getTrialDaysLeft } from "./planConfig.js";
 import { supabase } from "./supabase.js";
 import { Icon } from "./icons.jsx";
+import { isPlayBillingAvailable, purchaseViaPlay } from "./playBilling.js";
 
 async function getAuthToken() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -451,6 +452,11 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
   const plansToShow = isSubscribed ? availablePlans : PLANS;
 
   const handleSubscribe = async (plan) => {
+    // ── Cas ANDROID (appli Google Play) : on DOIT passer par Google Play Billing.
+    if (isPlayBillingAvailable()) {
+      return handleSubscribePlay(plan);
+    }
+    // ── Cas WEB : Stripe (comportement historique).
     const envKey = `VITE_STRIPE_PRICE_${plan.id.toUpperCase()}`;
     const priceId = import.meta.env[envKey];
     if (!priceId || priceId.includes("TO_CONFIGURE") || priceId.includes("placeholder")) {
@@ -469,6 +475,40 @@ export default function Subscription({ onClose, userPlan = "free", userId, userE
       const { url, error: apiErr } = await r.json();
       if (apiErr) throw new Error(apiErr);
       if (url) window.location.href = url;
+    } catch (e) {
+      setError(e.message || "Erreur lors du paiement. Réessaie.");
+      setLoading(null);
+    }
+  };
+
+  // ── Abonnement via Google Play Billing (Android uniquement) ──────────────────
+  const handleSubscribePlay = async (plan) => {
+    if (!plan.androidSku) {
+      setError("Paiement Android en cours de configuration. Reviens très bientôt !");
+      return;
+    }
+    setLoading(plan.id);
+    setError(null);
+    try {
+      // 1) Achat via Google Play (ouvre la feuille de paiement native)
+      const { purchaseToken, sku } = await purchaseViaPlay(plan.androidSku);
+
+      // 2) Vérification serveur → active le plan dans Supabase
+      const token = await getAuthToken();
+      const r = await fetch("/api/verify-google-purchase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ purchaseToken, sku, plan: plan.id, userId }),
+      });
+      const { success, error: apiErr } = await r.json();
+      if (apiErr) throw new Error(apiErr);
+      if (!success) throw new Error("La validation de l'abonnement a échoué. Réessaie.");
+
+      // 3) Succès → recharger l'app avec l'écran de bienvenue
+      const url = new URL(window.location.href);
+      url.searchParams.set("payment", "success");
+      url.searchParams.set("plan", plan.id);
+      window.location.href = url.toString();
     } catch (e) {
       setError(e.message || "Erreur lors du paiement. Réessaie.");
       setLoading(null);

@@ -12,6 +12,8 @@ export const PLANS = [
     priceStr: "3,99",
     color: "#3B82F6",
     recommended: false,
+    // ID du produit d'abonnement dans la Google Play Console (doit correspondre EXACTEMENT)
+    androidSku: "mylide_starter",
     identity: "Tu profites déjà des outils essentiels de MYLIDE.",
     features: [
       "Statistiques sur 30 jours",
@@ -29,6 +31,7 @@ export const PLANS = [
     priceStr: "6,99",
     color: "#CC2936",
     recommended: true,
+    androidSku: "mylide_pro",
     identity: "Tu profites de l'expérience MYLIDE recommandée.",
     features: [
       "Statistiques 1 an + historique complet",
@@ -47,6 +50,7 @@ export const PLANS = [
     priceStr: "12,99",
     color: "#F59E0B",
     recommended: false,
+    androidSku: "mylide_premium",
     identity: "Merci de soutenir le développement de MYLIDE.",
     features: [
       "Tout ce qui est inclus dans Pro",
